@@ -56,27 +56,27 @@ stop your engine
 
 1. List available IO profiles you can test with
 ```
-> fiocli profile --ls
+> ./fiocli.py profile --ls
 ```
 2. Show the parameters within a profile
 ```
-> fiocli profile --show <profile-name>
+> ./fiocli.py profile --show <profile-name>
 ```
 3. Run an fio job using a given profile
 ```
-> fiocli run --profile <profile-name> --workers <int> --title <text>
+> ./fiocli.py run --profile <profile-name> --workers <int> --title <text>
 ```
 4. List jobs stored in the database
 ```
-> fiocli job --ls
+> ./fiocli.py job --ls
 ```
 5. Show summarized outut from a run
 ```
-> fiocli job --show <run id>
+> ./fiocli.py job --show <run id>
 ```
 6. show full json output from a run
 ```
-> fiocli job --show <id> --raw
+> ./fiocli.py job --show <id> --raw
 ```
 
 ## Files used by the environment
@@ -90,3 +90,13 @@ Runtime files and a the database are placed in the users home directory
 | ```fioservice.access.log``` | web service | cherrypy access log messages
 | ```fiodeploy.lock``` | deploy script | used as a lock file to prevent multiple deploys running
 
+## TODO List  
+1. implement a wait parameter when running an fio job
+2. create the UI  
+2.1. phase 0 - define the UI structure and components  
+2.2. phase 1 - view results   
+2.3. phase 2 - use chart.js to visualize the results  
+2.4. phase 3 - use the rest API to drive testing from the web UI  
+3. extend the container to include other benchmarking tools  
+
+  
