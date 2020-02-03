@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fioclient
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: rook-ceph-block 
+  # storageClassName: ocs-storagecluster-ceph-rbd
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fioclient
+spec:
+  containers:
+   - name: fioclient
+     image: pcuzner/fiotester
+     env:
+       - name: FIOMODE
+         value: server
+     volumeMounts:
+       - name: testdata
+         mountPath: /mnt
+  volumes:
+    - name: testdata
+      persistentVolumeClaim:
+        claimName: fioclient
+        readOnly: false

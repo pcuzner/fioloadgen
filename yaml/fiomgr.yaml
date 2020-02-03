@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fiomgr
+spec:
+  containers:
+   - name: fiomgr
+     image: pcuzner/fiotester
+     env:
+     - name: FIOMODE
+       value: client

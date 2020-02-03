@@ -1,0 +1,5 @@
+./react/fioweb/node_modules
+./react/fioweb/build
+*.py[oc]
+./testing/
+
