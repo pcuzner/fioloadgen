@@ -79,21 +79,14 @@ stop your engine
 > fiocli job --show <id> --raw
 ```
 
+## Files used by the environment
+Runtime files and a the database are placed in the users home directory
 
-## DEV Notes
-To build the front end
-```
-cd react/fioweb
-npm run build
-```
-this places the updated content into the build directory
-
-Promote the build to the live location where cherrypy picks it up from
-```
-cd <root of project>
-cp -r react/fioweb/build/* www
-```
-
-To edit any of the base html (title etc)
-- react/fioweb/public dir to make the changes then build
+| filename | Used By | Purpose |
+|----------|---------|---------|
+| ```fioservice.db``` | web service | sqlite3 database containing profiles and job information |
+| ```fioservice.pid``` | web service | pid file for the web service
+| ```fioservice.log``` | web service | cherrypy log file - error and generic log messages
+| ```fioservice.access.log``` | web service | cherrypy access log messages
+| ```fiodeploy.lock``` | deploy script | used as a lock file to prevent multiple deploys running
 
