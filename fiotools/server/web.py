@@ -191,7 +191,11 @@ def run_job(handler):
                 if fetchrc == 0:
                     cherrypy.log("job {} adding job results to db".format(job.uuid))
                     job_output = rfile('/tmp/{}'.format(job.outfile))
-                    job_json = json.loads(job_output)
+
+                    # ignore any errors in the json - present at the start
+                    job_data = job_output[job_output.find('{', 1):]
+
+                    job_json = json.loads(job_data)
                     summary = latency_summary(job_json)  # use default percentile
                     with sqlite3.connect(DBNAME) as c:
                         csr = c.cursor()
