@@ -95,11 +95,11 @@ setup() {
        cat yaml/${WORKER_YAML} | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
     done 
 
-    console ${INFO} "Waiting for workers to enter a running state"
+    console ${INFO} "Waiting for worker pods to enter a running state"
     t=1
     while [ $t -lt $ITERATION_LIMIT ]; do # status=$(oc -n fio get pod -o=jsonpath='{..status.phase}')
-        status=$(oc -n ${NAMESPACE} get pod -o=jsonpath='{..status.phase}')    
-        if [[ "$status" == *"Running" ]]; then
+        status=$(oc -n ${NAMESPACE} get pod -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
+        if [[ "$status" != *"True" ]]; then
             console ${WARNING} "\t - waiting for pods to reach 'Running' state (${t}/${ITERATION_LIMIT})"
             sleep $ITERATION_DELAY
             t=$((t+1))
@@ -111,7 +111,7 @@ setup() {
         console ${ERROR} "Waited too long for pods to reach ready"
         exit
     fi
-    
+
     console ${INFO} "Removing residual IP information from data directory"
     rm -fr ./data/*-ip.list
 
@@ -130,7 +130,7 @@ setup() {
        fi
        echo -e "$hostIP" >> ./data/host-ip.list
        echo -e "$podIP" >> ./data/worker-ip.list
-       console ${INFO} "${TICK}${NC} fioworker${n}"
+       console ${INFO} "${TICK}${NC} fioworker${n} on ${hostIP}"
     done
 
     # transfer the client ip addresses and fio jobs to the mgr
@@ -150,7 +150,11 @@ setup() {
     fi
 
     echo -e "\n"
-    console ${INFO} "${TICK}${NC} ${WORKERS} worker pods running on ${#lookup[@]} hosts"
+    if [ ${#lookup[@]} -eq 1 ]; then
+        console ${WARNING} "${TICK} All workers are on a single host"
+    else
+        console ${INFO} "${TICK}${NC} ${WORKERS} worker pods running on ${#lookup[@]} hosts"
+    fi
     console ${INFO} "${TICK}${NC} test files seeded, workers ready"
     console ${INFO} "${TICK}${NC} ${WORKERS} worker pods ready"
     console ${INFO} "${TICK}${NC} use rsh to login to the fiomgr pod to run a workload\n"
