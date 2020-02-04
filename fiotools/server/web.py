@@ -293,7 +293,8 @@ class Job(object):
 
         # post request using a valid profile, place on the queue to run
         work_queue.put(job)
-        return {'data': 'run requested - uuid = {}, current work queue size {}'.format(job.uuid, work_queue.qsize())}
+        return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
+                         "uuid": job.uuid}}
 
 # @cherrypy.tools.accept(media='application/json')
 @cherrypy.expose
