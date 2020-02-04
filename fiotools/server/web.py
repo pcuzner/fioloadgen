@@ -41,11 +41,11 @@ def fetch_all(table, keys):
         csr = c.cursor()
         fields = ",".join(keys)
         csr.execute(""" SELECT {} FROM {};""".format(fields, table))
-    
+
     rows = csr.fetchall()
     for row in rows:
         data.append({k: row[k] for k in keys})
-   
+
     return data
 
 
@@ -73,6 +73,86 @@ class AsyncJob(object):
     pass
 
 
+def setup_db(dbname=DBNAME):
+
+    profiles_table = """ CREATE TABLE IF NOT EXISTS profiles (
+                            name text PRIMARY KEY,
+                            spec text,
+                            created integer,
+                            updated integer
+                            ); """
+    jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
+                        id text PRIMARY KEY,
+                        title text NOT NULL,
+                        profile text NOT NULL,
+                        workers integer NOT NULL,
+                        status text NOT NULL,
+                        started integer,
+                        ended integer,
+                        raw_json text,
+                        summary text,
+                        type text,
+                        raw_output text,
+                        provider text,
+                        platform text,
+                        FOREIGN KEY(profile) REFERENCES profiles (name)
+                        ); """
+
+    if not os.path.exists(dbname):
+        print("Creating results database")
+        with sqlite3.connect(dbname) as c:
+            c.execute(profiles_table)
+            c.execute(jobs_table)
+
+
+def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
+    def message(msg_string, out='console'):
+        if out == 'console':
+            print(msg_string)
+        else:
+            cherrypy.log(msg_string)
+
+    changes = {
+        "processed": 0,
+        "new": 0,
+        "changed": 0,
+        "skipped": 0,
+    }
+
+    message("Refreshing job profiles", out)
+    with sqlite3.connect(dbname) as c:
+        c.row_factory = sqlite3.Row
+        cursor = c.cursor()
+        for profile in glob.glob('{}/*'.format(jobdir)):
+            name = os.path.basename(profile)
+            changes['processed'] += 1
+            profile_spec = rfile(profile)
+            cursor.execute("SELECT * from profiles WHERE name=?;",
+                           (name,))
+            data = cursor.fetchone()
+            if data is None:
+                message("- loading profile {}".format(name), out)
+                changes['new'] += 1
+                cursor.execute("INSERT INTO profiles VALUES (?,?,?);",
+                                (name, profile_spec, int(datetime.datetime.now().strftime("%s"))))  # NOQA
+            else:
+                # if spec is the same - just skip it
+                if data['spec'] == profile_spec:
+                    message("- skipping identical profile {}".format(name), out)
+                    changes['skipped'] += 1
+                else:
+                    # if not, apply the filesystem copy to the database
+                    message("- refreshing profile '{}' in the db with filesystem copy".format(name), out)
+                    changes['changed'] += 1
+                    cursor.execute(""" UPDATE profiles
+                                            SET
+                                            spec=?,
+                                            updated=?
+                                            WHERE
+                                            name=?;""",
+                                   (profile_spec, int(datetime.datetime.now().strftime("%s")), name))
+    return changes
+
 @cherrypy.expose
 class Root(object):
     pass
@@ -80,10 +160,6 @@ class Root(object):
 
 class APIroot(object):
     exposed = True
-    # api/job
-    # api/job/uuid
-    # api/profile
-    # api/profile/profilename
 
     # TODO add a get method to document the API
     def __init__(self):  # , handler):
@@ -102,7 +178,7 @@ def run_job(handler):
                                 SET status = ?,
                                     started = ?
                                 WHERE
-                                    id = ?;""", ('started', datetime.datetime.now().strftime("%s"),
+                                    id = ?;""", ('started', int(datetime.datetime.now().strftime("%s")),
                                                  job.uuid)
                             )
             cherrypy.log("job {} start".format(job.uuid))
@@ -125,7 +201,7 @@ def run_job(handler):
                                             raw_json = ?,
                                             summary = ?
                                         WHERE
-                                            id = ?;""", ('complete', datetime.datetime.now().strftime("%s"),
+                                            id = ?;""", ('complete', int(datetime.datetime.now().strftime("%s")),
                                                          job_output,
                                                          json.dumps(summary),
                                                          job.uuid)
@@ -140,7 +216,7 @@ def run_job(handler):
                                     SET status = ?,
                                         ended = ?
                                     WHERE
-                                        id = ?;""", ('failed', datetime.datetime.now().strftime("%s"),
+                                        id = ?;""", ('failed', int(datetime.datetime.now().strftime("%s")),
                                                      job.uuid)
                                 )
 
@@ -172,7 +248,7 @@ class Job(object):
     @cherrypy.tools.json_out()
     def POST(self, profile, **params):
         # required payload
-        required = ['title']
+        required = ['title', 'provider', 'platform']
 
         js_in = cherrypy.request.json
         qs_in = parse_query_string(cherrypy.request.query_string)
@@ -196,19 +272,23 @@ class Job(object):
         job.profile = profile
         job.outfile = '{}.{}'.format(job.uuid, profile)
         job.workers = parms.get('workers', 9999)
+        job.provider = parms.get('provider')
+        job.platform = parms.get('platform')
         job.title = parms.get('title', '{} on '.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
 
         with sqlite3.connect(DBNAME) as c:
             csr = c.cursor()
 
-            csr.execute(""" INSERT into jobs (id, title, profile, workers, status, type)
-                              VALUES(?,?,?,?,?,?);""",
+            csr.execute(""" INSERT into jobs (id, title, profile, workers, status, type, provider, platform)
+                              VALUES(?,?,?,?,?,?,?,?);""",
                         (job.uuid,
                          job.title,
                          profile,
                          job.workers,
                          'queued',
-                         'fio'
+                         'fio',
+                         job.provider,
+                         job.platform,
                          ))
 
         # post request using a valid profile, place on the queue to run
@@ -225,6 +305,11 @@ class Profile(object):
             return {"data": fetch_all('profiles', list(['name']))}
         else:
             return {"data": fetch_row('profiles', 'name', profile)['spec']}
+
+    @cherrypy.tools.json_out()
+    def PUT(self):
+        summary = load_db_profiles(out='cherrypy')
+        return {"data": {"summary": summary}}
 
 
 class FIOWebService(object):
@@ -259,68 +344,32 @@ class FIOWebService(object):
             },
         }
 
+        setup_db()
+
+        load_db_profiles()
+
     def cleanup(self):
         # cancel the worker background thread based on current interval
         self.worker.cancel()
 
-    def setup_db(self):
-
-        profiles_table = """ CREATE TABLE IF NOT EXISTS profiles (
-                                name text PRIMARY KEY,
-                                spec text
-                             ); """
-        jobs_table = """ CREATE TABLE IF NOT EXISTS jobs (
-                            id text PRIMARY KEY,
-                            title text NOT NULL,
-                            profile text NOT NULL,
-                            workers integer NOT NULL,
-                            status text NOT NULL,
-                            started integer,
-                            ended integer,
-                            raw_json text,
-                            summary text,
-                            type text,
-                            raw_output text,
-                            FOREIGN KEY(profile) REFERENCES profiles (name)
-                         ); """
-
-        if not os.path.exists(DBNAME):
-            print("Creating results database")
-            with sqlite3.connect(DBNAME) as c:
-                c.execute(profiles_table)
-                c.execute(jobs_table)
-
-    def load_profiles(self):
-        with sqlite3.connect(DBNAME) as c:
-            cursor = c.cursor()
-            for profile in glob.glob('{}/*'.format(JOB_DIR)):
-                name = os.path.basename(profile)
-                profile_spec = rfile(profile)
-                cursor.execute("SELECT name from profiles WHERE name=?", (name,))
-                data = cursor.fetchone()
-                if data is None:
-                    print("- loading profile {}".format(name))
-                    cursor.execute("INSERT INTO profiles VALUES (?,?);", (name, profile_spec))
-                else:
-                    print("- profile '{}' already exists in the db, skipping".format(name))
-
     @property
     def ready(self):
+
+        # command missing
         if not self.handler._can_run:
             return False
 
+        # no external connection
         if not self.handler.has_connection:
             return False
 
-        # if len(fetch_profiles()) == 0:
-        #     return False
+        # no profiles in the db
+        if not fetch_all('profiles', ['name']):
+            return False
 
         return True
 
     def run(self):
-
-        self.setup_db()
-        self.load_profiles()
 
         daemon = plugins.Daemonizer(
             cherrypy.engine,
