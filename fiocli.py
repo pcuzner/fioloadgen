@@ -28,6 +28,11 @@ def cmd_parser():
         action='store_true',
         help="list available fio profiles",
     )
+    parser_profile.add_argument(
+        '--refresh',
+        action='store_true',
+        help="apply fio profiles in data/fio/jobs to the local database and the remote fiomgr pod",
+    )
 
     parser_run = subparsers.add_parser(
         'run',
@@ -40,8 +45,25 @@ def cmd_parser():
     )
     parser_run.add_argument(
         '--workers',
+        default=9999,
         required=False,
         help="number of workers to use for the profile",
+    )
+    parser_run.add_argument(
+        '--provider',
+        required=False,
+        default='aws',
+        type=str,
+        choices=['aws', 'vmware', 'baremetal', 'azure', 'gcp'],
+        help="Infrastructure provider where the test is running",
+    )
+    parser_run.add_argument(
+        '--platform',
+        required=False,
+        default='openshift',
+        type=str,
+        choices=['openshift', 'kubernetes', 'ssh'],
+        help="platform running the workload",
     )
     parser_run.add_argument(
         '--title',
@@ -87,22 +109,38 @@ def command_profile():
         r = requests.get("{}/profile/{}".format(url, args.show))
         data = r.json()['data']
         print(data)
+    elif args.refresh:
+        # refresh the profiles from the local filesystem
+        r = requests.put("{}/profile".format(url))
+        if r.status_code == 200:
+            print("Profiles refreshed from the filesystem versions")
+            summary = r.json()['data']['summary']
+            for k in summary:
+                print(" - {:<11s}: {:>2}".format(k, summary[k]))
+        else:
+            print("Profile refresh failed")
+
 
 
 def command_run():
-    print("run fio workload profile {}".format(args.profile))
+    print("Run fio workload profile {}".format(args.profile))
     headers = {'Content-type': 'application/json'}
     r = requests.post('{}/job/{}'.format(url, args.profile),
-                      json={"workers": args.workers, "title": args.title},
+                      json={
+                          "workers": args.workers,
+                          "title": args.title,
+                          "provider": args.provider,
+                          "platform": args.platform
+                      },
                       headers=headers)
-    print(json.dumps(r.json()))
-    print(r.status_code)
+
     if r.status_code == 200:
-        print("run request queued")
+        print(json.dumps(r.json()))
+        print("- Request queued")
         if args.wait:
             print("should wait for completion")
     else:
-        print("run request failed")
+        print("- Request failed")
 
 
 def command_job():
