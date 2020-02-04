@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-
+import sys
 import argparse
 import requests
 import datetime
 import json
+import time
 
 
 def cmd_parser():
@@ -121,6 +122,37 @@ def command_profile():
             print("Profile refresh failed")
 
 
+def show_summary(api_response):
+    keys_to_show = ['id', 'title', 'started', 'profile', 'workers', 'status']  # NOQA
+    data = json.loads(api_response.json()['data'])
+    for k in keys_to_show:
+        if k == 'started':
+            print("Run Date: {}".format(datetime.datetime.fromtimestamp(data[k]).strftime('%Y-%m-%d %H:%M:%S')))  # NOQA
+        else:
+            print("{}: {}".format(k.title(), data[k]))
+    if data.get('summary', None):
+        print("Summary:")
+        js = json.loads(data['summary'])
+        for k in js.keys():
+            print("  {}: {}".format(k.title(), js[k]))
+    else:
+        print("Summary: Unavailable (missing)")
+
+
+def job_wait(job_uuid):
+    while True:
+        r = requests.get("{}/job/{}".format(url, job_uuid))
+        if r.status_code != 200:
+            break
+        js = r.json()['data']
+        if js['status'] in ['complete', 'failed']:
+            break
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        time.sleep(2)
+    print("\n")
+    return r
+
 
 def command_run():
     print("Run fio workload profile {}".format(args.profile))
@@ -135,10 +167,15 @@ def command_run():
                       headers=headers)
 
     if r.status_code == 200:
-        print(json.dumps(r.json()))
-        print("- Request queued")
+        response = r.json()['data']
+        print("- Request queued with uuid = {}".format(response['uuid']))
         if args.wait:
-            print("should wait for completion")
+            print("Running.", end="")
+            completion = job_wait(response['uuid'])
+            if completion.status_code == 200:
+                show_summary(completion)
+            else:
+                print("- Request failed with status code {}".format(completion.status_code))
     else:
         print("- Request failed")
 
@@ -153,23 +190,11 @@ def command_job():
                 print("{}: {}".format(k, p[k]))
     elif args.show:
         # show a specific job record
-        keys_to_show = ['id', 'title', 'started', 'profile', 'workers', 'status']  # NOQA
         r = requests.get("{}/job/{}".format(url, args.show))
-        data = json.loads(r.json()['data'])
-        for k in keys_to_show:
-            if k == 'started':
-                print("Run Date: {}".format(datetime.datetime.fromtimestamp(data[k]).strftime('%Y-%m-%d %H:%M:%S')))  # NOQA
-            else:
-                print("{}: {}".format(k.title(), data[k]))
-        if data.get('summary', None):
-            print("Summary:")
-            js = json.loads(data['summary'])
-            for k in js.keys():
-                print("  {}: {}".format(k.title(), js[k]))
-        else:
-            print("Summary: Unavailable (missing)")
+        if r.status_code == 200:
+            show_summary(r)
         if args.raw:
-            js = json.loads(data['raw_json'])
+            js = json.loads(r.json()['data']['raw_json'])
             print(json.dumps(js, indent=2))
 
 
