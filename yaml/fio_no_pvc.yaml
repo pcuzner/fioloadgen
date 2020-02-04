@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fioclient
+spec:
+  containers:
+   - name: fioclient
+     image: pcuzner/fiotester
+     env:
+       - name: FIOMODE
+         value: server

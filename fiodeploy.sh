@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 
-DEFAULT_NAMESPACE=fio
+DEFAULT_NAMESPACE='fio'
 DEFAULT_WORKERS=2
+WORKER_YAML='fio.yaml'
 WORKERS=0
 NAMESPACE=""
 WORKER_LIMIT=20
@@ -43,6 +44,7 @@ release_lock() {
 }
 
 get_environment() {
+    console ${INFO} "Deployment will use worker pods based on yaml/${WORKER_YAML}"
     read -p $(echo -e ${INFO})"What namespace should be created for the workload test [${DEFAULT_NAMESPACE}]? "$(echo -e ${NC}) NAMESPACE
     if [ -z "$NAMESPACE" ]; then 
         NAMESPACE=$DEFAULT_NAMESPACE
@@ -51,7 +53,7 @@ get_environment() {
     read -p $(echo -e ${INFO})"How many fio workers [${DEFAULT_WORKERS}]? "$(echo -e ${NC}) WORKERS
     if [ -z "$WORKERS" ]; then 
         WORKERS=$DEFAULT_WORKERS
-	console ${WARNING} "- defaulting to ${DEFAULT_WORKERS} workers" 
+	    console ${WARNING} "- defaulting to ${DEFAULT_WORKERS} workers" 
     else
         if [ $WORKERS -eq $WORKERS 2>/dev/null ]; then
             # is numeric
@@ -70,7 +72,7 @@ setup() {
     acquire_lock
     check_ready
     console ${INFO} "Setting up the environment"
-    
+
     # create namespace
     console ${INFO} "Creating the namespace (${NAMESPACE})"
     ns=$(oc create namespace ${NAMESPACE})
@@ -88,8 +90,9 @@ setup() {
     fi
 
     console ${INFO} "Deploying the workers"
+
     for n in $(seq ${WORKERS}); do
-       cat yaml/fio.yaml | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
+       cat yaml/${WORKER_YAML} | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
     done 
 
     console ${INFO} "Waiting for workers to enter a running state"
@@ -127,6 +130,7 @@ setup() {
        fi
        echo -e "$hostIP" >> ./data/host-ip.list
        echo -e "$podIP" >> ./data/worker-ip.list
+       console ${INFO} "${TICK}${NC} fioworker${n}"
     done
 
     # transfer the client ip addresses and fio jobs to the mgr
@@ -178,11 +182,13 @@ destroy() {
 
 
 usage() {
-    echo -e "Usage: ${SCRIPT_NAME} [-dsh]"
-    echo -e "\t-h      ... display usage information"
-    echo -e "\t-s      ... setup an fio test environment"
-    echo -e "\t-d <ns> ... destroy the given namespace"
-    echo -e "\t-r      ... reset - remove the lockfile"
+    echo -e "Usage: ${SCRIPT_NAME} [-hwsdr]"
+    echo -e "\t-h        ... display usage information"
+    echo -e "\t-w <file> ... yaml filename to use for the worker pod (must be defined before -s!)"
+    echo -e "\t-s        ... setup an fio test environment"
+    echo -e "\t-d <ns>   ... destroy the given namespace"
+    echo -e "\t-r        ... reset - remove the lockfile"
+
     echo "e.g."
     echo -e "> ./${SCRIPT_NAME} -s\n"
 }
@@ -190,11 +196,18 @@ usage() {
 main() {
 
     args=1
-    while getopts ":sd:hr" option; do
+    while getopts ":w:sd:hr" option; do
         case "${option}" in
             h)
                 usage
                 exit
+                ;;
+            w)
+                WORKER_YAML=${OPTARG}
+                if [ ! -f "yaml/${WORKER_YAML}" ]; then
+                    console ${ERROR} "-w provided a file name that does not exist in the yaml directory"
+                    exit 1
+                fi
                 ;;
             s)
                 get_environment
@@ -206,6 +219,7 @@ main() {
                 destroy
                 exit
                 ;;
+
             r) 
                 release_lock
                 exit
@@ -218,6 +232,7 @@ main() {
         esac
         args=0
     done
+    shift "$((OPTIND-1))"
     if [[ $args ]]; then 
         usage
         exit
