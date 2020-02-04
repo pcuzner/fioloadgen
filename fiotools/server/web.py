@@ -193,7 +193,7 @@ def run_job(handler):
                     job_output = rfile('/tmp/{}'.format(job.outfile))
 
                     # ignore any errors in the json - present at the start
-                    job_data = job_output[job_output.find('{', 1):]
+                    job_data = job_output[job_output.find('{', 0):]
 
                     job_json = json.loads(job_data)
                     summary = latency_summary(job_json)  # use default percentile
