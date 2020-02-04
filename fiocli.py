@@ -144,7 +144,7 @@ def job_wait(job_uuid):
         r = requests.get("{}/job/{}".format(url, job_uuid))
         if r.status_code != 200:
             break
-        js = r.json()['data']
+        js = json.loads(r.json()['data'])
         if js['status'] in ['complete', 'failed']:
             break
         sys.stdout.write(".")
