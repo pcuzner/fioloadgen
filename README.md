@@ -91,12 +91,12 @@ Runtime files and a the database are placed in the users home directory
 | ```fiodeploy.lock``` | deploy script | used as a lock file to prevent multiple deploys running
 
 ## TODO List  
-1. implement a wait parameter when running an fio job
-2. create the UI  
-2.1. phase 0 - define the UI structure and components  
-2.2. phase 1 - view results   
-2.3. phase 2 - use chart.js to visualize the results  
-2.4. phase 3 - use the rest API to drive testing from the web UI  
-3. extend the container to include other benchmarking tools  
+- [x] implement a wait parameter when running an fio job
+ 
+- [ ] UI phase 0 - define the UI structure and components  
+- [ ] UI phase 1 - view results   
+- [ ] UI phase 2 - use chart.js to visualize the results  
+- [ ] UI phase 3 - use the rest API to drive testing from the web UI  
+- [ ] UI extend the container to include other benchmarking tools  
 
   
