@@ -201,7 +201,12 @@ def command_job():
 if __name__ == '__main__':
     json_headers = {'Content-type': 'application/json'}
     url = 'http://localhost:8080/api'
-    r = requests.get('http://localhost:8080/api/profile')
+    try:
+        r = requests.get('http://localhost:8080/api/profile')
+    except (requests.exceptions.ConnectionError, ConnectionRefusedError):
+        print("Please start the fioservice, before using the cli")
+        sys.exit(1)
+    
     profiles = [p['name'] for p in r.json()['data']]
 
     parser = cmd_parser()
