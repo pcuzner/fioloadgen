@@ -196,7 +196,10 @@ def command_job():
             if args.raw:
                 jstr = json.loads(r.json()['data'])['raw_json']
                 js = json.loads(jstr)
-                print(json.dumps(js, indent=2))
+                try:
+                    print(json.dumps(js, indent=2))
+                except BrokenPipeError:
+                    pass
         elif r.status_code == 404:
             print("Job with id '{}', does not exist in the database".format(args.show))
         else:
