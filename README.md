@@ -12,6 +12,12 @@ These components provide the following features;
 - cli client to interact with the REST API
 - supported backends (openshift - kubernetes, and ssh to come)
 
+## What does the workflow look like?
+Here's a demo against an openshift cluster. It shows the creation of the mgr pod and workers, and illustrates the use of the CLI to run and query jobs.  
+
+![demo gif](media/fioloadgen-demo.gif)
+
+
 ## Deploying the test environment
 Before you deploy, you **must** have a working connection to openshift and the required CLI tool (oc) must be in your path.  
 Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup and tear down test environments
