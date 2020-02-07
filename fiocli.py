@@ -201,6 +201,8 @@ def command_job():
             print("Job with id '{}', does not exist in the database".format(args.show))
         else:
             print("Unknown status returned : {}".format(r.status_code))
+    elif args.raw:
+        print("Syntax error: the --raw parameter can only be used with --show <job id>")
 
 
 if __name__ == '__main__':
