@@ -236,7 +236,7 @@ class Job(object):
     @cherrypy.tools.json_out()
     def GET(self, uuid=None, **params):
         qs = parse_query_string(cherrypy.request.query_string)
-        cherrypy.log(json.dumps(qs))
+        # cherrypy.log(json.dumps(qs))
         if not qs or not qs.get('fields', None):
             fields = list(['id', 'status', 'title'])
         else:
@@ -245,7 +245,11 @@ class Job(object):
         if uuid is None:
             return {"data": fetch_all('jobs', fields)}
         else:
-            return {"data": json.dumps(fetch_row('jobs', 'id', uuid))}
+            data = fetch_row('jobs', 'id', uuid)
+            if data:
+                return {"data": json.dumps(fetch_row('jobs', 'id', uuid))}
+            else:
+                raise cherrypy.HTTPError(404, "Invalid job id")
 
     # @cherrypy.tools.accept(media='application/json')
     @cherrypy.tools.json_in()

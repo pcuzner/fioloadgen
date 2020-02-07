@@ -157,7 +157,7 @@ setup() {
     fi
     console ${INFO} "${TICK}${NC} test files seeded, workers ready"
     console ${INFO} "${TICK}${NC} ${WORKERS} worker pods ready"
-    console ${INFO} "${TICK}${NC} use rsh to login to the fiomgr pod to run a workload or use the fioservice ad fiocli commands\n"
+    console ${INFO} "${TICK}${NC} use rsh to login to the fiomgr pod to run a workload or use the fioservice and fiocli commands\n"
 
     release_lock
 }

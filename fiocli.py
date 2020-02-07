@@ -193,10 +193,14 @@ def command_job():
         r = requests.get("{}/job/{}".format(url, args.show))
         if r.status_code == 200:
             show_summary(r)
-        if args.raw:
-            jstr = json.loads(r.json()['data'])['raw_json']
-            js = json.loads(jstr)
-            print(json.dumps(js, indent=2))
+            if args.raw:
+                jstr = json.loads(r.json()['data'])['raw_json']
+                js = json.loads(jstr)
+                print(json.dumps(js, indent=2))
+        elif r.status_code == 404:
+            print("Job with id '{}', does not exist in the database".format(args.show))
+        else:
+            print("Unknown status returned : {}".format(r.status_code))
 
 
 if __name__ == '__main__':
