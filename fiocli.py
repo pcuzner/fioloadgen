@@ -194,7 +194,8 @@ def command_job():
         if r.status_code == 200:
             show_summary(r)
         if args.raw:
-            js = json.loads(r.json()['data']['raw_json'])
+            jstr = json.loads(r.json()['data'])['raw_json']
+            js = json.loads(jstr)
             print(json.dumps(js, indent=2))
 
 
