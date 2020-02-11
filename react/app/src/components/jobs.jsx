@@ -144,10 +144,11 @@ class JobDetails extends React.Component {
             let summary;
             if (this.props.jobData.summary) {
                 summary = JSON.parse(this.props.jobData.summary);
-                summary.total_iops = Math.round(summary.total_iops);
+                let iops = Math.round(parseFloat(summary.total_iops));
+                summary.total_iops = iops.toLocaleString();
             } else {
                 summary = {
-                    total_iops: 'Unknown',
+                    total_iops: 0,
                     "read ms min/avg/max": 'Unknown',
                     "write ms min/avg/max": 'Unknown',
                 };
@@ -157,7 +158,7 @@ class JobDetails extends React.Component {
                 <div>
                     <div>Job ID : {this.props.jobData.id}</div>
                     <div>Clients: {this.props.jobData.workers}</div>
-                    <div>IOPS: {summary.total_iops}</div>
+                    <div>IOPS: {summary.total_iops.toLocaleString()}</div>
                     <div>Read Latency ms (min/avg/max): {summary['read ms min/avg/max']}</div>
                     <div>Read Latency ms (min/avg/max): {summary['write ms min/avg/max']}</div>
                 </div>
