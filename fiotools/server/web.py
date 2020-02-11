@@ -28,6 +28,7 @@ log = cherrypy.log
 
 job_active = False
 work_queue = queue.Queue()
+active_job = None
 
 
 def fetch_all(table, keys):
@@ -113,10 +114,10 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
             cherrypy.log(msg_string)
 
     changes = {
-        "processed": 0,
-        "new": 0,
-        "changed": 0,
-        "skipped": 0,
+        "processed": [],
+        "new": [],
+        "changed": [],
+        "skipped": [],
     }
 
     message("Refreshing job profiles", out)
@@ -125,25 +126,25 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
         cursor = c.cursor()
         for profile in glob.glob('{}/*'.format(jobdir)):
             name = os.path.basename(profile)
-            changes['processed'] += 1
+            changes['processed'].append(profile)
             profile_spec = rfile(profile)
             cursor.execute("SELECT * from profiles WHERE name=?;",
                            (name,))
             data = cursor.fetchone()
             if data is None:
                 message("- loading profile {}".format(name), out)
-                changes['new'] += 1
+                changes['new'].append(profile)
                 cursor.execute("INSERT INTO profiles VALUES (?,?,?);",
                                 (name, profile_spec, int(datetime.datetime.now().strftime("%s"))))  # NOQA
             else:
                 # if spec is the same - just skip it
                 if data['spec'] == profile_spec:
                     message("- skipping identical profile {}".format(name), out)
-                    changes['skipped'] += 1
+                    changes['skipped'].append(profile)
                 else:
                     # if not, apply the filesystem copy to the database
                     message("- refreshing profile '{}' in the db with filesystem copy".format(name), out)
-                    changes['changed'] += 1
+                    changes['changed'].append(profile)
                     cursor.execute(""" UPDATE profiles
                                             SET
                                             spec=?,
@@ -165,6 +166,7 @@ class APIroot(object):
     def __init__(self):  # , handler):
         self.job = Job()  # handler)
         self.profile = Profile()  # handler)
+        self.status = Status()  # Web service metadata info
 
 
 def run_job(handler):
@@ -226,6 +228,21 @@ def run_job(handler):
 
         else:
             cherrypy.log("WARNING: unknown job type requested - {} - ignoring".format(job.type))
+
+
+class Status(object):
+    exposed = True
+    @cherrypy.tools.json_out()
+    def GET(self):
+        # TODO:
+        # job queue size
+        # job active
+        # handler type
+        # version
+        # started
+        # uptime
+        # keep the data returned fast so it can be polled easily and quickly
+        return {"data": {"status": "ok"}}
 
 
 # @cherrypy.expose
@@ -304,6 +321,12 @@ class Job(object):
         return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
                          "uuid": job.uuid}}
 
+    @cherrypy.tools.json_out()
+    def DELETE(self, uuid=None):
+        # TODO
+        # delete a specific job from the database
+        return {"data": {"msg": "not implemented yet!"}}
+
 # @cherrypy.tools.accept(media='application/json')
 @cherrypy.expose
 class Profile(object):
@@ -318,7 +341,18 @@ class Profile(object):
     @cherrypy.tools.json_out()
     def PUT(self):
         summary = load_db_profiles(out='cherrypy')
+
+        if summary['new'] or summary['changed']:
+            # TODO: need to sync the fiomgr pod with these changes
+            # by submitting a background job
+            pass
+
         return {"data": {"summary": summary}}
+
+def CORS():
+    # enable CORS for all origins
+    cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
+
 
 
 class FIOWebService(object):
@@ -349,9 +383,11 @@ class FIOWebService(object):
                 'tools.response_headers.on': True,
                 'tools.staticdir.on': True,
                 'tools.staticdir.dir': os.path.join(os.getcwd(), 'www'),
-                'tools.staticdir.index': 'index.html'
+                'tools.staticdir.index': 'index.html',
+                'tools.CORS.on': True,
             },
         }
+        cherrypy.tools.CORS = cherrypy.Tool('before_handler', CORS)
 
         setup_db()
 
@@ -391,7 +427,9 @@ class FIOWebService(object):
         cherrypy.log.access_log.propagate = False
 
         cherrypy.tree.mount(self.root, config=self.conf)
-        cherrypy.config.update({'engine.autoreload.on': False})
+        cherrypy.config.update({
+            'engine.autoreload.on': False,
+        })
 
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc

@@ -117,7 +117,7 @@ def command_profile():
             print("Profiles refreshed from the filesystem versions")
             summary = r.json()['data']['summary']
             for k in summary:
-                print(" - {:<11s}: {:>2}".format(k, summary[k]))
+                print(" - {:<11s}: {:>2}".format(k, len(summary[k])))
         else:
             print("Profile refresh failed")
 
