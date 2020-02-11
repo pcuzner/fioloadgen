@@ -1,5 +1,6 @@
 ./react/fioweb/node_modules
 ./react/fioweb/build
+./react/app/node_modules
 *.py[oc]
 ./testing/
-
+./fixes/
