@@ -1,10 +1,28 @@
+body {
+  font-family: sans-serif;
+}
+
 h1 {
   font-weight: bold;
   font-size: 18px;
+  padding-top:10px;
+margin: 0 0 0 0;}
+select {
+  border: 1px solid gray;
+  border-radius: 10px;
+  background-color: #E8E8E8;
+  width:220px;
+  padding: 10px 0px 5px 0px;
 }
-h2 {
-  font-weight: bold;
-  font-size: 14px;
+option {
+  padding: 5px;
+  border-bottom: 1px solid white;
+}
+option:hover {
+  background-color: lightblue;
+}
+option:checked {
+  background:linear-gradient(#a0a0a0, #B8B8B8);
 }
 .italic {
   font-style:italic;
@@ -12,6 +30,10 @@ h2 {
 .job_table tbody tr:hover {
   background-color: lightblue;
   cursor:pointer;
+}
+.job_table {
+  text-align:left;
+  min-width:1352px;
 }
 .job_table td,th{
   padding: 5px;
@@ -93,28 +115,54 @@ height:100%;}
 
 .inactive {
   z-index: -1;
-  }
-.job_id {
-  width:320px;
+ }
+
+/* Job table widths */
+ .job_id {
+  min-width:320px;
 }
 .job_title {
-  width:540px;
-}
-.job_type {
-  width:90px;
-}
-.job_profile {
-  width:180px;
+  min-width:540px;
 }
 .job_provider {
-  width: 100px;
+  min-width: 100px;
 }
 .job_platform {
-  width: 100px;
+  min-width: 100px;
 }
 .job_start {
-  width:180px;
+  min-width:180px;
 }
 .job_status {
-  width:100px;
+  min-width:100px;
+}
+
+.offset-right {
+  margin-right:15px;
+  margin-bottom:10px;
+}
+.inline-block {
+  display: inline-block;
+}
+.align-right {
+  text-align:right;
+}
+.float-left {
+  float: left;
+}
+.profile-select {
+  width: 220px;
+}
+.profile-info {
+  flex: 1;
+}
+.profile-reload {
+  position:relative;
+  top: 310px; }
+.profile-run {
+    position:relative;
+    left: 740px;
+    top: 10px;}
+.profile-container {
+  padding-left:10px;
 }

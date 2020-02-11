@@ -87,8 +87,6 @@ export class Jobs extends React.Component {
                     <tr key={i} onClick={() => {this.fetchJobData(job.id);}}>
                         <td className="job_id">{job.id}</td>
                         <td className="job_title">{job.title}</td>
-                        <td className="job_type">{job.type}</td>
-                        <td className="job_profile">{job.profile}</td>
                         <td className="job_provider" >{job.provider}</td>
                         <td className="job_platform">{job.platform}</td>
                         <td className="job_start">{t_str}</td>
@@ -102,28 +100,29 @@ export class Jobs extends React.Component {
         return (
             <div id="jobs" className={this.props.visibility}>
                 <br />
-                <table className="job_table">
-                    <thead>
-                        <tr>
-                            <th className="job_id">Job ID</th>
-                            <th className="job_title">Title</th>
-                            <th className="job_type">Type</th>
-                            <th className="job_profile">Profile</th>
-                            <th className="job_provider">Provider</th>
-                            <th className="job_platform">Platform</th>
-                            <th className="job_start">Start Time</th>
-                            <th className="job_status">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td><i>{this.state.jobs.length} rows in total</i></td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <div className="inline-block align-right">
+                    <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
+                    <table className="job_table">
+                        <thead>
+                            <tr>
+                                <th className="job_id">Job ID</th>
+                                <th className="job_title">Title</th>
+                                <th className="job_provider">Provider</th>
+                                <th className="job_platform">Platform</th>
+                                <th className="job_start">Start Time</th>
+                                <th className="job_status">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><i>{this.state.jobs.length} rows in total</i></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
                 <JobDetails jobData={this.state.currentJob} />
             </div>
         );
@@ -157,6 +156,9 @@ class JobDetails extends React.Component {
             return (
                 <div>
                     <div>Job ID : {this.props.jobData.id}</div>
+                    <div>Job Type : {this.props.jobData.type}</div>
+                    <div>Job Profile Name : {this.props.jobData.profile}</div>
+                    <br />
                     <div>Clients: {this.props.jobData.workers}</div>
                     <div>IOPS: {summary.total_iops.toLocaleString()}</div>
                     <div>Read Latency ms (min/avg/max): {summary['read ms min/avg/max']}</div>

@@ -41,22 +41,28 @@ export class Profiles extends React.Component {
                 return (<option key={i} value={profile}>{profile}</option>)
             });
             profileSelector = (
-                <div>
-                    <label htmlFor="profiles">FIO Job profiles : </label>
-                    <select id="profiles">
+                <div className="profile-select">
+                    {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
+                    <select id="profiles" size="10">
                         {profileList}
                     </select>
+                    <button className="btn btn-default profile-reload" onClick={() => {alert('refresh profile list');}}>Reload</button><br />
                 </div>
             );
         } 
         return (
             <div id="profiles" className={this.props.visibility}>
                 <br />
-                {profileSelector}
-                <p />
-                <button type="button" onClick={() => {alert('refresh profile list');}}>Reload</button><br />
-                <button type="button" onClick={() => {alert('show profile details');}}>Show</button><br />
-                <button type="button" onClick={() => {alert('run a profile');}}>Execute</button><br />
+                <div className="profile-container">
+                    <div style={{ display: "flex"}}>
+                        {profileSelector}
+                        <div className="profile-info">
+                            <textarea style={{resize: "none"}} rows="30" cols="60"/>
+
+                        </div>
+                    </div>
+                    <button className="btn btn-primary profile-run" onClick={() => {alert('run a profile');}}>Run</button><br />
+                </div>
             </div>
         );
     }
