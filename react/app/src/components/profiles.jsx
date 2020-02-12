@@ -1,4 +1,5 @@
 import React from 'react';
+import {GenericModal} from '../common/modal.jsx';
 import '../app.scss';
 
 
@@ -7,9 +8,22 @@ export class Profiles extends React.Component {
         super(props);
         this.state = {
             profiles: [],
-            profileContent: ''
+            activeProfile: '',
+            profileContent: '',
+            modalOpen: false
         };
     };
+
+    openModal() {
+        this.setState({
+            modalOpen: true
+        });
+    }
+    closeModal = () => {
+        this.setState({
+            modalOpen: false
+        });
+    }
 
     componentDidMount() {
         fetch("http://localhost:8080/api/profile")
@@ -53,12 +67,20 @@ export class Profiles extends React.Component {
           .then((profile) => {
               /* Happy path */
               this.setState({
+                  activeProfile: profileName,
                   profileContent: profile.data
               });
           })
           .catch((error) => {
               console.error("Profile fetch error:", error);
           });
+    }
+    runJob() {
+        console.log("run the job");
+    }
+
+    getJobDetails() {
+        this.openModal();
     }
 
     render() {
@@ -79,13 +101,14 @@ export class Profiles extends React.Component {
         } 
         return (
             <div id="profiles" className={this.props.visibility}>
+                <GenericModal show={this.state.modalOpen} title="hello" content="hello" closeHandler={this.closeModal} />
                 <br />
                 <div className="profile-container">
                     <div style={{ display: "flex"}}>
                         {profileSelector}
                         <ProfileContent profileContent={this.state.profileContent} />
                     </div>
-                    <button className="btn btn-primary profile-run" onClick={() => {alert('run a profile');}}>Run</button><br />
+                    <button className="btn btn-primary profile-run" onClick={() => {this.getJobDetails();}}>Run</button><br />
                 </div>
             </div>
         );
