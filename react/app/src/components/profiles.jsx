@@ -1,11 +1,13 @@
 import React from 'react';
 import '../app.scss';
 
+
 export class Profiles extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            profiles: []
+            profiles: [],
+            profileContent: ''
         };
     };
 
@@ -34,6 +36,31 @@ export class Profiles extends React.Component {
           });
     }
 
+    selectProfile(event) {
+        this.fetchProfile(event.target.value);
+    }
+
+    fetchProfile(profileName) {
+        console.debug("fetching profile " + profileName);
+        fetch("http://localhost:8080/api/profile/" + profileName)
+          .then((response) => {
+              console.debug("Profile fetch : ", response.status);
+              if (response.status == 200) {
+                  return response.json();
+              } else {}
+                  throw Error(`Fetch failed with HTTP status: ${response.status}`);
+              })
+          .then((profile) => {
+              /* Happy path */
+              this.setState({
+                  profileContent: profile.data
+              });
+          })
+          .catch((error) => {
+              console.error("Profile fetch error:", error);
+          });
+    }
+
     render() {
         let profileSelector;
         if (this.state.profiles.length > 0) {
@@ -43,7 +70,7 @@ export class Profiles extends React.Component {
             profileSelector = (
                 <div className="profile-select">
                     {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
-                    <select id="profiles" size="10">
+                    <select id="profiles" size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
                     <button className="btn btn-default profile-reload" onClick={() => {alert('refresh profile list');}}>Reload</button><br />
@@ -56,13 +83,28 @@ export class Profiles extends React.Component {
                 <div className="profile-container">
                     <div style={{ display: "flex"}}>
                         {profileSelector}
-                        <div className="profile-info">
-                            <textarea style={{resize: "none"}} rows="30" cols="60"/>
-
-                        </div>
+                        <ProfileContent profileContent={this.state.profileContent} />
                     </div>
                     <button className="btn btn-primary profile-run" onClick={() => {alert('run a profile');}}>Run</button><br />
                 </div>
+            </div>
+        );
+    }
+}
+
+class ProfileContent extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            readonly: true,
+            profileContent: ''
+        };
+    }
+
+    render () {
+        return (
+            <div className="profile-info">
+                <textarea style={{resize: "none"}} rows="30" cols="60" readOnly={this.state.readonly} value={this.props.profileContent} />
             </div>
         );
     }
