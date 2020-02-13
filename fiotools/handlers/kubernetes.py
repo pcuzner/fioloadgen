@@ -8,13 +8,14 @@ import subprocess
 
 class OpenshiftHandler(BaseHandler):
 
-    _target = "Openshift Cluster"
+    _target = "Openshift"
     _cmd = 'oc'
     _connection_test = 'oc status'
 
     def __init__(self, ns='fio', mgr='fiomgr'):
         self.ns = ns
         self.mgr = mgr
+        self.workers = 0
 
     # @property
     # def _can_run(self):
@@ -27,6 +28,12 @@ class OpenshiftHandler(BaseHandler):
     #         return r.returncode == 0
     #     else:
     #         return False
+
+    def num_workers(self):
+        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen'])
+        # TODO: insert code to count the response
+        self.workers = 10
+        return o.returncode
 
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
@@ -44,6 +51,6 @@ class OpenshiftHandler(BaseHandler):
 
 
 class KubernetesHandler(OpenshiftHandler):
-    _target = "Kubernetes Cluster"
+    _target = "Kubernetes"
     _cmd = 'kubectl'
     _connection_test = 'kubectl status'
