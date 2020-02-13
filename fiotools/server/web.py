@@ -12,6 +12,7 @@ import json
 import sqlite3
 import uuid
 import datetime
+import time
 # import requests
 # import logging
 
@@ -163,17 +164,21 @@ class APIroot(object):
     exposed = True
 
     # TODO add a get method to document the API
-    def __init__(self):  # , handler):
-        self.job = Job()  # handler)
-        self.profile = Profile()  # handler)
-        self.status = Status()  # Web service metadata info
+    def __init__(self, service_state):  # , handler):
+        self.job = Job(service_state)  # handler)
+        self.profile = Profile(service_state)  # handler)
+        self.status = Status(service_state)  # Web service metadata info
 
 
-def run_job(handler):
+def run_job(handler, service_state):
+
     if not work_queue.empty():
 
         job = work_queue.get()
+        service_state.task_active = True
+        service_state.tasks_queued = work_queue.qsize
         if job.type == 'startfio':
+            service_state.active_job_type = 'FIO'
             with sqlite3.connect(DBNAME) as c:
                 csr = c.cursor()
                 csr.execute(""" UPDATE jobs
@@ -228,26 +233,36 @@ def run_job(handler):
 
         else:
             cherrypy.log("WARNING: unknown job type requested - {} - ignoring".format(job.type))
-
+        service_state.task_active = False
+        service_state.active_job_type = 'N/A'
 
 class Status(object):
     exposed = True
+
+    def __init__(self, service_state):
+        self.service_state = service_state
+
     @cherrypy.tools.json_out()
     def GET(self):
-        # TODO:
-        # job queue size
-        # job active
-        # handler type
-        # version
-        # started
-        # uptime
         # keep the data returned fast so it can be polled easily and quickly
-        return {"data": {"status": "ok"}}
+        run_time = time.time() - self.service_state.start_time
+        return {
+            "data": {
+                "target": self.service_state.target,
+                "task_active": self.service_state.task_active,
+                "tasks_queued": self.service_state.tasks_queued,
+                "task_type": self.service_state.active_job_type,
+                "run_time": run_time
+            }
+        }
 
 
 # @cherrypy.expose
 class Job(object):
     exposed = True
+
+    def __init__(self, service_state):
+        self.service_state = service_state
 
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
@@ -318,6 +333,8 @@ class Job(object):
 
         # post request using a valid profile, place on the queue to run
         work_queue.put(job)
+        self.service_state.tasks_queued = work_queue.qsize()
+
         return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
                          "uuid": job.uuid}}
 
@@ -330,6 +347,9 @@ class Job(object):
 # @cherrypy.tools.accept(media='application/json')
 @cherrypy.expose
 class Profile(object):
+
+    def __init__(self, service_state):
+        self.service_state = service_state
 
     @cherrypy.tools.json_out()
     def GET(self, profile=None):
@@ -354,14 +374,25 @@ def CORS():
     cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
 
 
+class ServiceStatus(object):
+    def __init__(self, handler):
+        self.target = handler._target
+        self.task_active = False
+        self.tasks_queued = 0
+        self.active_job_type = None
+        self.job_count = 0
+        self.profile_count = 0
+        self.start_time = time.time()
+
 
 class FIOWebService(object):
 
     def __init__(self, handler=None, workdir=None, port=8080):
         self.handler = handler
+        self.service_state = ServiceStatus(handler=handler)
         self.port = port
         self.root = Root()         # web UI
-        self.root.api = APIroot()  # API
+        self.root.api = APIroot(self.service_state)  # API
 
         if workdir:
             self.workdir = workdir
@@ -434,7 +465,7 @@ class FIOWebService(object):
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc
 
-        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.handler])
+        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.handler, self.service_state])
         cherrypy.engine.subscribe('stop', self.cleanup)
 
         # prevent CP loggers from propagating entries to the root logger
