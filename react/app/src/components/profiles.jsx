@@ -2,7 +2,6 @@ import React from 'react';
 import {GenericModal} from '../common/modal.jsx';
 import '../app.scss';
 
-
 export class Profiles extends React.Component {
     constructor(props) {
         super(props);
@@ -76,11 +75,18 @@ export class Profiles extends React.Component {
           });
     }
     runJob() {
-        console.log("run the job");
+        console.debug("run the job - issue a put request to the API");
     }
 
     getJobDetails() {
-        this.openModal();
+        if (this.state.activeProfile) {
+            this.openModal();
+        }
+    }
+    submitHandler = (parms) => {
+        console.debug("in submit handler " + JSON.stringify(parms));
+        this.closeModal()
+        this.runJob()
     }
 
     render() {
@@ -98,10 +104,21 @@ export class Profiles extends React.Component {
                     <button className="btn btn-default profile-reload" onClick={() => {alert('refresh profile list');}}>Reload</button><br />
                 </div>
             );
-        } 
+        }
+        let jobDefinition;
+        if (this.state.modalOpen) {
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler}/>); 
+        } else {
+            jobDefinition = (<div />);
+        }
+        
         return (
             <div id="profiles" className={this.props.visibility}>
-                <GenericModal show={this.state.modalOpen} title="hello" content="hello" closeHandler={this.closeModal} />
+                <GenericModal 
+                    show={this.state.modalOpen} 
+                    title={"Runtime Parameters : " + this.state.activeProfile} 
+                    content={jobDefinition} 
+                    closeHandler={this.closeModal} />
                 <br />
                 <div className="profile-container">
                     <div style={{ display: "flex"}}>
@@ -135,3 +152,56 @@ class ProfileContent extends React.Component {
 
 export default Profiles;
 
+
+class JobParameters extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            example: true,
+            workers: 5
+        };
+    }
+    updateWorkers(event) {
+        this.setState({
+            workers: event.target.value
+        });
+    }
+
+    callbackHandler = () => {
+        this.props.submitHandler(this.state);
+    }
+
+    render() {
+        return (
+            <div>
+                <div>
+                    <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients:</b></div>
+                    <div className="inline-block">
+                        <input id="workers" className="workers-slider" type="range" min="1" max="10" value={this.state.workers} onChange={() => {this.updateWorkers(event);}}></input>
+                        <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{this.state.workers}</div>
+                    </div>
+                </div>
+                <div>
+                    <p />
+                    <label forhtml="title">Job Title:</label>
+                    <input type="text" id="title" size="80" name="title" />
+                    <p />
+                    <label forhtml="platform">Platform:</label>
+                    <select id="platform">
+                        <option value="openshift">Openshift</option>
+                        <option value="kubernetes">Kubernetes</option>
+                    </select>
+                    <p />
+                    <label forhtml="provider">Infrastructure Provider:</label>
+                    <select id="provider">
+                        <option value="aws">AWS</option>
+                        <option value="vmware">VMware</option>
+                        <option value="baremetal">Bare metal</option>
+                    </select> 
+                    <button className="modal-close btn btn-primary"
+                        onClick={this.callbackHandler}>Submit</button>
+                </div>
+            </div>
+        );
+    }
+}

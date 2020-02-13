@@ -12,6 +12,13 @@ export class GenericModal extends React.Component {
 
     render() {
         let showHideClass = this.props.show ? 'modal display-block' : 'modal display-none';
+        let closeButton = (<div></div>);
+        if (this.props.withClose) {
+            closeButton = (<div>
+                                <button className="modal-close btn btn-primary"
+                                    onClick={this.props.closeHandler}>Close</button>
+                           </div>);
+        }
         return (
             <div className={showHideClass}>
                 <div className="modal-main">
@@ -21,12 +28,7 @@ export class GenericModal extends React.Component {
                             { this.props.content }
                             <br />
                         </div>
-                        <div>
-                            <button className="modal-close btn btn-primary"
-                                onClick={this.props.closeHandler}>
-                                Close
-                            </button>
-                        </div>
+                    {closeButton}
                     </div>
                 </div>
             </div>

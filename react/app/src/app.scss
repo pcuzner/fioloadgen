@@ -86,14 +86,16 @@ ul {
   background-color: #333;
   color: white;
 }
-
-#masthead h1 {
+.page-heading {
   color: white;
+  float:left;
+  width: 25%;
   font-weight: bold;
   font-size: 24px;
-  padding-left: 10px; }
+  padding-left: 10px;
+  padding-top:10px; }
 
-#masthead h1::before {
+.page-heading::before {
    font-family: FontAwesome; /* using fontawesome 4 */
    content: "\f0e4";
    display: inline-block;
@@ -101,6 +103,17 @@ ul {
    vertical-align: top;
    font-weight: 900;
 }
+.status-area {
+  float:right;
+  width:75%;
+  height:44px;
+  padding-top:20px;
+  padding-right:20px
+}
+.status-spacing {
+  padding-right:30px;
+}
+
 #jobs {
   position:absolute;
 }
@@ -158,6 +171,9 @@ height:100%;}
 }
 .float-right {
   float: right;
+}
+.float-none {
+  float: none;
 }
 .profile-select {
   width: 220px;
@@ -233,3 +249,6 @@ padding: 10px;
      cursor:pointer;
      color:black;
    }
+input[type=range].workers-slider {
+    width: 200px; 
+  display: inline-block;}
