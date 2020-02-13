@@ -135,8 +135,9 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
             if data is None:
                 message("- loading profile {}".format(name), out)
                 changes['new'].append(profile)
-                cursor.execute("INSERT INTO profiles VALUES (?,?,?);",
-                                (name, profile_spec, int(datetime.datetime.now().strftime("%s"))))  # NOQA
+                now = int(datetime.datetime.now().strftime("%s"))
+                cursor.execute("INSERT INTO profiles VALUES (?,?,?,?);",
+                                (name, profile_spec, now, now))  # NOQA
             else:
                 # if spec is the same - just skip it
                 if data['spec'] == profile_spec:
@@ -236,6 +237,7 @@ def run_job(handler, service_state):
         service_state.task_active = False
         service_state.active_job_type = 'N/A'
 
+
 class Status(object):
     exposed = True
 
@@ -252,7 +254,8 @@ class Status(object):
                 "task_active": self.service_state.task_active,
                 "tasks_queued": self.service_state.tasks_queued,
                 "task_type": self.service_state.active_job_type,
-                "run_time": run_time
+                "run_time": run_time,
+                "workers": self.service_state._handler.workers
             }
         }
 
@@ -369,6 +372,7 @@ class Profile(object):
 
         return {"data": {"summary": summary}}
 
+
 def CORS():
     # enable CORS for all origins
     cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
@@ -376,7 +380,8 @@ def CORS():
 
 class ServiceStatus(object):
     def __init__(self, handler):
-        self.target = handler._target
+        self._handler = handler
+        self.target = self._handler._target
         self.task_active = False
         self.tasks_queued = 0
         self.active_job_type = None
@@ -402,8 +407,6 @@ class FIOWebService(object):
         self.worker = None  # long running worker thread - FIO JOBS
         self.conf = {
             'global': {
-                'server.socket_host': '0.0.0.0',
-                'server.socket_port': self.port,
                 'log.screen': False,
                 'error_file': '',
                 'access_file': '',
@@ -443,9 +446,16 @@ class FIOWebService(object):
         if not fetch_all('profiles', ['name']):
             return False
 
+        # use the handler to determine the number of workers
+        rc = self.handler.num_workers()
+        if self.handler.workers == 0 or rc != 0:
+            return False
+
         return True
 
     def run(self):
+
+        self.service_state.workers = self.handler.workers
 
         daemon = plugins.Daemonizer(
             cherrypy.engine,
@@ -456,10 +466,12 @@ class FIOWebService(object):
         daemon.subscribe()
         cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
-
+        cherrypy.server.socket_host = '0.0.0.0'
         cherrypy.tree.mount(self.root, config=self.conf)
         cherrypy.config.update({
             'engine.autoreload.on': False,
+            'server.socket_host': '0.0.0.0',
+            'server.socket_port': self.port
         })
 
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
