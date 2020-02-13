@@ -25,7 +25,7 @@ export class Profiles extends React.Component {
     }
 
     componentDidMount() {
-        fetch("http://localhost:8080/api/profile")
+        fetch("api/profile")
           .then((response) => {
               console.debug("Profile fetch : ", response.status);
               if (response.status == 200) {
@@ -55,7 +55,7 @@ export class Profiles extends React.Component {
 
     fetchProfile(profileName) {
         console.debug("fetching profile " + profileName);
-        fetch("http://localhost:8080/api/profile/" + profileName)
+        fetch("api/profile/" + profileName)
           .then((response) => {
               console.debug("Profile fetch : ", response.status);
               if (response.status == 200) {
@@ -101,13 +101,13 @@ export class Profiles extends React.Component {
                     <select id="profiles" size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
-                    <button className="btn btn-default profile-reload" onClick={() => {alert('refresh profile list');}}>Reload</button><br />
+                    <button className="btn btn-default profile-reload" onClick={() => {alert('TODO: refresh profile list');}}>Reload</button><br />
                 </div>
             );
         }
         let jobDefinition;
         if (this.state.modalOpen) {
-            jobDefinition = (<JobParameters submitHandler={this.submitHandler}/>); 
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.props.clientLimit}/>); 
         } else {
             jobDefinition = (<div />);
         }
@@ -177,7 +177,14 @@ class JobParameters extends React.Component {
                 <div>
                     <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients:</b></div>
                     <div className="inline-block">
-                        <input id="workers" className="workers-slider" type="range" min="1" max="10" value={this.state.workers} onChange={() => {this.updateWorkers(event);}}></input>
+                        <input id="workers" 
+                            className="workers-slider" 
+                            type="range" 
+                            min="1" 
+                            max={this.props.clientLimit} 
+                            value={this.state.workers} 
+                            onChange={() => {this.updateWorkers(event);}}>
+                        </input>
                         <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{this.state.workers}</div>
                     </div>
                 </div>

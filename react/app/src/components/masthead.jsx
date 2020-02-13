@@ -13,12 +13,13 @@ export class MastHead extends React.Component {
             tasks_queued: 0,
             task_type: 'N/A',
             target: '',
-            run_time: 0
+            run_time: 0,
+            workers: 0
         };
     };
 
     getStatus() {
-        fetch("http://localhost:8080/api/status")
+        fetch("api/status")
           .then((response) => {
               console.debug("status fetch : ", response.status);
               if (response.status == 200) {
@@ -30,6 +31,7 @@ export class MastHead extends React.Component {
               /* Happy path */
               state = status.data;
               this.setState(state);
+              this.props.workerCB(this.state.workers);
             //   console.log(JSON.stringify(state));
           })
           .catch((error) => {
@@ -46,6 +48,7 @@ export class MastHead extends React.Component {
 
     componentDidMount() {
         console.log("starting interval based call to the /status API endpoint");
+        this.getStatus();
         this.interval = setInterval(this.intervalHandler, 5000);
     }
 
@@ -75,7 +78,7 @@ class ServiceState extends React.Component {
             <div className="status-area">
                 <div className="float-right status-spacing">Job Active:{taskText}</div>
                 <div className="float-right status-spacing">Queued:{this.props.state.tasks_queued}</div>
-                <div className="float-right status-spacing">Platform:{this.props.state.target}</div>
+                <div className="float-right status-spacing">Target Platform:{this.props.state.target}</div>
             </div>
         )
     }

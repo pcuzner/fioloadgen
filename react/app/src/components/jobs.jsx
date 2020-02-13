@@ -21,7 +21,7 @@ export class Jobs extends React.Component {
     };
 
     fetchJobSummaryData() {
-        fetch("http://localhost:8080/api/job?fields=id,title,profile,status,started,type,provider,platform")
+        fetch("api/job?fields=id,title,profile,status,started,type,provider,platform")
           .then((response) => {
               console.debug("Job listing fetch : ", response.status);
               if (response.status == 200) {
@@ -44,7 +44,7 @@ export class Jobs extends React.Component {
 
     fetchJobData(job_id) {
         console.debug("fetch for job " + job_id);
-        fetch("http://localhost:8080/api/job/" + job_id)
+        fetch("api/job/" + job_id)
             .then((response) => {
                 console.debug("Job data fetch : ", response.status);
                 if (response.status == 200) {
