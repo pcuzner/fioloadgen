@@ -103,7 +103,7 @@ def command_start():
         raise OSError("Already running")
 
     if args.type == 'oc':
-        print("Using openshift handler")
+        print("Using Openshift handler")
         handler = OpenshiftHandler(ns=args.namespace, mgr='fiomgr')
     else:
         print("'{}' handler has not been implemented yet".format(args.type))
@@ -121,7 +121,7 @@ def command_start():
         # Call the run handler to start the web service
         server.run()
     else:
-        print("Unable to connect to the {}".format(handler._target))
+        print("Unable to connect to {}. Are you logged in?".format(handler._target))
 
     # NB. run() forks the daemon, so anything here is never reached
 
