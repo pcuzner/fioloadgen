@@ -1,5 +1,6 @@
 /*const copy = require("copy-webpack-plugin");
 const extract = require("extract-text-webpack-plugin"); */
+const webpack = require('webpack'); 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 /* const isDevelopment = process.env.NODE_ENV === 'development' */
 
@@ -51,6 +52,7 @@ module.exports = {
 
 /*
 
+    new webpack.EnvironmentPlugin(['API_URL']),
   plugins: [
     new MiniCssExtractPlugin({
       filename: isDevelopment ? '[name].css' : 'css/[name].css',

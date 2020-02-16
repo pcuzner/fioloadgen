@@ -7,34 +7,32 @@ h1 {
   font-size: 18px;
   padding-top:10px;
 margin: 0 0 0 0;}
-select {
+.profile-select select {
   border: 1px solid gray;
   border-radius: 10px;
   background-color: #E8E8E8;
-  width:220px;
-  padding: 10px 0px 5px 0px;
-}
-option {
+  width: 220px;
+  padding: 10px 0px 5px 0px; }
+
+.profile-select option {
   padding: 5px;
-  border-bottom: 1px solid white;
-}
-option:hover {
-  background-color: lightblue;
-}
-option:checked {
-  background:linear-gradient(#a0a0a0, #B8B8B8);
-}
+  border-bottom: 1px solid white; }
+
+.profile-select option:hover {
+  background-color: lightblue; }
+
+.profile-select option:checked {
+  background: linear-gradient(#a0a0a0, #B8B8B8); }
 .italic {
   font-style:italic;
 }
 .job_table tbody tr:hover {
-  background-color: lightblue;
-  cursor:pointer;
+  background-color: lightskyblue;
 }
 .job_table {
   text-align:left;
-  min-width:1352px;
-}
+  min-width: 1378px; }
+
 .job_table td,th{
   padding: 5px;
 }
@@ -45,7 +43,10 @@ option:checked {
   overflow:auto;
 }
 .job_table thead tr {
-  display: block;
+  display: block; 
+ border-bottom: 2px solid black;}
+.job_table tr {
+  border-bottom: 1px solid lightgray;
 }
 .job_table tfoot {
   display:block;
@@ -188,7 +189,7 @@ height:100%;}
 }
 .profile-run {
     position: relative;
-    left: 690px;
+    left: 648px;
     top: 10px; 
 }
 .profile-container {
@@ -215,7 +216,6 @@ height:100%;}
 .modal-content-container {
 padding: 10px;
 
- 
 }
 .modal-inner {
   margin: 0px 10px 0px 10px;
@@ -252,3 +252,39 @@ padding: 10px;
 input[type=range].workers-slider {
     width: 200px; 
   display: inline-block;}
+
+
+  textarea {
+    padding:10px;
+  }
+  .selectedRow {
+    background-color: lightblue;
+  }
+  .notSelectedRow {
+    background-color: transparent;
+  }
+  input[type=checkbox] { 
+    cursor: pointer;
+  }
+  #jobsContainer {
+    padding:10px;
+   height: 45%;
+   overflow-y:auto;
+  }
+  .job-details-container {
+    margin-bottom:10px;
+    padding-bottom: 10px;
+     border-bottom: 1px solid lightgray;
+  }
+  .chart-item {
+    margin-left:40px;
+    border-left: 1px solid lightgray;
+    padding-left:30px;
+  }
+  .align-top {
+  
+    vertical-align: top;
+  }
+  .job-summary {
+    width: 350px;
+  }  

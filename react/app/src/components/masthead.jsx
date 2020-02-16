@@ -1,8 +1,11 @@
 import React from 'react';
 import '../app.scss';
+import {setAPIURL} from '../utils/utils.js';
+
 /* Masthead will contain a couple of items from the webservice status api
    to show mode, task active, job queue size
 */
+var api_url = setAPIURL();
 
 export class MastHead extends React.Component {
     constructor(props) {
@@ -19,7 +22,7 @@ export class MastHead extends React.Component {
     };
 
     getStatus() {
-        fetch("api/status")
+        fetch(api_url + "/api/status")
           .then((response) => {
               console.debug("status fetch : ", response.status);
               if (response.status == 200) {
@@ -30,7 +33,9 @@ export class MastHead extends React.Component {
           .then((status) => {
               /* Happy path */
               state = status.data;
+            //   console.debug("state returned " + JSON.stringify(state));
               this.setState(state);
+            //   console.debug("masthead status returned worker count of " + state.workers);
               this.props.workerCB(this.state.workers);
             //   console.log(JSON.stringify(state));
           })
@@ -48,6 +53,7 @@ export class MastHead extends React.Component {
 
     componentDidMount() {
         console.log("starting interval based call to the /status API endpoint");
+        console.log("here's the env var setting " + api_url);
         this.getStatus();
         this.interval = setInterval(this.intervalHandler, 5000);
     }
@@ -56,7 +62,7 @@ export class MastHead extends React.Component {
         return (
             <div id="masthead">
                 <div>
-                    <div className="page-heading">LoadGen</div>
+                    <div className="page-heading">LoadGen</div><span className="pficon pficon-ok"></span>
                     <ServiceState state={this.state}/>
                 </div>
                 <div style={{clear: 'both'}}/>

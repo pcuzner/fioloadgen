@@ -1,6 +1,10 @@
 import React from 'react';
+
 import {GenericModal} from '../common/modal.jsx';
 import '../app.scss';
+import { setAPIURL } from '../utils/utils.js';
+
+var api_url = setAPIURL();
 
 export class Profiles extends React.Component {
     constructor(props) {
@@ -25,7 +29,7 @@ export class Profiles extends React.Component {
     }
 
     componentDidMount() {
-        fetch("api/profile")
+        fetch(api_url + "/api/profile")
           .then((response) => {
               console.debug("Profile fetch : ", response.status);
               if (response.status == 200) {
@@ -55,7 +59,7 @@ export class Profiles extends React.Component {
 
     fetchProfile(profileName) {
         console.debug("fetching profile " + profileName);
-        fetch("api/profile/" + profileName)
+        fetch(api_url + "/api/profile/" + profileName)
           .then((response) => {
               console.debug("Profile fetch : ", response.status);
               if (response.status == 200) {
@@ -91,6 +95,7 @@ export class Profiles extends React.Component {
 
     render() {
         let profileSelector;
+        // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
             let profileList = this.state.profiles.map((profile, i) => {
                 return (<option key={i} value={profile}>{profile}</option>)
@@ -152,6 +157,11 @@ class ProfileContent extends React.Component {
 
 export default Profiles;
 
+const options = [
+    { value: 'chocolate', label: 'Chocolate' },
+    { value: 'strawberry', label: 'Strawberry' },
+    { value: 'vanilla', label: 'Vanilla' }
+  ];
 
 class JobParameters extends React.Component {
     constructor(props) {
@@ -161,6 +171,9 @@ class JobParameters extends React.Component {
             workers: 5
         };
     }
+
+
+      
     updateWorkers(event) {
         this.setState({
             workers: event.target.value
@@ -191,15 +204,16 @@ class JobParameters extends React.Component {
                 <div>
                     <p />
                     <label forhtml="title">Job Title:</label>
-                    <input type="text" id="title" size="80" name="title" />
+                    <input type="text" id="title" size="80" name="title" placeholder="Enter a title that describes that uniquely defines the test run"/>
                     <p />
-                    <label forhtml="platform">Platform:</label>
+
+                    <label forhtml="platform">Platform:&nbsp; </label>
                     <select id="platform">
                         <option value="openshift">Openshift</option>
                         <option value="kubernetes">Kubernetes</option>
                     </select>
                     <p />
-                    <label forhtml="provider">Infrastructure Provider:</label>
+                    <label forhtml="provider" >Infrastructure Provider:&nbsp; </label>
                     <select id="provider">
                         <option value="aws">AWS</option>
                         <option value="vmware">VMware</option>
