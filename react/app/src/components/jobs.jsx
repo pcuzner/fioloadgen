@@ -208,14 +208,18 @@ class FIOJobAnalysis extends React.Component {
                 };
             }
             let rawJSON = JSON.parse(this.props.jobData.raw_json);
-            let lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary
+            let lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
             let clientSummary = rawJSON.client_stats[lastItem];
             let latencyData = [];
             Object.keys(clientSummary['latency_us']).forEach((key) => {
-                latencyData.push(clientSummary['latency_us'][key]);
+                let num = clientSummary['latency_us'][key];
+                let val = Math.round( ( num + Number.EPSILON ) * 100 ) / 100;
+                latencyData.push(val);
             });
             Object.keys(clientSummary['latency_ms']).forEach((key) => {
-                latencyData.push(clientSummary['latency_ms'][key]);
+                let num = clientSummary['latency_ms'][key];
+                let val = Math.round( ( num + Number.EPSILON ) * 100 ) / 100;
+                latencyData.push(val);
             });
             // console.debug("dataset " + JSON.stringify(latencyData));
 
@@ -225,7 +229,7 @@ class FIOJobAnalysis extends React.Component {
                             '2ms','4ms','10ms','20ms','50ms','100ms','250ms','500ms','750ms','1000ms','2000ms','>2000ms'],
                 datasets: [
                     {
-                        label:"Latency distribution %",
+                        label:"IOPS %",
                         backgroundColor: 'rgba(73, 142, 163,0.6)',
                         borderColor: 'rgba(45, 89, 102,1)',
                         borderWidth: 1,
