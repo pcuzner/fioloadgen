@@ -292,4 +292,10 @@ input[type=range].workers-slider {
   }
   .job-summary {
     width: 350px;
+  }
+  .state-failed {
+    color: red;
   }  
+  .state-ok {
+    color: #33cc33;
+  }

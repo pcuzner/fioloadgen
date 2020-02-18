@@ -17,7 +17,8 @@ export class MastHead extends React.Component {
             task_type: 'N/A',
             target: '',
             run_time: 0,
-            workers: 0
+            workers: 0,
+            apiAvailable: true
         };
     };
 
@@ -33,6 +34,7 @@ export class MastHead extends React.Component {
           .then((status) => {
               /* Happy path */
               state = status.data;
+              state['apiAvailable'] = true;
             //   console.debug("state returned " + JSON.stringify(state));
               this.setState(state);
             //   console.debug("masthead status returned worker count of " + state.workers);
@@ -42,6 +44,9 @@ export class MastHead extends React.Component {
           .catch((error) => {
               console.error("Error:", error);
               console.error("killing interval based status checking");
+              this.setState({
+                  apiAvailable: false
+              });
               clearInterval(this.interval);
           });
 
@@ -80,11 +85,13 @@ class ServiceState extends React.Component {
     }
     render() {
         let taskText = this.props.state.task_active ? "Yes" : "no";
+        let apiSymbol = this.props.state.apiAvailable ? "fa fa-lg fa-check-circle-o state-ok" : "fa fa-lg fa-times-circle-o state-failed";
         return (
             <div className="status-area">
-                <div className="float-right status-spacing">Job Active:{taskText}</div>
-                <div className="float-right status-spacing">Queued:{this.props.state.tasks_queued}</div>
-                <div className="float-right status-spacing">Target Platform:{this.props.state.target}</div>
+                <div className="float-right status-spacing">API:&nbsp;<span className={apiSymbol}></span></div>
+                <div className="float-right status-spacing">Job Active:&nbsp;{taskText}</div>
+                <div className="float-right status-spacing">Queued:&nbsp;{this.props.state.tasks_queued}</div>
+                <div className="float-right status-spacing">Target Platform:&nbsp;{this.props.state.target}</div>
             </div>
         )
     }
