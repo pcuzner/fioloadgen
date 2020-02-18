@@ -67,7 +67,7 @@ export class MastHead extends React.Component {
         return (
             <div id="masthead">
                 <div>
-                    <div className="page-heading">LoadGen</div><span className="pficon pficon-ok"></span>
+                    <div className="page-heading">LoadGen</div>
                     <ServiceState state={this.state}/>
                 </div>
                 <div style={{clear: 'both'}}/>
@@ -85,13 +85,13 @@ class ServiceState extends React.Component {
     }
     render() {
         let taskText = this.props.state.task_active ? "Yes" : "no";
-        let apiSymbol = this.props.state.apiAvailable ? "fa fa-lg fa-check-circle-o state-ok" : "fa fa-lg fa-times-circle-o state-failed";
+        let apiSymbol = this.props.state.apiAvailable ? "spacer-left fa fa-lg fa-check-circle-o state-ok" : "space-left fa fa-lg fa-times-circle-o state-failed";
         return (
             <div className="status-area">
-                <div className="float-right status-spacing">API:&nbsp;<span className={apiSymbol}></span></div>
-                <div className="float-right status-spacing">Job Active:&nbsp;{taskText}</div>
-                <div className="float-right status-spacing">Queued:&nbsp;{this.props.state.tasks_queued}</div>
-                <div className="float-right status-spacing">Target Platform:&nbsp;{this.props.state.target}</div>
+                <div className="float-right status-spacing">API:<span className={apiSymbol}></span></div>
+                <div className="float-right status-spacing">Job Active:<span className="spacer-left">{taskText}</span></div>
+                <div className="float-right status-spacing">Queued:<span className="spacer-left">{this.props.state.tasks_queued}</span></div>
+                <div className="float-right status-spacing">Target Platform:<span className="spacer-left">{this.props.state.target}</span></div>
             </div>
         )
     }
