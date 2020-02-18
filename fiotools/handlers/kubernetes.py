@@ -15,7 +15,7 @@ class OpenshiftHandler(BaseHandler):
     def __init__(self, ns='fio', mgr='fiomgr'):
         self.ns = ns
         self.mgr = mgr
-        self.workers = 0
+        self.workers = 10
 
     # @property
     # def _can_run(self):

@@ -17,7 +17,8 @@ class BaseHandler(object):
     def has_connection(self):
         if self._can_run:
             r = subprocess.run(self._connection_test.split(' '),
-                               capture_output=True)
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
             return r.returncode == 0
         else:
             return False
