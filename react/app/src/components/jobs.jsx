@@ -188,16 +188,33 @@ class FIOJobAnalysis extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            job: null
+            jobData: null
         };
     }
+
+    static getDerivedStateFromProps(props, state) {
+        if (JSON.stringify(props.jobData) != JSON.stringify(state.jobData)) {
+            console.debug("setting job data");
+            return {
+                jobData: props.jobData
+            }
+        } else {
+            return null;
+        }
+    }
+    shouldComponentUpdate(nextProps, nextState) {
+        // Only update if bricks change
+        return !(JSON.stringify(nextProps.jobData) == JSON.stringify(this.state.jobData))
+    }
+    
     render() {
-        if (!this.props.jobData) {
+        console.debug("Rendering job details for " + this.state.jobData.id);
+        if (!this.state.jobData) {
             return (<div></div>);
         } else {
             let summary;
-            if (this.props.jobData.summary) {
-                summary = JSON.parse(this.props.jobData.summary);
+            if (this.state.jobData.summary) {
+                summary = JSON.parse(this.state.jobData.summary);
                 let iops = Math.round(parseFloat(summary.total_iops));
                 summary.total_iops = iops.toLocaleString();
             } else {
@@ -207,7 +224,7 @@ class FIOJobAnalysis extends React.Component {
                     "write ms min/avg/max": 'Unknown',
                 };
             }
-            let rawJSON = JSON.parse(this.props.jobData.raw_json);
+            let rawJSON = JSON.parse(this.state.jobData.raw_json);
             let lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
             let clientSummary = rawJSON.client_stats[lastItem];
             let latencyData = [];
@@ -240,15 +257,15 @@ class FIOJobAnalysis extends React.Component {
                     
                 ]
             };
-                
+ 
             return (
                 <div className="job-details-container">
                     <div className="inline-block job-summary align-top">
-                        <div>Job ID : {this.props.jobData.id}</div>
-                        <div>Job Type : {this.props.jobData.type}</div>
-                        <div>Job Profile Name : {this.props.jobData.profile}</div>
+                        <div>Job ID : {this.state.jobData.id}</div>
+                        <div>Job Type : {this.state.jobData.type}</div>
+                        <div>Job Profile Name : {this.state.jobData.profile}</div>
                         <br />
-                        <div>Clients: {this.props.jobData.workers}</div>
+                        <div>Clients: {this.state.jobData.workers}</div>
                         <div>IOPS: {summary.total_iops.toLocaleString()}</div>
                         <div>Read Latency ms (min/avg/max): {summary['read ms min/avg/max']}</div>
                         <div>Write Latency ms (min/avg/max): {summary['write ms min/avg/max']}</div>
@@ -261,7 +278,7 @@ class FIOJobAnalysis extends React.Component {
                             options={{
                                 title: {
                                     display: true,
-                                    text: "I/O Latency Distribution"
+                                    text: ["I/O Latency Distribution", "\u25C0 is better"]
                                 },
                                 maintainAspectRatio: false,
                                 legend: {
