@@ -1,7 +1,9 @@
 import React from 'react';
 import '../app.scss';
+/* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
+import 'chartjs-plugin-datalabels';
 import {setAPIURL, summarizeLatency, sortByKey, decPlaces} from '../utils/utils.js';
-import {Bar} from 'react-chartjs-2';
+import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
    to show mode, task active, job queue size
@@ -210,6 +212,7 @@ class FIOJobAnalysis extends React.Component {
         dataset.forEach((client) => {
             values.push(client[opType].clat_ns.percentile[percentile]);
         });
+        values.sort();
         let idx = Math.ceil(0.5 * dataset.length);
         return values[idx];
     }
@@ -223,6 +226,7 @@ class FIOJobAnalysis extends React.Component {
             let lastItem;
             let clientSummary;
             let latencyData = [];
+            let percentileData = [];
             let readMedian95 = 0;
             let writeMedian95 = 0;
 
@@ -233,9 +237,13 @@ class FIOJobAnalysis extends React.Component {
                 clientSummary = rawJSON.client_stats[lastItem];
                 readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
                 writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
+                percentileData.push(readMedian95, writeMedian95);
                 summary = JSON.parse(this.state.jobData.summary);
-                let iops = Math.round(parseFloat(summary.total_iops));
-                summary.total_iops = iops.toLocaleString();
+                let iops = Math.round(parseFloat(clientSummary.read.iops + clientSummary.write.iops));
+                summary.total_iops = (iops.toLocaleString() + " (" 
+                                     + Math.round(parseFloat(clientSummary.read.iops)).toLocaleString()
+                                     + " / "
+                                     + Math.round(parseFloat(clientSummary.write.iops)).toLocaleString() + ")");
 
                 summary["read ms min/avg/max"] = summarizeLatency(clientSummary.read.lat_ns);
                 summary["write ms min/avg/max"] = summarizeLatency(clientSummary.write.lat_ns);
@@ -257,7 +265,18 @@ class FIOJobAnalysis extends React.Component {
                     "write ms min/avg/max": 'Unknown',
                 };
                 latencyData = Array(22).fill(0);
+                percentileData = Array(2).fill(0);
             }
+            let percentiles = {
+                labels: ['read', 'write'],
+                datasets: [
+                    {
+                        label: "IO Latency ms",
+                        backgroundColor: ['#3e95cd', '#c45850'],
+                        data: percentileData
+                    }
+                ]
+            };
 
             let data = {
                 labels: ['2us','4us','10us','20us','50us','100us','250us','500us','750us','1000us',
@@ -287,17 +306,22 @@ class FIOJobAnalysis extends React.Component {
                         <br />
                         <div>Clients: {this.state.jobData.workers}</div>
                         <div>IOPS: {summary.total_iops.toLocaleString()}</div>
-                        <div>Read Latency ms (min/avg/max): {summary['read ms min/avg/max']}</div>
-                        <div>Median Read 95%ile (ms): {readMedian95}</div>
-                        <div>Write Latency ms (min/avg/max): {summary['write ms min/avg/max']}</div>
-                        <div>Median Write 95%ile (ms): {writeMedian95}</div>
+                        <div>Read Latency ms (min/avg/max/stddev): {summary['read ms min/avg/max']}</div>
+                        {/* <div>Median Read 95%ile (ms): {readMedian95}</div> */}
+                        <div>Write Latency ms (min/avg/max/stddev): {summary['write ms min/avg/max']}</div>
+                        {/* <div>Median Write 95%ile (ms): {writeMedian95}</div> */}
                     </div>
                     <div className="inline-block chart-item">
                         <Bar 
                             data={data}
-                            width={500}
+                            width={450}
                             height={250}
                             options={{
+                                plugins: {
+                                    datalabels: {
+                                       display: false
+                                    }
+                                },
                                 scaleBeginAtZero: false,
                                 title: {
                                     display: true,
@@ -324,6 +348,45 @@ class FIOJobAnalysis extends React.Component {
                                       }
                                     }],
                                   }
+                            }}
+                        />
+                    </div>
+                    <div className="inline-block chart-item">
+                        <HorizontalBar
+                            data={percentiles}
+                            width={300}
+                            height={250}
+                            options={{
+                                tooltips:{
+                                    enabled: false
+                                },
+                                plugins: {
+                                    datalabels: {
+                                       display: true,
+                                       anchor: "end",
+                                       align: "right",
+                                       offset: 4
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text:["Median Latency @ 95%ile", "\u25C0 is better"]
+                                },
+                                legend: {
+                                    display: false
+                                },
+                                scales: {
+                                    xAxes: [{
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: "Latency (ms)"
+                                        },
+                                        ticks: {
+                                            beginAtZero: true,
+                                            max: 50
+                                        }
+                                    }]
+                                }
                             }}
                         />
                     </div>
