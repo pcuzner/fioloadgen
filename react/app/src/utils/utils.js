@@ -27,3 +27,14 @@ export function setAPIURL() {
         return '';
     }
 };
+
+export function summarizeLatency(latency) {
+    // reformat latency object into string of min/avg/max
+    return decPlaces(latency.min / 1000000) + '/' + decPlaces(latency.mean/1000000) + "/" + decPlaces(latency.max/1000000);
+}
+
+export function decPlaces(num, precision = 2) {
+    // 2 dec places by default
+    let m = Math.pow(10, precision);
+    return Math.round( ( num + Number.EPSILON ) * m ) / m;
+}

@@ -1,7 +1,6 @@
 import React from 'react';
-import { sortByKey } from "../utils/utils.js";
 import '../app.scss';
-import {setAPIURL} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces} from '../utils/utils.js';
 import {Bar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -206,40 +205,59 @@ class FIOJobAnalysis extends React.Component {
         // Only update if bricks change
         return !(JSON.stringify(nextProps.jobData) == JSON.stringify(this.state.jobData))
     }
-    
+    calcMedian(dataset, opType = "read", percentile="95.000000") {
+        let values = [];
+        dataset.forEach((client) => {
+            values.push(client[opType].clat_ns.percentile[percentile]);
+        });
+        let idx = Math.ceil(0.5 * dataset.length);
+        return values[idx];
+    }
     render() {
         console.debug("Rendering job details for " + this.state.jobData.id);
         if (!this.state.jobData) {
             return (<div></div>);
         } else {
             let summary;
+            let rawJSON;
+            let lastItem;
+            let clientSummary;
+            let latencyData = [];
+            let readMedian95 = 0;
+            let writeMedian95 = 0;
+
             if (this.state.jobData.summary) {
+    
+                rawJSON = JSON.parse(this.state.jobData.raw_json);
+                lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
+                clientSummary = rawJSON.client_stats[lastItem];
+                readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
+                writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
                 summary = JSON.parse(this.state.jobData.summary);
                 let iops = Math.round(parseFloat(summary.total_iops));
                 summary.total_iops = iops.toLocaleString();
+
+                summary["read ms min/avg/max"] = summarizeLatency(clientSummary.read.lat_ns);
+                summary["write ms min/avg/max"] = summarizeLatency(clientSummary.write.lat_ns);
+
+                Object.keys(clientSummary['latency_us']).forEach((key) => {
+                    let num = clientSummary['latency_us'][key];
+                    let val = decPlaces(num);
+                    latencyData.push(val);
+                });
+                Object.keys(clientSummary['latency_ms']).forEach((key) => {
+                    let num = clientSummary['latency_ms'][key];
+                    let val = decPlaces(num);
+                    latencyData.push(val);
+                });
             } else {
                 summary = {
                     total_iops: 0,
                     "read ms min/avg/max": 'Unknown',
                     "write ms min/avg/max": 'Unknown',
                 };
+                latencyData = Array(22).fill(0);
             }
-            let rawJSON = JSON.parse(this.state.jobData.raw_json);
-            let lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
-            let clientSummary = rawJSON.client_stats[lastItem];
-            let latencyData = [];
-            Object.keys(clientSummary['latency_us']).forEach((key) => {
-                let num = clientSummary['latency_us'][key];
-                let val = Math.round( ( num + Number.EPSILON ) * 100 ) / 100;
-                latencyData.push(val);
-            });
-            Object.keys(clientSummary['latency_ms']).forEach((key) => {
-                let num = clientSummary['latency_ms'][key];
-                let val = Math.round( ( num + Number.EPSILON ) * 100 ) / 100;
-                latencyData.push(val);
-            });
-            // console.debug("dataset " + JSON.stringify(latencyData));
-
 
             let data = {
                 labels: ['2us','4us','10us','20us','50us','100us','250us','500us','750us','1000us',
@@ -262,13 +280,17 @@ class FIOJobAnalysis extends React.Component {
                 <div className="job-details-container">
                     <div className="inline-block job-summary align-top">
                         <div>Job ID : {this.state.jobData.id}</div>
+                        <div className="inline-block align-top" style={{width: "15%"}}>Job Title:</div>
+                        <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div>
                         <div>Job Type : {this.state.jobData.type}</div>
                         <div>Job Profile Name : {this.state.jobData.profile}</div>
                         <br />
                         <div>Clients: {this.state.jobData.workers}</div>
                         <div>IOPS: {summary.total_iops.toLocaleString()}</div>
                         <div>Read Latency ms (min/avg/max): {summary['read ms min/avg/max']}</div>
+                        <div>Median Read 95%ile (ms): {readMedian95}</div>
                         <div>Write Latency ms (min/avg/max): {summary['write ms min/avg/max']}</div>
+                        <div>Median Write 95%ile (ms): {writeMedian95}</div>
                     </div>
                     <div className="inline-block chart-item">
                         <Bar 
@@ -276,6 +298,7 @@ class FIOJobAnalysis extends React.Component {
                             width={500}
                             height={250}
                             options={{
+                                scaleBeginAtZero: false,
                                 title: {
                                     display: true,
                                     text: ["I/O Latency Distribution", "\u25C0 is better"]
@@ -290,8 +313,10 @@ class FIOJobAnalysis extends React.Component {
                                       scaleLabel: {
                                         display: true,
                                         labelString: '% of IOPS'
-                                      }
-                                    }],
+                                      },
+                                      ticks: {
+                                        beginAtZero: true}
+                                      }],
                                     xAxes: [{
                                       scaleLabel: {
                                         display: true,
