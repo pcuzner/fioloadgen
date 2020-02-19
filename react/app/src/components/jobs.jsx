@@ -150,7 +150,7 @@ export class Jobs extends React.Component {
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td><i>{this.state.jobs.length} rows in total</i></td>
+                                <td><i>{this.state.jobs.length} rows, {Object.keys(this.state.jobInfo).length} selected</i></td>
                             </tr>
                         </tfoot>
                     </table>
