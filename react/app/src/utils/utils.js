@@ -30,7 +30,7 @@ export function setAPIURL() {
 
 export function summarizeLatency(latency) {
     // reformat latency object into string of min/avg/max
-    return decPlaces(latency.min / 1000000) + '/' + decPlaces(latency.mean/1000000) + "/" + decPlaces(latency.max/1000000);
+    return decPlaces(latency.min / 1000000) + '/' + decPlaces(latency.mean/1000000) + "/" + decPlaces(latency.max/1000000) + "/" + decPlaces(latency.stddev/1000000);
 }
 
 export function decPlaces(num, precision = 2) {
