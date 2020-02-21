@@ -49,9 +49,10 @@ margin: 0 0 0 0;}
 .job_table tr {
   border-bottom: 1px solid lightgray;
 }
-.job_table tfoot {
-  display:block;
-  padding-top:15px;
+.job_table tfoot tr{
+  display: block;
+  font-style: italic; 
+  border-bottom: none;
 }
 /* masthead menu items */
 li {
@@ -171,6 +172,9 @@ height:100%;}
 .align-right {
   text-align:right;
 }
+.align-center {
+  text-align:center;
+}
 .float-left {
   float: left;
 }
@@ -282,16 +286,16 @@ input[type=range].workers-slider {
      border-bottom: 1px solid lightgray;
   }
   .chart-item {
-    margin-left:40px;
-    border-left: 1px solid lightgray;
-    padding-left:30px;
-  }
+    margin-left: 20px;
+    border-left: 1px solid #e8e8e8;
+    padding-left: 15px; }
+  
   .align-top {
   
     vertical-align: top;
   }
   .job-summary {
-    width: 400px;
+    width: 320px;
   }
   .state-failed {
     color: red;
@@ -301,4 +305,45 @@ input[type=range].workers-slider {
   }
   .spacer-left {
     margin-left: 5px;
+  }
+  .job-panel {
+    width: 100px;
+    background-color: #fafafa;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    height: 100px;
+    margin-right: 10px; }
+  .job-panel:hover {
+    border-color: #c0c0c0;
+  }
+  .lat-table-op {
+    width: 120px; }
+  
+  .lat-table-head {
+    width: 60px;
+    text-align: right; }
+  
+  .lat-table td {
+    text-align: right;
+    padding: 0px 5px 0px 0px; }
+  
+  .lat-table tr:last-of-type {
+    border-bottom: 1px solid lightgray; }
+  .lat-table thead tr:first-of-type th {
+    padding: 0px;
+  }
+  .lat-table thead tr:last-of-type th {
+    padding: 0px 5px 0px 0px;
+  }
+  .lat-table caption {
+    color: #404040;
+    font-weight: bold;
+    padding: 10px 0 0 0; }
+  .bold {
+    font-weight: bold;
+  }
+  .divider {
+    width:100%;
+    height:3px;
+    border-bottom: 1px solid lightgray;
   }

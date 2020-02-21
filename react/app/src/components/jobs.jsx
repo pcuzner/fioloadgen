@@ -133,7 +133,7 @@ export class Jobs extends React.Component {
         return (
             <div id="jobs" className={this.props.visibility}>
                 <br />
-                <div className="inline-block align-right">
+                <div className="inline-block align-right" style={{marginLeft: "50px"}}>
                     <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
                     <table className="job_table">
                         <thead>
@@ -152,11 +152,12 @@ export class Jobs extends React.Component {
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td><i>{this.state.jobs.length} rows, {Object.keys(this.state.jobInfo).length} selected</i></td>
+                                <td>{this.state.jobs.length} rows, {Object.keys(this.state.jobInfo).length} selected</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
+                <div className="divider"></div>
                 <div id="jobsContainer">
                     <JobAnalysis data={this.state.jobInfo} />
                 </div>
@@ -227,6 +228,7 @@ class FIOJobAnalysis extends React.Component {
             let clientSummary;
             let latencyData = [];
             let percentileData = [];
+            let bandwidthData = [];
             let readMedian95 = 0;
             let writeMedian95 = 0;
 
@@ -237,14 +239,14 @@ class FIOJobAnalysis extends React.Component {
                 clientSummary = rawJSON.client_stats[lastItem];
                 readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
                 writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
+                bandwidthData.push(decPlaces(clientSummary.read.bw_bytes / Math.pow(1024,2)));
+                bandwidthData.push(decPlaces(clientSummary.write.bw_bytes / Math.pow(1024,2)));
                 percentileData.push(readMedian95, writeMedian95);
-                summary = JSON.parse(this.state.jobData.summary);
-                let iops = Math.round(parseFloat(clientSummary.read.iops + clientSummary.write.iops));
-                summary.total_iops = (iops.toLocaleString() + " (" 
-                                     + Math.round(parseFloat(clientSummary.read.iops)).toLocaleString()
-                                     + " / "
-                                     + Math.round(parseFloat(clientSummary.write.iops)).toLocaleString() + ")");
 
+                let iops = Math.round(parseFloat(clientSummary.read.iops + clientSummary.write.iops));
+
+                summary = JSON.parse(this.state.jobData.summary);
+                summary.total_iops = iops.toLocaleString();
                 summary["read ms min/avg/max"] = summarizeLatency(clientSummary.read.lat_ns);
                 summary["write ms min/avg/max"] = summarizeLatency(clientSummary.write.lat_ns);
 
@@ -261,11 +263,21 @@ class FIOJobAnalysis extends React.Component {
             } else {
                 summary = {
                     total_iops: 0,
-                    "read ms min/avg/max": 'Unknown',
-                    "write ms min/avg/max": 'Unknown',
+                    "read ms min/avg/max": [0,0,0,0],
+                    "write ms min/avg/max": [0,0,0,0],
                 };
                 latencyData = Array(22).fill(0);
                 percentileData = Array(2).fill(0);
+            }
+            let bandwidth = {
+                labels: ['read', 'write'],
+                datasets: [
+                    {
+                        label: "Bandwidth",
+                        backgroundColor: ['#3e95cd', '#c45850'],
+                        data: bandwidthData
+                    }
+                ]
             }
             let percentiles = {
                 labels: ['read', 'write'],
@@ -298,18 +310,56 @@ class FIOJobAnalysis extends React.Component {
             return (
                 <div className="job-details-container">
                     <div className="inline-block job-summary align-top">
-                        <div>Job ID : {this.state.jobData.id}</div>
-                        <div className="inline-block align-top" style={{width: "15%"}}>Job Title:</div>
-                        <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div>
-                        <div>Job Type : {this.state.jobData.type}</div>
-                        <div>Job Profile Name : {this.state.jobData.profile}</div>
-                        <br />
-                        <div>Clients: {this.state.jobData.workers}</div>
-                        <div>IOPS: {summary.total_iops.toLocaleString()}</div>
-                        <div>Read Latency ms (min/avg/max/stddev): {summary['read ms min/avg/max']}</div>
+                        
+                        {/* <div className="inline-block align-top" style={{width: "15%"}}>Job Title:</div> */}
+                        {/* <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div> */}
+                        <div className="align-center bold" style={{marginBottom: "10px"}}>{this.state.jobData.title}</div>
+                        <div><span style={{display: "inline-block", minWidth: "50px"}}>ID</span>: {this.state.jobData.id}</div>
+                        <div><span style={{display: "inline-block", minWidth: "50px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
+                        <div><span style={{display: "inline-block", minWidth: "50px"}}>Clients</span>: {this.state.jobData.workers}</div>
+                        <div><span style={{display: "inline-block", minWidth: "50px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
+                        <table className="lat-table">
+                            <caption>Overall IO Breakdown (ms)</caption>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th></th>
+                                    <th colSpan="4" className="align-center">Latency (ms)</th>
+                                </tr>
+                                <tr>
+                                    <th className="lat-table-op"></th>
+                                    <th className="lat-table-head">IOPS</th>
+                                    <th className="lat-table-head">min</th>
+                                    <th className="lat-table-head">avg</th>
+                                    <th className="lat-table-head">max</th>
+                                    <th className="lat-table-head">stddev</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="lat-table-op">read</td>
+                                    <td>{Math.round(parseFloat(clientSummary.read.iops)).toLocaleString()}</td>
+                                    <td>{summary["read ms min/avg/max"][0]}</td>
+                                    <td>{summary["read ms min/avg/max"][1]}</td>
+                                    <td>{summary["read ms min/avg/max"][2]}</td>
+                                    <td>{summary["read ms min/avg/max"][3]}</td>
+                                </tr>
+                                <tr>
+                                    <td className="lat-table-op">write</td>
+                                    <td>{Math.round(parseFloat(clientSummary.write.iops)).toLocaleString()}</td>
+                                    <td>{summary["write ms min/avg/max"][0]}</td>
+                                    <td>{summary["write ms min/avg/max"][1]}</td>
+                                    <td>{summary["write ms min/avg/max"][2]}</td>
+                                    <td>{summary["write ms min/avg/max"][3]}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        {/* <div>Read Latency ms (min/avg/max/stddev): {summary['read ms min/avg/max']}</div> */}
                         {/* <div>Median Read 95%ile (ms): {readMedian95}</div> */}
-                        <div>Write Latency ms (min/avg/max/stddev): {summary['write ms min/avg/max']}</div>
+                        {/* <div>Write Latency ms (min/avg/max/stddev): {summary['write ms min/avg/max']}</div> */}
                         {/* <div>Median Write 95%ile (ms): {writeMedian95}</div> */}
+                        {/* <Panel title="Clients" /> */}
+                        {/* <Panel title="IOPS" /> */}
                     </div>
                     <div className="inline-block chart-item">
                         <Bar 
@@ -344,8 +394,13 @@ class FIOJobAnalysis extends React.Component {
                                     xAxes: [{
                                       scaleLabel: {
                                         display: true,
-                                        labelString: 'IO Latency Groups'
-                                      }
+                                        labelString: 'IO Latency Group'
+                                      },
+                                    //   ticks: {
+                                    //       fontSize: 9,
+                                    //       maxRotation: 90,
+                                    //       minRotation: 90                                          
+                                    //   }
                                     }],
                                   }
                             }}
@@ -358,14 +413,16 @@ class FIOJobAnalysis extends React.Component {
                             height={250}
                             options={{
                                 tooltips:{
-                                    enabled: false
+                                    enabled: true
                                 },
                                 plugins: {
                                     datalabels: {
-                                       display: true,
+                                       display: "auto",
                                        anchor: "end",
-                                       align: "right",
-                                       offset: 4
+                                       align: "left",
+                                       offset: 4,
+                                       color: "white",
+                                       clip: true
                                     }
                                 },
                                 title: {
@@ -384,6 +441,45 @@ class FIOJobAnalysis extends React.Component {
                                         ticks: {
                                             beginAtZero: true,
                                             max: 50
+                                        }
+                                    }]
+                                }
+                            }}
+                        />
+                    </div>
+                    <div className="inline-block chart-item">
+                        <HorizontalBar
+                            data={bandwidth}
+                            width={300}
+                            height={250}
+                            options={{
+                                tooltips:{
+                                    enabled: false
+                                },
+                                plugins: {
+                                    datalabels: {
+                                       display: true,
+                                       anchor: "end",
+                                       align: "left",
+                                       offset: 4,
+                                       color: "white"
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text:["Bandwidth", "\u25B6 is better"]
+                                },
+                                legend: {
+                                    display: false
+                                },
+                                scales: {
+                                    xAxes: [{
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: "Bandwidth MB/s"
+                                        },
+                                        ticks: {
+                                            beginAtZero: true
                                         }
                                     }]
                                 }
@@ -443,5 +539,21 @@ class JobDataRow extends React.Component {
                 <td className="job_status">{this.props.job.status}</td>
             </tr>
         )
+    }
+}
+
+class Panel extends React.Component {
+    constructor(props) {
+        super(props);
+        self.state = {
+            dummy: true
+        };
+    }
+    render() {
+        return (
+            <div className="job-panel inline-block">
+                <div><b>{this.props.title}</b></div>
+            </div>
+        );
     }
 }
