@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+import ast
 import argparse
 import requests
 import datetime
@@ -21,7 +22,7 @@ def cmd_parser():
     parser_profile.add_argument(
         '--show',
         type=str,
-        choices=profiles,
+        metavar='<profile name>',
         help="show content of an fio profile",
     )
     parser_profile.add_argument(
@@ -42,12 +43,14 @@ def cmd_parser():
     parser_run.add_argument(
         '--profile',
         required=True,
+        metavar='<profile name>',
         help="fio profile for the fio workers to execute against",
     )
     parser_run.add_argument(
         '--workers',
         default=9999,
         required=False,
+        metavar='<# of workers>',
         help="number of workers to use for the profile",
     )
     parser_run.add_argument(
@@ -70,7 +73,8 @@ def cmd_parser():
         '--title',
         required=True,
         type=str,
-        help="title of the run (metadata)",
+        metavar='<text>',
+        help="descriptive title of the run (used in reports and charts)",
     )
     parser_run.add_argument(
         '--wait',
@@ -85,17 +89,29 @@ def cmd_parser():
     parser_job.add_argument(
         '--ls',
         action="store_true",
-        help="list jobs",
+        help="list all jobs",
+    )
+    parser_job.add_argument(
+        '--queued',
+        action="store_true",
+        help="additional parameter for --ls to limit results to only queued jobs",
     )
     parser_job.add_argument(
         '--show',
         type=str,
+        metavar='<Job ID>',
         help="show content of an job",
+    )
+    parser_job.add_argument(
+        '--delete',
+        type=str,
+        metavar='<Job ID>',
+        help="delete a queued job",
     )
     parser_job.add_argument(
         '--raw',
         action='store_true',
-        help="show raw json from the run",
+        help="show raw json from a completed job",
     )
     return parser
 
@@ -107,7 +123,11 @@ def command_profile():
         for p in data:
             print("- {}".format(p['name']))
     elif args.show:
-        r = requests.get("{}/profile/{}".format(url, args.show))
+        if args.show not in profiles:
+            print("The server doesn't have a profile called '{}'. Available profiles are: {}".format(args.show, ', '.join(profiles)))
+            sys.exit(1)
+        
+        r = requests.get("{}/profile/{}".format(url, args.show)) 
         data = r.json()['data']
         print(data)
     elif args.refresh:
@@ -182,12 +202,17 @@ def command_run():
 
 def command_job():
     if args.ls:
-        r = requests.get("{}/job?fields=id,status,title".format(url))
-        data = r.json()['data']
-        for p in data:
-            print("")
-            for k in p:
-                print("{}: {}".format(k, p[k]))
+        if args.queued:
+            # TODO
+            print("TODO - only show queued jobs")
+        else:
+            # show all jobs in the db
+            r = requests.get("{}/job?fields=id,status,title".format(url))
+            data = r.json()['data']
+            for p in data:
+                print("")
+                for k in p:
+                    print("{}: {}".format(k, p[k]))
     elif args.show:
         # show a specific job record
         r = requests.get("{}/job/{}".format(url, args.show))
@@ -204,25 +229,44 @@ def command_job():
             print("Job with id '{}', does not exist in the database".format(args.show))
         else:
             print("Unknown status returned : {}".format(r.status_code))
+    elif args.delete:
+        # delete a queued job
+        r = requests.delete("{}/job/{}".format(url, args.delete))
+        if r.status_code == 200:
+            print("Queued job '{}' has been marked for deletion".format(args.delete))
+        else:
+            handle_error(r)
     elif args.raw:
         print("Syntax error: the --raw parameter can only be used with --show <job id>")
 
 
-if __name__ == '__main__':
-    json_headers = {'Content-type': 'application/json'}
-    url = 'http://localhost:8080/api'
-    try:
-        r = requests.get('http://localhost:8080/api/profile')
-    except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-        print("Please start the fioservice, before using the cli")
-        sys.exit(1)
-    
-    profiles = [p['name'] for p in r.json()['data']]
+def handle_error(response):
 
+    if hasattr(response, '_content'):
+        content = response._content
+        cstr = content.decode('UTF-8')
+        data = ast.literal_eval(cstr)
+        print("{} [{}]".format(data.get('message', "Server didn't return an error description!"), response.status_code))
+
+
+if __name__ == '__main__':
+
+    profiles = []
     parser = cmd_parser()
     args = parser.parse_args()
 
     if 'func' in args:
+
+        json_headers = {'Content-type': 'application/json'}
+        url = 'http://localhost:8080/api'
+        try:
+            r = requests.get('http://localhost:8080/api/profile')
+        except (requests.exceptions.ConnectionError, ConnectionRefusedError):
+            print("Please start the fioservice, before using the cli")
+            sys.exit(1)
+
+        profiles = [p['name'] for p in r.json()['data']]
+
         args.func()
     else:
         print("skipped")

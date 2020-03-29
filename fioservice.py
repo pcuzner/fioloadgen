@@ -46,6 +46,7 @@ def cmd_parser():
     parser_start.add_argument(
         '--debug-only',
         action='store_true',
+        default=False,
         help="run standalone without a connection to help debug",
     )
 
@@ -114,7 +115,7 @@ def command_start():
         print("-> port in use")
         sys.exit(1)
 
-    server = FIOWebService(handler=handler)
+    server = FIOWebService(handler=handler, debug_mode=args.debug_only)
     print("Checking connection to {}".format(handler._target))
     if server.ready or args.debug_only:
         print("Starting the engine")

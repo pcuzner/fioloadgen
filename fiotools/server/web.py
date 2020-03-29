@@ -3,7 +3,7 @@
 import cherrypy
 from cherrypy.process import plugins
 from cherrypy.lib.httputil import parse_query_string  # HTTPDate
-# import threading
+from threading import Lock
 import queue
 # import time
 import sys
@@ -29,6 +29,8 @@ log = cherrypy.log
 
 job_active = False
 work_queue = queue.Queue()
+job_tracker = dict()  # job_id -> job object
+job_tracker_lock = Lock()
 active_job = None
 
 
@@ -156,6 +158,21 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
                                    (profile_spec, int(datetime.datetime.now().strftime("%s")), name))
     return changes
 
+
+def add_tracker(job):
+    cherrypy.log("job added to the tracker")
+    job_tracker_lock.acquire()
+    job_tracker[job.uuid] = job
+    job_tracker_lock.release()
+
+
+def remove_tracker(job_uuid):
+    cherrypy.log("job removed from the tracker")
+    job_tracker_lock.acquire()
+    del job_tracker[job_uuid]
+    job_tracker_lock.release()
+
+
 @cherrypy.expose
 class Root(object):
     pass
@@ -171,14 +188,30 @@ class APIroot(object):
         self.status = Status(service_state)  # Web service metadata info
 
 
-def run_job(handler, service_state):
+def jsonify_error(status, message, traceback, version):
+    response = cherrypy.response
+    response.headers['Content-Type'] = 'application/json'
+    return json.dumps({'status': status, 'message': message})
+
+
+def run_job(handler, service_state, debug_mode):
 
     if not work_queue.empty():
 
+        if debug_mode:
+            return
+
+        # not in debug mode, so we act on the content of the queue
         job = work_queue.get()
+        if job.stale:
+            remove_tracker(job.uuid)
+            return
+
         service_state.task_active = True
         service_state.tasks_queued = work_queue.qsize
+
         if job.type == 'startfio':
+            job.status = 'started'
             service_state.active_job_type = 'FIO'
             with sqlite3.connect(DBNAME) as c:
                 csr = c.cursor()
@@ -192,6 +225,7 @@ def run_job(handler, service_state):
             cherrypy.log("job {} start".format(job.uuid))
             runrc = handler.startfio(job.profile, job.workers, job.outfile)
             if runrc == 0:
+
                 cherrypy.log("job {} completed successfully".format(job.uuid))
                 cherrypy.log("job {} fetching report data".format(job.uuid))
                 fetchrc = handler.fetch_report(job.outfile)
@@ -218,9 +252,11 @@ def run_job(handler, service_state):
                                                          json.dumps(summary),
                                                          job.uuid)
                                     )
+                    job.status = 'complete'
                     cherrypy.log("job {} finished".format(job.uuid))
             else:
                 cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
+                job.status = 'failed'
                 # update state of job with failure
                 with sqlite3.connect(DBNAME) as c:
                     csr = c.cursor()
@@ -231,6 +267,7 @@ def run_job(handler, service_state):
                                         id = ?;""", ('failed', int(datetime.datetime.now().strftime("%s")),
                                                      job.uuid)
                                 )
+            remove_tracker(job.uuid)
 
         else:
             cherrypy.log("WARNING: unknown job type requested - {} - ignoring".format(job.type))
@@ -311,6 +348,8 @@ class Job(object):
 
         job = AsyncJob()
         job.type = 'startfio'
+        job.stale = False
+        job.status = 'queued'
         job.uuid = str(uuid.uuid4())
         job.profile = profile
         job.outfile = '{}.{}'.format(job.uuid, profile)
@@ -328,14 +367,16 @@ class Job(object):
                          job.title,
                          profile,
                          job.workers,
-                         'queued',
+                         job.status,
                          'fio',
                          job.provider,
                          job.platform,
                          ))
 
-        # post request using a valid profile, place on the queue to run
+        # post request using a valid profile, place on the queue and in the tracker dict
         work_queue.put(job)
+        add_tracker(job)
+
         self.service_state.tasks_queued = work_queue.qsize()
 
         return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
@@ -343,9 +384,21 @@ class Job(object):
 
     @cherrypy.tools.json_out()
     def DELETE(self, uuid=None):
-        # TODO
-        # delete a specific job from the database
-        return {"data": {"msg": "not implemented yet!"}}
+        if not uuid:
+            raise cherrypy.HTTPError(400, "Request must provide a job id to act against")
+        if uuid not in job_tracker.keys():
+            raise cherrypy.HTTPError(404, "Job with id '{}' not found".format(uuid))
+
+        job = job_tracker[uuid]
+        if job.status != 'queued':
+            raise cherrypy.HTTPError(409, "Job is not in a queued state, and can not be cancelled")
+        if job.stale:
+            raise cherrypy.HTTPError(400, "Job has already been marked for deletion")
+
+        job.stale = True  # mark the job as stale
+
+        return {"data": {"msg": "job marked stale, and will be ignored"}}
+
 
 # @cherrypy.tools.accept(media='application/json')
 @cherrypy.expose
@@ -392,8 +445,9 @@ class ServiceStatus(object):
 
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None, port=8080):
+    def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False):
         self.handler = handler
+        self.debug_mode = debug_mode
         self.service_state = ServiceStatus(handler=handler)
         self.port = port
         self.root = Root()         # web UI
@@ -471,13 +525,15 @@ class FIOWebService(object):
         cherrypy.config.update({
             'engine.autoreload.on': False,
             'server.socket_host': '0.0.0.0',
-            'server.socket_port': self.port
+            'server.socket_port': self.port,
+            'error_page.default': jsonify_error,
+            'tools.encode.encoding': 'utf-8',
         })
 
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc
 
-        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.handler, self.service_state])
+        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.handler, self.service_state, self.debug_mode])
         cherrypy.engine.subscribe('stop', self.cleanup)
 
         # prevent CP loggers from propagating entries to the root logger
