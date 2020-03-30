@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import sys
-import ast
 import argparse
 import requests
 import datetime
@@ -123,7 +122,19 @@ def cmd_parser():
 
 
 def command_status():
-    print("TODO")
+    r = requests.get("{}/status".format(url))
+    if r.status_code == 200:
+        js = r.json()['data']
+
+        job_running = 'Yes' if js['task_active'] else 'No'
+        debug = 'Yes' if js['debug_mode'] else 'No'
+        print("Target      : {}".format(js['target']))
+        print("Debug Mode  : {}".format(debug))
+        print("Job running : {}".format(job_running))
+        print("Jobs queued : {}".format(js['tasks_queued']))
+        print("Uptime      : {}".format(str(datetime.timedelta(seconds=int(js['run_time'])))))
+    else:
+        print("Failed to retrieve web service status [{}]".format(r.status_code))
 
 
 def command_profile():
@@ -260,12 +271,8 @@ def command_job():
 
 
 def handle_error(response):
-
-    if hasattr(response, '_content'):
-        content = response._content
-        cstr = content.decode('UTF-8')
-        data = ast.literal_eval(cstr)
-        print("{} [{}]".format(data.get('message', "Server didn't return an error description!"), response.status_code))
+    js = response.json()
+    print("{} [{}]".format(js.get('message', "Server didn't return an error description!"), response.status_code))
 
 
 if __name__ == '__main__':
