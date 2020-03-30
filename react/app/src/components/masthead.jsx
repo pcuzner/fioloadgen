@@ -18,7 +18,8 @@ export class MastHead extends React.Component {
             target: '',
             run_time: 0,
             workers: 0,
-            apiAvailable: true
+            apiAvailable: true,
+            debug_mode: false,
         };
     };
 
@@ -86,12 +87,20 @@ class ServiceState extends React.Component {
     render() {
         let taskText = this.props.state.task_active ? "Yes" : "no";
         let apiSymbol = this.props.state.apiAvailable ? "spacer-left fa fa-lg fa-check-circle-o state-ok" : "space-left fa fa-lg fa-times-circle-o state-failed";
+        let debugFlag;
+        if (this.props.state.debug_mode) {
+            debugFlag = (<span className="spacer-left">DEBUG</span>);
+        } else {
+            debugFlag = (<span />);
+        }
+
         return (
             <div className="status-area">
                 <div className="float-right status-spacing">API:<span className={apiSymbol}></span></div>
                 <div className="float-right status-spacing">Job Active:<span className="spacer-left">{taskText}</span></div>
                 <div className="float-right status-spacing">Queued:<span className="spacer-left">{this.props.state.tasks_queued}</span></div>
                 <div className="float-right status-spacing">Target Platform:<span className="spacer-left">{this.props.state.target}</span></div>
+                <div className="float-right status-spacing state-failed bold">{debugFlag}</div>
             </div>
         )
     }
