@@ -532,10 +532,10 @@ class JobDataRow extends React.Component {
         } else {
             rowClass = "notSelectedRow";
         }
-        if (this.props.job.status == 'queued') {
-            checkboxEnabled=false
-        } else {
+        if (this.props.job.status == 'complete') {
             checkboxEnabled=true
+        } else {
+            checkboxEnabled=false
         }
 
         return (
