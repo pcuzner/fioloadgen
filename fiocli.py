@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import sys
 import ast
 import argparse
@@ -13,7 +14,11 @@ def cmd_parser():
         description='Interact with the fio web service',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    subparsers = parser.add_subparsers(help="sub-command")
+
+    subparsers = parser.add_subparsers(help="sub-commands")
+
+    parser_status = subparsers.add_parser('status', help="show the status of the web service")
+    parser_status.set_defaults(func=command_status)
 
     parser_profile = subparsers.add_parser(
         'profile',
@@ -113,7 +118,12 @@ def cmd_parser():
         action='store_true',
         help="show raw json from a completed job",
     )
+
     return parser
+
+
+def command_status():
+    print("TODO")
 
 
 def command_profile():
@@ -126,7 +136,7 @@ def command_profile():
         if args.show not in profiles:
             print("The server doesn't have a profile called '{}'. Available profiles are: {}".format(args.show, ', '.join(profiles)))
             sys.exit(1)
-        
+
         r = requests.get("{}/profile/{}".format(url, args.show)) 
         data = r.json()['data']
         print(data)
@@ -264,18 +274,21 @@ if __name__ == '__main__':
     parser = cmd_parser()
     args = parser.parse_args()
 
+    api_address = os.environ.get('FIO_API_ADDRESS', 'localhost:8080')
+
     if 'func' in args:
+        url = 'http://{}/api'.format(api_address)  # used by all functions
+        if args.func.__name__ == 'command_status':
+            args.func()
+        else:
+            try:
+                r = requests.get('http://localhost:8080/api/profile')
+            except (requests.exceptions.ConnectionError, ConnectionRefusedError):
+                print("Please start the fioservice, before using the cli")
+                sys.exit(1)
 
-        json_headers = {'Content-type': 'application/json'}
-        url = 'http://localhost:8080/api'
-        try:
-            r = requests.get('http://localhost:8080/api/profile')
-        except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-            print("Please start the fioservice, before using the cli")
-            sys.exit(1)
+            profiles = [p['name'] for p in r.json()['data']]
 
-        profiles = [p['name'] for p in r.json()['data']]
-
-        args.func()
+            args.func()
     else:
         print("skipped")
