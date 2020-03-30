@@ -242,6 +242,7 @@ def command_job():
                 else:
                     end_time = 'N/A'
                 print("{:<37}  {:<9}  {:^19}  {}".format(p['id'], p['status'], end_time, p['title']))
+            print("Jobs: {:>3}".format(len(sdata)))
 
     elif args.show:
         # show a specific job record
