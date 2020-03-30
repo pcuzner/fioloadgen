@@ -73,6 +73,14 @@ def fetch_row(table, key=None, content=None):
         return response
 
 
+def prune_db():
+    # remove records from the database that represent queued jobs
+    prune_query = "DELETE FROM jobs WHERE status = 'queued';"
+    with sqlite3.connect(DBNAME) as c:
+        csr = c.cursor()
+        csr.execute(prune_query)
+
+
 class AsyncJob(object):
     pass
 
@@ -292,7 +300,8 @@ class Status(object):
                 "tasks_queued": self.service_state.tasks_queued,
                 "task_type": self.service_state.active_job_type,
                 "run_time": run_time,
-                "workers": self.service_state._handler.workers
+                "workers": self.service_state._handler.workers,
+                "debug_mode": self.service_state.debug_mode,
             }
         }
 
@@ -432,7 +441,7 @@ def CORS():
 
 
 class ServiceStatus(object):
-    def __init__(self, handler):
+    def __init__(self, handler, debug_mode):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
@@ -441,6 +450,7 @@ class ServiceStatus(object):
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
+        self.debug_mode = debug_mode
 
 
 class FIOWebService(object):
@@ -448,7 +458,7 @@ class FIOWebService(object):
     def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False):
         self.handler = handler
         self.debug_mode = debug_mode
-        self.service_state = ServiceStatus(handler=handler)
+        self.service_state = ServiceStatus(handler=handler, debug_mode=debug_mode)
         self.port = port
         self.root = Root()         # web UI
         self.root.api = APIroot(self.service_state)  # API
@@ -484,6 +494,10 @@ class FIOWebService(object):
     def cleanup(self):
         # cancel the worker background thread based on current interval
         self.worker.cancel()
+
+        # remove any jobs in a queued state during webservice shutdown
+        prune_db()
+
 
     @property
     def ready(self):
