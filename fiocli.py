@@ -147,16 +147,19 @@ def show_summary(api_response):
     data = json.loads(api_response.json()['data'])
     for k in keys_to_show:
         if k == 'started':
-            print("Run Date: {}".format(datetime.datetime.fromtimestamp(data[k]).strftime('%Y-%m-%d %H:%M:%S')))  # NOQA
+            if data['started']:
+                print("Run Date : {}".format(datetime.datetime.fromtimestamp(data[k]).strftime('%Y-%m-%d %H:%M:%S')))  # NOQA
+            else:
+                print("Run Date : pending")
         else:
-            print("{}: {}".format(k.title(), data[k]))
+            print("{:<9}: {}".format(k.title(), data[k]))
     if data.get('summary', None):
-        print("Summary:")
+        print("Summary  :")
         js = json.loads(data['summary'])
         for k in js.keys():
             print("  {}: {}".format(k.title(), js[k]))
     else:
-        print("Summary: Unavailable (missing)")
+        print("Summary  : Unavailable (missing)")
 
 
 def job_wait(job_uuid):
