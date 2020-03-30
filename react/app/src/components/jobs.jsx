@@ -138,7 +138,7 @@ export class Jobs extends React.Component {
                     <table className="job_table">
                         <thead>
                             <tr>
-                                <th>Sel</th>
+                                <th className="job_selector">View</th>
                                 <th className="job_id">Job ID</th>
                                 <th className="job_title">Title</th>
                                 <th className="job_provider">Provider</th>
@@ -498,7 +498,7 @@ class JobDataRow extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            selected: false
+            selected: false,
         };
     }
 
@@ -511,25 +511,37 @@ class JobDataRow extends React.Component {
     }
 
     render () {
-        let t = new Date(this.props.job.started * 1000);
-        // let t_str = t.toLocaleString()
-        let t_str = t.getFullYear() + '/' +
+        let checkboxEnabled;
+        let t_str;
+        if (this.props.job.status != 'queued') {
+            let t = new Date(this.props.job.started * 1000);
+            // let t_str = t.toLocaleString()
+            t_str = t.getFullYear() + '/' +
                     (t.getMonth() + 1).toString().padStart(2, '0') + '/' +
                     t.getDate().toString().padStart(2, '0') + ' ' +
                     t.getHours().toString().padStart(2, '0') + ':' +
                     t.getMinutes().toString().padStart(2, '0') + ':' +
                     t.getSeconds().toString().padStart(2, '0');
+        } else {
+            t_str = 'N/A';
+        }
+        
         let rowClass;
         if (this.state.selected) {
             rowClass = "selectedRow";
         } else {
             rowClass = "notSelectedRow";
         }
+        if (this.props.job.status == 'queued') {
+            checkboxEnabled=false
+        } else {
+            checkboxEnabled=true
+        }
 
         return (
             <tr className={rowClass}> 
-                <td>
-                    <input type="checkbox" onChange={() => {this.toggleSelected(event);}} />
+                <td className="job_selector">
+                    <input type="checkbox" disabled={!checkboxEnabled} onChange={() => {this.toggleSelected(event);}} />
                 </td>
                 <td className="job_id">{this.props.job.id}</td>
                 <td className="job_title">{this.props.job.title}</td>

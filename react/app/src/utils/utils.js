@@ -12,6 +12,8 @@ export function sortByKey(property) {
     }
 
     return function (a, b) {
+        a[property] = a[property] || 9999999999;
+        b[property] = b[property] || 9999999999;
         if (sortOrder == -1) {
             return b[property].toString().localeCompare(a[property].toString());
         } else {

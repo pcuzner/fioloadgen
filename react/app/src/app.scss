@@ -32,7 +32,7 @@ margin: 0 0 0 0;}
   background-color: #ebf8ff; }
 .job_table {
   text-align:left;
-  min-width: 1378px; }
+  min-width: 1395px; }
 
 .job_table td,th{
   padding: 5px;
@@ -137,6 +137,10 @@ height:100%;}
  }
 
 /* Job table widths */
+.job_selector {
+  min-width: 40px;
+  text-align: center;
+}
  .job_id {
   min-width:320px;
 }
