@@ -210,12 +210,18 @@ def command_job():
             print("TODO - only show queued jobs")
         else:
             # show all jobs in the db
-            r = requests.get("{}/job?fields=id,status,title".format(url))
+            field_list = ['id', 'status', 'title', 'ended']
+            r = requests.get("{}/job?fields={}".format(url, ','.join(field_list)))
             data = r.json()['data']
-            for p in data:
-                print("")
-                for k in p:
-                    print("{}: {}".format(k, p[k]))
+            sdata = sorted(data, key=lambda i: i['ended'] if i['ended'] else 9999999999, reverse=True)
+            print("{:<37}  {:<9}  {:^19}  {}".format('Job ID', 'Status', "End Time", "Job Title"))
+            for p in sdata:
+                if p['ended']:
+                    end_time = datetime.datetime.fromtimestamp(p['ended']).strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    end_time = 'N/A'
+                print("{:<37}  {:<9}  {:^19}  {}".format(p['id'], p['status'], end_time, p['title']))
+
     elif args.show:
         # show a specific job record
         r = requests.get("{}/job/{}".format(url, args.show))
