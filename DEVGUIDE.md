@@ -1,18 +1,26 @@
 
 ## DEV Notes
-To build the front end
+To test the front end, first ensure your webservice is running (this will sit on port 8080), then run the code under the dev server (normally on 8081)
+
 ```
-cd react/fioweb
+cd react/app
+npm start
+```
+
+
+To build the front end for production usage (i.e. code is good to go..)
+```
+cd react/app
 npm run build
 ```
-this places the updated content into the build directory
+this places the updated and compiled content into the react/app/dist directory
 
 Promote the build to the live location where cherrypy picks it up from
 ```
+rm -f www/*
 cd <root of project>
-cp -r react/fioweb/build/* www
+cp -r react/app/dist/* www
 ```
 
-To edit any of the base html (title etc)
-- react/fioweb/public dir to make the changes then build
+
 
