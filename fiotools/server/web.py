@@ -132,7 +132,7 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
         "skipped": [],
     }
 
-    message("Refreshing job profiles", out)
+    message("Refreshing job profiles, syncing the db versions with the local files in {}".format(jobdir), out)
     with sqlite3.connect(dbname) as c:
         c.row_factory = sqlite3.Row
         cursor = c.cursor()
