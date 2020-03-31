@@ -75,6 +75,7 @@ def fetch_row(table, key=None, content=None):
 
 def prune_db():
     # remove records from the database that represent queued jobs
+    cherrypy.log("Pruning jobs still in a queued state from the database")
     prune_query = "DELETE FROM jobs WHERE status = 'queued';"
     with sqlite3.connect(DBNAME) as c:
         csr = c.cursor()
@@ -403,7 +404,7 @@ class Job(object):
             raise cherrypy.HTTPError(409, "Job is not in a queued state, and can not be cancelled")
         if job.stale:
             raise cherrypy.HTTPError(400, "Job has already been marked for deletion")
-
+        cherrypy.log("Marking job {} as stale for later deletion".format(uuid))
         job.stale = True  # mark the job as stale
 
         return {"data": {"msg": "job marked stale, and will be ignored"}}
@@ -435,9 +436,49 @@ class Profile(object):
         return {"data": {"summary": summary}}
 
 
-def CORS():
-    # enable CORS for all origins
-    cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
+def cors_handler():
+    '''
+    Handle both simple and complex CORS requests
+
+    Add CORS headers to each response. If the request is a CORS preflight
+    request swap out the default handler with a simple, single-purpose handler
+    that verifies the request and provides a valid CORS response.
+    '''
+    req_head = cherrypy.request.headers
+    resp_head = cherrypy.response.headers
+
+    # Always set response headers necessary for 'simple' CORS.
+    resp_head['Access-Control-Allow-Origin'] = req_head.get('Origin', '*')
+    resp_head['Access-Control-Expose-Headers'] = 'GET, POST, DELETE'
+    resp_head['Access-Control-Allow-Credentials'] = 'true'
+
+    # Non-simple CORS preflight request; short-circuit the normal handler.
+    if cherrypy.request.method == 'OPTIONS':
+        ac_method = req_head.get('Access-Control-Request-Method', None)
+
+        allowed_methods = ['GET', 'POST', 'DELETE']
+        allowed_headers = [
+               'Content-Type',
+               'X-Auth-Token',
+               'X-Requested-With',
+        ]
+
+        if ac_method and ac_method in allowed_methods:
+            resp_head['Access-Control-Allow-Methods'] = ', '.join(allowed_methods)
+            resp_head['Access-Control-Allow-Headers'] = ', '.join(allowed_headers)
+
+            resp_head['Connection'] = 'keep-alive'
+            resp_head['Access-Control-Max-Age'] = '3600'
+
+        # CORS requests should short-circuit the other tools.
+        cherrypy.response.body = ''.encode('utf8')
+        cherrypy.response.status = 200
+        cherrypy.serving.request.handler = None
+
+        # Needed to avoid the auth_tool check.
+        if cherrypy.request.config.get('tools.sessions.on', False):
+            cherrypy.session['token'] = True
+        return True
 
 
 class ServiceStatus(object):
@@ -485,7 +526,7 @@ class FIOWebService(object):
                 'tools.CORS.on': True,
             },
         }
-        cherrypy.tools.CORS = cherrypy.Tool('before_handler', CORS)
+        cherrypy.tools.CORS = cherrypy.Tool('before_handler', cors_handler)
 
         setup_db()
 
@@ -542,6 +583,7 @@ class FIOWebService(object):
             'server.socket_port': self.port,
             'error_page.default': jsonify_error,
             'tools.encode.encoding': 'utf-8',
+            'cors.expose.on': True,
         })
 
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
