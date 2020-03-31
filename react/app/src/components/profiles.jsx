@@ -78,8 +78,29 @@ export class Profiles extends React.Component {
               console.error("Profile fetch error:", error);
           });
     }
-    runJob() {
+    runJob(parms) {
         console.debug("run the job - issue a put request to the API");
+        // remove specific attributes from parms object
+        delete parms.titleBorder;
+        console.debug("in runJob handler " + JSON.stringify(parms));
+        console.debug("profile is " + this.state.activeProfile);
+
+        fetch(api_url + "/api/job/" + this.state.activeProfile, {
+            method: 'post',
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(parms)
+        })
+            .then((e) => {
+                console.log("request submitted")
+            })
+            .catch((e) => {
+                console.log(JSON.stringify(e));
+                console.error("Post to /api/job failed " + e.status);
+            });
+
     }
 
     getJobDetails() {
@@ -90,7 +111,7 @@ export class Profiles extends React.Component {
     submitHandler = (parms) => {
         console.debug("in submit handler " + JSON.stringify(parms));
         this.closeModal()
-        this.runJob()
+        this.runJob(parms)
     }
 
     render() {
@@ -157,38 +178,56 @@ class ProfileContent extends React.Component {
 
 export default Profiles;
 
-const options = [
-    { value: 'chocolate', label: 'Chocolate' },
-    { value: 'strawberry', label: 'Strawberry' },
-    { value: 'vanilla', label: 'Vanilla' }
-  ];
-
 class JobParameters extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             example: true,
-            workers: 5
+            workers: 5,
+            title: '',
+            platform: 'openshift',
+            provider: 'aws',
+            titleBorder: {},
         };
     }
-
-
-      
-    updateWorkers(event) {
+    
+    updateState(event) {
+        /* Could add additional logic here to validate content? */
         this.setState({
-            workers: event.target.value
+            [event.target.id]: event.target.value
         });
+        if (event.target.id == 'title') {
+            if (event.target.value == "") {
+                this.setState({
+                    titleBorder: { borderColor: "red", borderRadius: "5px"}
+                });
+                console.log("title is empty - make it red");
+            } else {
+                this.setState({
+                    titleBorder: {}
+                });
+                console.log("title has content - make it normal");
+            }
+        } 
     }
 
     callbackHandler = () => {
-        this.props.submitHandler(this.state);
+        if (!this.state.title) {
+            this.setState({
+                titleBorder: { borderColor: "red", borderRadius: "5px"}
+            });
+            console.log("need a title to proceed");
+        } else {
+            /* call the submitHandler */
+            this.props.submitHandler(this.state);
+        }
     }
 
     render() {
         return (
             <div>
                 <div>
-                    <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients:</b></div>
+                    <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients&nbsp;</b></div>
                     <div className="inline-block">
                         <input id="workers" 
                             className="workers-slider" 
@@ -196,25 +235,32 @@ class JobParameters extends React.Component {
                             min="1" 
                             max={this.props.clientLimit} 
                             value={this.state.workers} 
-                            onChange={() => {this.updateWorkers(event);}}>
+                            onChange={() => {this.updateState(event);}}>
                         </input>
                         <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{this.state.workers}</div>
                     </div>
                 </div>
                 <div>
                     <p />
-                    <label forhtml="title">Job Title:</label>
-                    <input type="text" id="title" size="80" name="title" placeholder="Enter a title that describes that uniquely defines the test run"/>
+                    <label forhtml="title">Job Title<span style={{color: "red", verticalAlign: "super", fontSize: ".8em"}}>*</span>&nbsp;</label>
+                    <input
+                        style={this.state.titleBorder}
+                        type="text" 
+                        id="title" 
+                        size="80" 
+                        name="title" 
+                        placeholder="Enter a title that uniquely describes the test run"
+                        onChange={() => {this.updateState(event);}}/>
                     <p />
 
-                    <label forhtml="platform">Platform:&nbsp; </label>
-                    <select id="platform">
+                    <label forhtml="platform">Platform&nbsp; </label>
+                    <select id="platform" onChange={() => {this.updateState(event);}}>
                         <option value="openshift">Openshift</option>
                         <option value="kubernetes">Kubernetes</option>
                     </select>
                     <p />
-                    <label forhtml="provider" >Infrastructure Provider:&nbsp; </label>
-                    <select id="provider">
+                    <label forhtml="provider" >Provider&nbsp; </label>
+                    <select id="provider" onChange={() => {this.updateState(event);}}>
                         <option value="aws">AWS</option>
                         <option value="vmware">VMware</option>
                         <option value="baremetal">Bare metal</option>
