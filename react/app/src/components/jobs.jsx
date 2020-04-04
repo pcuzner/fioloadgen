@@ -1,5 +1,6 @@
 import React from 'react';
 import '../app.scss';
+import {Kebab} from '../common/kebab.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
 import {setAPIURL, summarizeLatency, sortByKey, decPlaces} from '../utils/utils.js';
@@ -99,6 +100,8 @@ export class Jobs extends React.Component {
         /* curl http://localhost:8080/api/job?fields=id,title,profile,status,started,type,provider,platform */
         this.fetchJobSummaryData();
     }
+
+
 
     render() {
         var rows;
@@ -510,6 +513,22 @@ class JobDataRow extends React.Component {
         this.props.callBack(this.props.job.id, event.target.checked);
     }
 
+    dummyCallBack() {
+        console.log("dummy callback in jobdatarow")
+    }
+    action_delete_job() {
+        console.log("delete row")
+    }
+    action_rerun_job() {
+        console.log("rerun job")
+    }
+    action_show_job() {
+        console.log("show job")
+    }
+    action_export_job() {
+        console.log("export job details")
+    }
+
     render () {
         let checkboxEnabled;
         let t_str;
@@ -537,6 +556,16 @@ class JobDataRow extends React.Component {
         } else {
             checkboxEnabled=false
         }
+        let dummyActions = [
+            {
+                action: 'delete',
+                callback: this.action_delete_job,
+            },
+            {
+                action: 'show',
+                callback: this.action_show_job,
+            },
+        ];
 
         return (
             <tr className={rowClass}> 
@@ -549,6 +578,9 @@ class JobDataRow extends React.Component {
                 <td className="job_platform">{this.props.job.platform}</td>
                 <td className="job_start">{t_str}</td>
                 <td className="job_status">{this.props.job.status}</td>
+                <td className="job_actions">
+                    <Kebab value={this.props.job.id} actions={dummyActions} />
+                </td>
             </tr>
         )
     }

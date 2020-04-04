@@ -40,8 +40,8 @@ export class App extends React.Component {
             <div>
                 <MastHead workerCB={this.updateWorker}/>
                 <ul id="menu">
-                    <li className={"menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
-                    <li className={"menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
+                    <li className={"menu menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
+                    <li className={"menu menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
                 </ul>
                 <div id="container">
                     <Profiles visibility={this.state.profiles} clientLimit={this.state.workers}/>
