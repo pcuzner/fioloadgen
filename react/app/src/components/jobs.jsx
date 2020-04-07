@@ -1,9 +1,10 @@
 import React from 'react';
 import '../app.scss';
 import {Kebab} from '../common/kebab.jsx';
+import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -26,23 +27,40 @@ export class Jobs extends React.Component {
         this.state = {
             jobs: [],
             currentJob: "",
-            jobInfo: {}
+            jobInfo: {},
+            modalOpen: false,
+            // visibility: 'inactive',
         };
-    // this.jobInfo = {};
+        this.jobDetails = (<div />);
     };
+    // shouldComponentUpdate(nextProps, PrevProps) {
+    //     if (nextProps.visibility == "active"){
+    //         console.debug("jobs should render");
+    //         return true;
+    //     } else {
+    //         return false;
+    //     }
+    // }
+    // static getDerivedStateFromProps(nextProps, stateProps) {
+    //     console.log(nextProps.visibility);
+    //     if (nextProps.visibility != stateProps.visibility) {
+    //         console.log("jobs visibility changed");
+    //         return {
+    //             visibility: nextProps.visibility,
+    //         }
+    //     } else {
+    //         console.log("no change");
+    //         return null;
+    //     };
+
+    // }
 
     fetchJobSummaryData() {
-        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform")
-          .then((response) => {
-              console.debug("Job listing fetch : ", response.status);
-              if (response.status == 200) {
-                  return response.json();
-              } else {}
-                  throw Error(`Fetch failed with HTTP status: ${response.status}`);
-              })
-          .then((jobs) => {
+        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers")
+          .then(handleAPIErrors)
+          .then((json) => {
               /* Happy path */
-              let srtd = jobs.data.sort(sortByKey('-started'));
+              let srtd = json.data.sort(sortByKey('-started'));
               this.setState({
                   jobs: srtd
               });
@@ -59,11 +77,14 @@ export class Jobs extends React.Component {
             this.fetchJobData(job_id);
         } else {
             console.debug("hide output for job id " + job_id);
+            // let tJobInfo = Object.assign({}, this.jobInfo);
             let tJobInfo = Object.assign({}, this.state.jobInfo);
             delete tJobInfo[job_id];
+            // this.jobInfo = tJobInfo;
             this.setState({
                 jobInfo: tJobInfo
             });
+            // this.jobInfo = Object.assign({}, tJobInfo);
             // console.log("job map holds " + Object.keys(this.jobInfo).length + 'members');
             // console.debug(JSON.stringify(this.jobInfo));
         }
@@ -72,40 +93,155 @@ export class Jobs extends React.Component {
     fetchJobData(job_id) {
         console.debug("fetch for job " + job_id);
         fetch(api_url + "/api/job/" + job_id)
-            .then((response) => {
-                console.debug("Job data fetch : ", response.status);
-                if (response.status == 200) {
-                    return response.json();
-                } else {}
-                    throw Error(`Fetch for job data failed with HTTP status: ${response.status}`);
-                })
-            .then((job) => {
+            .then(handleAPIErrors)
+            .then((json) => {
                 /* Happy path */
-                let data = JSON.parse(job.data);
+                console.log("loading job data");
+                let data = JSON.parse(json.data);
                 // this.jobInfo[data.id] = data;
                 let tJobInfo = Object.assign({}, this.state.jobInfo);
+                // let tJobInfo = Object.assign({}, this.jobInfo);
                 tJobInfo[data.id] = data;
+                // this.jobInfo = tJobInfo;
                 this.setState({
-                    currentJob: JSON.parse(job.data),
+                    currentJob: JSON.parse(json.data),
                     jobInfo: tJobInfo
                 });
-
-                // console.debug(JSON.stringify(this.jobInfo));
             })
             .catch((error) => {
-                console.error("Error:", error);
+                console.error("fetchJobData failed with: ", error);
             });
     }
     componentDidMount() {
         /* curl http://localhost:8080/api/job?fields=id,title,profile,status,started,type,provider,platform */
         this.fetchJobSummaryData();
+        this.downloadLink = React.createRef();
     }
 
+    deleteJob = (jobID) => {
+        console.log("delete job " + jobID);
+        fetch(api_url + "/api/job/" + jobID, {
+            method: 'delete',
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            // body: JSON.stringify(parms)
+        })
+            .then(handleAPIErrors)
+            .then((json) => {
+                this.fetchJobSummaryData();
+            })
+            .catch((err) => {
+                console.error("DELETE to /api/job failed : ", err);
+            });
+    }
 
+    showJob = (jobID) => {
+        console.log('show job' + jobID);
+        // let jobData = Object.keys(this.state.jobs);
+        fetch(api_url + "/api/job/" + jobID)
+            .then(handleAPIErrors)
+            .then((json) => {
+                /* Happy path */
+                let j = JSON.parse(json.data);
+                let raw = JSON.parse(j.raw_json);
+                this.jobDetails = JSON.stringify(raw, null, 2);
+                this.openModal()
+            })
+            .catch((error) => {
+                console.error("Show job failed: ", error);
+            });
+    }
+
+    rerunJob = (jobID) => {
+        console.log("rerun " + jobID);
+        // loop through the jobs array to find the relevant job
+        let jobObject = null;
+        for (let job of this.state.jobs) {
+            if (job.id == jobID) {
+                jobObject = Object.assign({}, job);
+                break;
+            }
+        };
+        if (jobObject) {
+            console.debug("found ", JSON.stringify(jobObject));
+            console.debug(jobObject.title);
+            let parms = {
+                workers: jobObject.workers,
+                title: jobObject.title,
+                provider: jobObject.provider,
+                platform: jobObject.platform,
+            };
+            console.log(JSON.stringify(parms));
+            fetch(api_url + "/api/job/" + jobObject.profile, {
+                method: 'post',
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(parms)
+                })
+                .then(handleAPIErrors)
+                .then((json) => {
+                    console.log("job rerun submitted");
+                })
+                .catch((err) => {
+                    console.error("Job rerun failed - " + err);
+                })
+        } else {
+            console.error("requested job with id " + jobID + " not found in jobs array?");
+        }
+    }
+    exportJob = (jobID) => {
+        console.log("export job " + jobID);
+        fetch(api_url + "/api/db/" + jobID)
+            .then((response) => {
+                /* Happy path */
+                if (!response.ok) {
+                    throw Error("Unable to retrieve exported copy of job");
+                }
+                console.debug("download request ok");
+                return response.blob();
+            })
+            .then((blob) => {
+                console.debug("have response");
+                const href = window.URL.createObjectURL(blob);
+                const a = this.downloadLink.current;
+                a.download = jobID + '.txt';
+                a.href = href;
+                a.click();
+                a.href = '';
+            })
+            .catch((error) => {
+                console.error("export job failed: ", JSON.stringify(error));
+            });
+    }
+
+    openModal = () => {
+        this.setState({
+            modalOpen: true
+        });
+    }
+    closeModal = () => {
+        this.setState({
+            modalOpen: false,
+        });
+        this.jobDetails = (<div />);
+    }
 
     render() {
+        // if (this.props.visibility != 'active') {
+        //     return (
+        //         <div />
+        //     );
+        // }
+
+        console.log("render job table");
         var rows;
+        console.log("jobs ", this.state.jobs.length);
         if (this.state.jobs.length > 0) {
+            console.log("jobs > 0, processing to create jobdatarow components");
             rows = this.state.jobs.map((job,i) => {
                 // let t = new Date(job.started * 1000);
                 // // let t_str = t.toLocaleString()
@@ -118,7 +254,14 @@ export class Jobs extends React.Component {
                 // let d_str = new Intl.DateTimeFormat(options).format(t)
                 // console.log(t + " = " + t_str + ", " + d_str);
                 return (
-                    <JobDataRow job={job} key={i} callBack={this.manageJobOutput} />
+                    <JobDataRow 
+                        job={job}
+                        key={i}
+                        viewCallback={this.manageJobOutput}
+                        deleteJob={this.deleteJob}
+                        exportJob={this.exportJob}
+                        rerunJob={this.rerunJob}
+                        showJob={this.showJob}/>
                 );
                     // <tr key={i} onClick={() => {this.fetchJobData(job.id);}}>
                     //     <td className="job_id">{job.id}</td>
@@ -132,9 +275,21 @@ export class Jobs extends React.Component {
         } else {
             rows = (<tr />);
         }
+        let jobDetails;
+        if (this.state.modalOpen) {
+            jobDetails = (<div><pre><code>{this.jobDetails}</code></pre></div>);
+        } else {
+            jobDetails = (<div />);
+        }
 
         return (
             <div id="jobs" className={this.props.visibility}>
+                <a className="hidden" ref={this.downloadLink} />
+                <GenericModal 
+                    show={this.state.modalOpen} 
+                    title={"FIO Job Output"}
+                    content={jobDetails} 
+                    closeHandler={this.closeModal} />
                 <br />
                 <div className="inline-block align-right" style={{marginLeft: "50px"}}>
                     <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
@@ -510,26 +665,11 @@ class JobDataRow extends React.Component {
         this.setState({
             selected: event.target.checked
         });
-        this.props.callBack(this.props.job.id, event.target.checked);
-    }
-
-    dummyCallBack() {
-        console.log("dummy callback in jobdatarow")
-    }
-    action_delete_job() {
-        console.log("delete row")
-    }
-    action_rerun_job() {
-        console.log("rerun job")
-    }
-    action_show_job() {
-        console.log("show job")
-    }
-    action_export_job() {
-        console.log("export job details")
+        this.props.viewCallback(this.props.job.id, event.target.checked);
     }
 
     render () {
+        console.log("render job data row");
         let checkboxEnabled;
         let t_str;
         if (this.props.job.status != 'queued') {
@@ -556,16 +696,53 @@ class JobDataRow extends React.Component {
         } else {
             checkboxEnabled=false
         }
-        let dummyActions = [
-            {
-                action: 'delete',
-                callback: this.action_delete_job,
-            },
-            {
-                action: 'show',
-                callback: this.action_show_job,
-            },
-        ];
+        let actions = [];
+        switch (this.props.job.status) {
+            case "complete":
+                actions = [
+                    { 
+                        action: 'rerun',
+                        callback: this.props.rerunJob,
+                    },
+                    { 
+                        action: 'export',
+                        callback: this.props.exportJob,
+                    },
+                    { 
+                        action: 'show',
+                        callback: this.props.showJob,
+                    },
+                ];
+                break;
+            case "failed":
+                actions = [
+                    { 
+                        action: 'rerun',
+                        callback: this.props.rerunJob,
+                    },
+                    { 
+                        action: 'show',
+                        callback: this.props.showJob,
+                    },
+                ];
+                break;
+            case "queued":
+                actions = [
+                    { 
+                        action: 'delete',
+                        callback: this.props.deleteJob,
+                    },
+                ];
+                break;
+            case "started":
+                actions = [
+                    { 
+                        action: 'show',
+                        callback: this.props.showJob,
+                    },
+                ];
+                break;
+        }
 
         return (
             <tr className={rowClass}> 
@@ -579,25 +756,25 @@ class JobDataRow extends React.Component {
                 <td className="job_start">{t_str}</td>
                 <td className="job_status">{this.props.job.status}</td>
                 <td className="job_actions">
-                    <Kebab value={this.props.job.id} actions={dummyActions} />
+                    <Kebab value={this.props.job.id} actions={actions} />
                 </td>
             </tr>
         )
     }
 }
 
-class Panel extends React.Component {
-    constructor(props) {
-        super(props);
-        self.state = {
-            dummy: true
-        };
-    }
-    render() {
-        return (
-            <div className="job-panel inline-block">
-                <div><b>{this.props.title}</b></div>
-            </div>
-        );
-    }
-}
+// class Panel extends React.Component {
+//     constructor(props) {
+//         super(props);
+//         self.state = {
+//             dummy: true
+//         };
+//     }
+//     render() {
+//         return (
+//             <div className="job-panel inline-block">
+//                 <div><b>{this.props.title}</b></div>
+//             </div>
+//         );
+//     }
+// }
