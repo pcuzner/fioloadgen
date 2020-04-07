@@ -303,6 +303,7 @@ export class Jobs extends React.Component {
                                 <th className="job_platform">Platform</th>
                                 <th className="job_start">Start Time</th>
                                 <th className="job_status">Status</th>
+                                <th className="job-actions" />
                             </tr>
                         </thead>
                         <tbody>
