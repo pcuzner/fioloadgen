@@ -9,6 +9,7 @@ To test the front end, first ensure your webservice is running (this will sit on
 cd react/app
 npm start
 ```
+Now point you're browser at 8081, to confirm functionality
 
 ### Building the components for cherrypy
 Once your changes have been tested, you need to rebuild the artifacts that cherrypy serves.  
