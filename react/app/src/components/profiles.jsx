@@ -145,6 +145,13 @@ export class Profiles extends React.Component {
 
     render() {
         console.debug("render profiles called with visibility: ", this.props.visibility);
+        if (this.props.visibility != 'active') {
+            return (
+                <div />
+            );
+        }
+
+
         let profileSelector;
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {

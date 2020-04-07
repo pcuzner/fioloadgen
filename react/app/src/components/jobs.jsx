@@ -231,11 +231,11 @@ export class Jobs extends React.Component {
     }
 
     render() {
-        // if (this.props.visibility != 'active') {
-        //     return (
-        //         <div />
-        //     );
-        // }
+        if (this.props.visibility != 'active') {
+            return (
+                <div />
+            );
+        }
 
         console.log("render job table");
         var rows;
