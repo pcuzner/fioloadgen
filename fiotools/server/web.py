@@ -3,9 +3,9 @@
 import cherrypy
 from cherrypy.process import plugins
 from cherrypy.lib.httputil import parse_query_string  # HTTPDate
+from cherrypy.lib import static
 from threading import Lock
 import queue
-# import time
 import sys
 import os
 import json
@@ -13,10 +13,12 @@ import sqlite3
 import uuid
 import datetime
 import time
+import glob
+import tempfile
 # import requests
 # import logging
 
-import glob
+
 from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
 # from ..db import FIOdatabase
@@ -168,6 +170,15 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
     return changes
 
 
+def delete_job(uuid, dbname=DBNAME):
+    cherrypy.log("request to delete queued job {}".format(uuid))
+    sql = "DELETE FROM jobs WHERE id=?"
+    with sqlite3.connect(dbname) as c:
+        csr = c.cursor()
+        csr.execute(sql, (uuid,))
+        c.commit()
+
+
 def add_tracker(job):
     cherrypy.log("job added to the tracker")
     job_tracker_lock.acquire()
@@ -180,6 +191,51 @@ def remove_tracker(job_uuid):
     job_tracker_lock.acquire()
     del job_tracker[job_uuid]
     job_tracker_lock.release()
+
+
+def dump_table(table_name='jobs', 
+               job_id=None,
+               dbname=DBNAME,
+               include_create=True):
+    """ simple iterator function to dump specific row(s) from the job table """
+
+    with sqlite3.connect(dbname) as conn:
+        csr = conn.cursor()
+        yield('BEGIN TRANSACTION;')
+
+        # sqlite_master table contains the SQL CREATE statements for the all the tables.
+        q = """
+        SELECT type, sql
+            FROM sqlite_master
+                WHERE sql NOT NULL AND
+                type == 'table' AND
+                name == :table_name
+            """
+        schema_res = csr.execute(q, {'table_name': table_name})
+
+        # create the create table syntax (ignore the type value..just using it preserve output)
+        for _, sql in schema_res.fetchall():
+            # yield the create table syntax
+            if include_create:
+                yield('{};'.format(sql))
+
+            # fetch the column names of the table
+            res = csr.execute("PRAGMA table_info('{}')".format(table_name))
+            column_names = [str(table_info[1]) for table_info in res.fetchall()]
+
+            # Create the Insert statements to repopulate the table
+            q = "SELECT 'INSERT INTO \"{}\" VALUES(".format(table_name)
+            q += ",".join(["'||quote(" + col + ")||'" for col in column_names])
+            q += ")' FROM '{}'".format(table_name)
+            if job_id:
+                q += " WHERE id='{}'".format(job_id)
+
+            # Issue the query, then potentially filter to the desired row
+            query_res = csr.execute(q % {'tbl_name': table_name})
+            for row in query_res:
+                yield("%s;" % row[0])
+
+        yield('COMMIT;')
 
 
 @cherrypy.expose
@@ -195,6 +251,7 @@ class APIroot(object):
         self.job = Job(service_state)  # handler)
         self.profile = Profile(service_state)  # handler)
         self.status = Status(service_state)  # Web service metadata info
+        self.db = DB()  # db export/import handler
 
 
 def jsonify_error(status, message, traceback, version):
@@ -405,14 +462,20 @@ class Job(object):
         if job.stale:
             raise cherrypy.HTTPError(400, "Job has already been marked for deletion")
         cherrypy.log("Marking job {} as stale for later deletion".format(uuid))
-        job.stale = True  # mark the job as stale
+
+        # mark the job as stale, so it's not processed
+        job.stale = True
+
+        # delete the job from the database
+        delete_job(uuid)
 
         return {"data": {"msg": "job marked stale, and will be ignored"}}
 
 
 # @cherrypy.tools.accept(media='application/json')
-@cherrypy.expose
+# @cherrypy.expose
 class Profile(object):
+    exposed = True
 
     def __init__(self, service_state):
         self.service_state = service_state
@@ -434,6 +497,25 @@ class Profile(object):
             pass
 
         return {"data": {"summary": summary}}
+
+
+class DB(object):
+    exposed = True
+
+    def GET(self, job_id=None):
+
+        tf = tempfile.NamedTemporaryFile(delete=False)
+        cherrypy.log("export file created - {}".format(tf.name))
+
+        with open(tf.name, 'w') as f:
+            for line in dump_table('jobs', job_id=job_id):
+                f.write('{}\n'.format(line))
+
+        return static.serve_file(
+            tf.name,
+            'text/plain',
+            'attachment',
+            os.path.basename(tf.name))
 
 
 def cors_handler():
