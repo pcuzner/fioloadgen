@@ -39,7 +39,7 @@ export class MastHead extends React.Component {
             //   console.debug("state returned " + JSON.stringify(state));
               this.setState(state);
             //   console.debug("masthead status returned worker count of " + state.workers);
-              this.props.workerCB(this.state.workers);
+            //   this.props.workerCB(this.state.workers);
             //   console.log(JSON.stringify(state));
           })
           .catch((error) => {

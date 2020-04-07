@@ -13,9 +13,19 @@ export class Profiles extends React.Component {
             profiles: [],
             activeProfile: '',
             profileContent: '',
-            modalOpen: false
+            modalOpen: false,
+            workers: 1,
         };
     };
+
+    // shouldComponentUpdate(nextProps, PrevProps) {
+    //     if (nextProps.visibility == "active"){
+    //         console.debug("profiles should render");
+    //         return true;
+    //     } else {
+    //         return false;
+    //     }
+    // }
 
     openModal() {
         this.setState({
@@ -51,6 +61,25 @@ export class Profiles extends React.Component {
           .catch((error) => {
               console.error("Error:", error);
           });
+
+        fetch(api_url + "/api/status")
+          .then((response) => {
+              console.log("Initial status call ", response.status);
+            //   console.log(JSON.stringify(response.json()));
+              return response.json();
+          })
+          .then((status) => {
+              console.log(status.data);
+              this.setState({
+                  workers: status.data.workers,
+              });
+          })
+          .catch((error) => {
+              console.error("initial status call failure, unable to fetch worker info, using default of 2");
+              this.setState({
+                  workers: 2,
+              });
+          })
     }
 
     selectProfile(event) {
@@ -115,6 +144,7 @@ export class Profiles extends React.Component {
     }
 
     render() {
+        console.debug("render profiles called with visibility: ", this.props.visibility);
         let profileSelector;
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
@@ -133,7 +163,7 @@ export class Profiles extends React.Component {
         }
         let jobDefinition;
         if (this.state.modalOpen) {
-            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.props.clientLimit}/>); 
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.state.workers}/>); 
         } else {
             jobDefinition = (<div />);
         }
@@ -183,7 +213,7 @@ class JobParameters extends React.Component {
         super(props);
         this.state = {
             example: true,
-            workers: 5,
+            workers: props.clientLimit,
             title: '',
             platform: 'openshift',
             provider: 'aws',
@@ -233,7 +263,7 @@ class JobParameters extends React.Component {
                             className="workers-slider" 
                             type="range" 
                             min="1" 
-                            max={this.props.clientLimit} 
+                            max={this.props.clientLimit}
                             value={this.state.workers} 
                             onChange={() => {this.updateState(event);}}>
                         </input>
