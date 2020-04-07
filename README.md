@@ -6,10 +6,11 @@ Project that provides a structured test environment based on fio workload patter
 3. Use fiocli to interact with the API, to run and query job state/results
 
 These components provide the following features;  
-- RESTful API
-- sqlite3 database (used to hold job state and output)
-- web front end (partially implemented)
-- cli client to interact with the REST API
+- standard repeatable deployment of an fio testing framework 
+- persistent store for job results and profiles to future reference (regression testing anyone?)
+- fio job management through a RESTful API
+- cli tool to interact with the API to run jobs, query output, query profiles
+- web front end supporting job submission and results visualisation (using chartjs)
 - supported backends (openshift is all I'm testing against at the moment!)
 
 ## What does the workflow look like?
@@ -18,7 +19,7 @@ Here's a demo against an openshift cluster. It shows the creation of the mgr pod
 ![demo gif](media/fioloadgen-demo.gif)
 
 
-## Deploying the test environment
+## Deploying the FIOLOADGEN environment
 Before you deploy, you **must** have a working connection to openshift and the required CLI tool (oc) must be in your path.  
 Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup and tear down test environments
 ```
@@ -46,7 +47,7 @@ At this point you can rsh into the fiomgr pod and run fio workloads directly, or
 1. Defaults to an openshift connection (--type=oc) and namespace of fio (--namespace=fio)
 2. for oc type engines
    have I got a working kube environment
-3. [TODO] Grab and store the ceph configuration
+3. [TODO] Grab and store the target storage configuration  
    version
    number of osds by type (hdd and ssd)
    number of pools
@@ -100,11 +101,12 @@ Runtime files and a the database are placed in the users home directory
 - [x] implement a wait parameter in the CLI when running an fio job
 - [x] UI - define the UI structure and components  
 - [x] UI - view results from db
-- [-] UI - show profiles, submit jobs (submit remaining)
+- [X] UI - show profiles, submit jobs (submit remaining)
 - [X] UI - add use chart.js to visualize the results a run
-- [ ] extend the container to include other benchmarking tools  
-- [ ] all the service to be separate from the cli
+- [ ] UI - reload the fiomgr pod with local changes (reload button on the profiles page)
+- [ ] extend the 'fiotester' container to include other benchmarking tools  
+- [ ] enable the fioservice to run away from the cli (remote loadgen deployments)
 - [ ] provide an fioservice container that can be run on the target infrastructure, instead of locally
-
+- [ ] optimize the react code base
 
   
