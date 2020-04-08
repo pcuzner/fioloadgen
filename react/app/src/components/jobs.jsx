@@ -586,7 +586,7 @@ class FIOJobAnalysis extends React.Component {
                                         },
                                         ticks: {
                                             beginAtZero: true,
-                                            max: 50
+                                            // max: 50
                                         }
                                     }]
                                 }
