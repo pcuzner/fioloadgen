@@ -23,7 +23,7 @@ from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
 # from ..db import FIOdatabase
 
-DBNAME = os.path.join(os.path.expanduser('~'), 'fioservice.db')
+DEFAULT_DBPATH = os.path.join(os.path.expanduser('~'), 'fioservice.db')
 JOB_DIR = "./data/fio/jobs"
 
 log = cherrypy.log
@@ -36,13 +36,13 @@ job_tracker_lock = Lock()
 active_job = None
 
 
-def fetch_all(table, keys):
+def fetch_all(dbpath, table, keys):
     assert isinstance(keys, list)
     if not keys:
         return list()
 
     data = list()
-    with sqlite3.connect(DBNAME) as c:
+    with sqlite3.connect(dbpath) as c:
         c.row_factory = sqlite3.Row
         csr = c.cursor()
         fields = ",".join(keys)
@@ -55,16 +55,16 @@ def fetch_all(table, keys):
     return data
 
 
-def fetch_row(table, key=None, content=None):
+def fetch_row(dbpath, table, key=None, content=None):
     response = dict()
     if not key:
         return response
-    available = [row[key] for row in fetch_all(table, list([key]))]
+    available = [row[key] for row in fetch_all(dbpath, table, list([key]))]
     if not content or content not in available:
         return response
     else:
         query = "SELECT * FROM {} WHERE {} = ?;".format(table, key)
-        with sqlite3.connect(DBNAME) as c:
+        with sqlite3.connect(dbpath) as c:
             c.row_factory = sqlite3.Row
             csr = c.cursor()
             csr.execute(query, (content,))
@@ -75,11 +75,11 @@ def fetch_row(table, key=None, content=None):
         return response
 
 
-def prune_db():
+def prune_db(dbpath):
     # remove records from the database that represent queued jobs
     cherrypy.log("Pruning jobs still in a queued state from the database")
     prune_query = "DELETE FROM jobs WHERE status = 'queued';"
-    with sqlite3.connect(DBNAME) as c:
+    with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
         csr.execute(prune_query)
 
@@ -88,7 +88,7 @@ class AsyncJob(object):
     pass
 
 
-def setup_db(dbname=DBNAME):
+def setup_db(dbpath):
 
     profiles_table = """ CREATE TABLE IF NOT EXISTS profiles (
                             name text PRIMARY KEY,
@@ -113,14 +113,16 @@ def setup_db(dbname=DBNAME):
                         FOREIGN KEY(profile) REFERENCES profiles (name)
                         ); """
 
-    if not os.path.exists(dbname):
-        print("Creating results database")
-        with sqlite3.connect(dbname) as c:
+    if not os.path.exists(dbpath):
+        print("Creating results database @ {}".format(dbpath))
+        with sqlite3.connect(dbpath) as c:
             c.execute(profiles_table)
             c.execute(jobs_table)
+    else:
+        print("Using existing database @ {}".format(dbpath))
 
 
-def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
+def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
     def message(msg_string, out='console'):
         if out == 'console':
             print(msg_string)
@@ -135,7 +137,7 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
     }
 
     message("Refreshing job profiles, syncing the db versions with the local files in {}".format(jobdir), out)
-    with sqlite3.connect(dbname) as c:
+    with sqlite3.connect(dbpath) as c:
         c.row_factory = sqlite3.Row
         cursor = c.cursor()
         for profile in glob.glob('{}/*'.format(jobdir)):
@@ -170,10 +172,10 @@ def load_db_profiles(jobdir=JOB_DIR, dbname=DBNAME, out='console'):
     return changes
 
 
-def delete_job(uuid, dbname=DBNAME):
+def delete_job(dbpath, uuid):
     cherrypy.log("request to delete queued job {}".format(uuid))
     sql = "DELETE FROM jobs WHERE id=?"
-    with sqlite3.connect(dbname) as c:
+    with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
         csr.execute(sql, (uuid,))
         c.commit()
@@ -193,13 +195,13 @@ def remove_tracker(job_uuid):
     job_tracker_lock.release()
 
 
-def dump_table(table_name='jobs', 
+def dump_table(dbpath=DEFAULT_DBPATH,
+               table_name='jobs', 
                job_id=None,
-               dbname=DBNAME,
                include_create=True):
     """ simple iterator function to dump specific row(s) from the job table """
 
-    with sqlite3.connect(dbname) as conn:
+    with sqlite3.connect(dbpath) as conn:
         csr = conn.cursor()
         yield('BEGIN TRANSACTION;')
 
@@ -247,11 +249,11 @@ class APIroot(object):
     exposed = True
 
     # TODO add a get method to document the API
-    def __init__(self, service_state):  # , handler):
-        self.job = Job(service_state)  # handler)
-        self.profile = Profile(service_state)  # handler)
+    def __init__(self, service_state, dbpath):
+        self.job = Job(service_state, dbpath)  # handler)
+        self.profile = Profile(service_state, dbpath)  # handler)
         self.status = Status(service_state)  # Web service metadata info
-        self.db = DB()  # db export/import handler
+        self.db = DB(dbpath)  # db export/import handler
 
 
 def jsonify_error(status, message, traceback, version):
@@ -260,7 +262,7 @@ def jsonify_error(status, message, traceback, version):
     return json.dumps({'status': status, 'message': message})
 
 
-def run_job(handler, service_state, debug_mode):
+def run_job(dbpath, handler, service_state, debug_mode):
 
     if not work_queue.empty():
 
@@ -279,7 +281,7 @@ def run_job(handler, service_state, debug_mode):
         if job.type == 'startfio':
             job.status = 'started'
             service_state.active_job_type = 'FIO'
-            with sqlite3.connect(DBNAME) as c:
+            with sqlite3.connect(dbpath) as c:
                 csr = c.cursor()
                 csr.execute(""" UPDATE jobs
                                 SET status = ?,
@@ -305,7 +307,7 @@ def run_job(handler, service_state, debug_mode):
 
                     job_json = json.loads(job_data)
                     summary = latency_summary(job_json)  # use default percentile
-                    with sqlite3.connect(DBNAME) as c:
+                    with sqlite3.connect(dbpath) as c:
                         csr = c.cursor()
                         csr.execute(""" UPDATE jobs
                                         SET status = ?,
@@ -324,7 +326,7 @@ def run_job(handler, service_state, debug_mode):
                 cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
                 job.status = 'failed'
                 # update state of job with failure
-                with sqlite3.connect(DBNAME) as c:
+                with sqlite3.connect(dbpath) as c:
                     csr = c.cursor()
                     csr.execute(""" UPDATE jobs
                                     SET status = ?,
@@ -368,8 +370,9 @@ class Status(object):
 class Job(object):
     exposed = True
 
-    def __init__(self, service_state):
+    def __init__(self, service_state, dbpath):
         self.service_state = service_state
+        self.dbpath = dbpath
 
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
@@ -382,11 +385,11 @@ class Job(object):
             fields = qs['fields'].split(',')
 
         if uuid is None:
-            return {"data": fetch_all('jobs', fields)}
+            return {"data": fetch_all(self.dbpath, 'jobs', fields)}
         else:
-            data = fetch_row('jobs', 'id', uuid)
+            data = fetch_row(self.dbpath, 'jobs', 'id', uuid)
             if data:
-                return {"data": json.dumps(fetch_row('jobs', 'id', uuid))}
+                return {"data": json.dumps(fetch_row(self.dbpath, 'jobs', 'id', uuid))}
             else:
                 raise cherrypy.HTTPError(404, "Invalid job id")
 
@@ -407,7 +410,7 @@ class Job(object):
         if not all([k in parms.keys() for k in required]):
             raise cherrypy.HTTPError(400, "missing fields in request")
 
-        available_profiles = [p['name'] for p in fetch_all('profiles', list(['name']))]
+        available_profiles = [p['name'] for p in fetch_all(self.dbpath, 'profiles', list(['name']))]
         if profile not in available_profiles:
             # raise APIError(status=404, message="FIO workload profile '{}' not found in ./data/fio/jobs".format(profile))
             raise cherrypy.HTTPError(404, "profile not found")
@@ -425,7 +428,7 @@ class Job(object):
         job.platform = parms.get('platform')
         job.title = parms.get('title', '{} on '.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
 
-        with sqlite3.connect(DBNAME) as c:
+        with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
 
             csr.execute(""" INSERT into jobs (id, title, profile, workers, status, type, provider, platform)
@@ -467,7 +470,7 @@ class Job(object):
         job.stale = True
 
         # delete the job from the database
-        delete_job(uuid)
+        delete_job(self.dbpath, uuid)
 
         return {"data": {"msg": "job marked stale, and will be ignored"}}
 
@@ -477,19 +480,20 @@ class Job(object):
 class Profile(object):
     exposed = True
 
-    def __init__(self, service_state):
+    def __init__(self, service_state, dbpath):
         self.service_state = service_state
+        self.dbpath = dbpath
 
     @cherrypy.tools.json_out()
     def GET(self, profile=None):
         if profile is None:
-            return {"data": fetch_all('profiles', list(['name']))}
+            return {"data": fetch_all(self.dbpath, 'profiles', list(['name']))}
         else:
-            return {"data": fetch_row('profiles', 'name', profile)['spec']}
+            return {"data": fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']}
 
     @cherrypy.tools.json_out()
     def PUT(self):
-        summary = load_db_profiles(out='cherrypy')
+        summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
 
         if summary['new'] or summary['changed']:
             # TODO: need to sync the fiomgr pod with these changes
@@ -502,13 +506,16 @@ class Profile(object):
 class DB(object):
     exposed = True
 
+    def __init__(self, dbpath):
+        self.dbpath = dbpath
+
     def GET(self, job_id=None):
 
         tf = tempfile.NamedTemporaryFile(delete=False)
         cherrypy.log("export file created - {}".format(tf.name))
 
         with open(tf.name, 'w') as f:
-            for line in dump_table('jobs', job_id=job_id):
+            for line in dump_table(self.dbpath, 'jobs', job_id=job_id):
                 f.write('{}\n'.format(line))
 
         return static.serve_file(
@@ -578,13 +585,15 @@ class ServiceStatus(object):
 
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False):
+    def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False, dbpath=DEFAULT_DBPATH):
         self.handler = handler
         self.debug_mode = debug_mode
         self.service_state = ServiceStatus(handler=handler, debug_mode=debug_mode)
         self.port = port
         self.root = Root()         # web UI
-        self.root.api = APIroot(self.service_state)  # API
+        self.dbpath = dbpath
+        self.root.api = APIroot(self.service_state, self.dbpath)  # API
+
 
         if workdir:
             self.workdir = workdir
@@ -610,16 +619,16 @@ class FIOWebService(object):
         }
         cherrypy.tools.CORS = cherrypy.Tool('before_handler', cors_handler)
 
-        setup_db()
+        setup_db(self.dbpath)
 
-        load_db_profiles()
+        load_db_profiles(dbpath=self.dbpath)
 
     def cleanup(self):
         # cancel the worker background thread based on current interval
         self.worker.cancel()
 
         # remove any jobs in a queued state during webservice shutdown
-        prune_db()
+        prune_db(self.dbpath)
 
 
     @property
@@ -634,7 +643,7 @@ class FIOWebService(object):
             return False
 
         # no profiles in the db
-        if not fetch_all('profiles', ['name']):
+        if not fetch_all(self.dbpath, 'profiles', ['name']):
             return False
 
         # use the handler to determine the number of workers
@@ -671,7 +680,7 @@ class FIOWebService(object):
         plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc
 
-        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.handler, self.service_state, self.debug_mode])
+        self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.dbpath, self.handler, self.service_state, self.debug_mode])
         cherrypy.engine.subscribe('stop', self.cleanup)
 
         # prevent CP loggers from propagating entries to the root logger

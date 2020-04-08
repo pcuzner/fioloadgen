@@ -49,6 +49,12 @@ def cmd_parser():
         default=False,
         help="run standalone without a connection to help debug",
     )
+    parser_start.add_argument(
+        '--dbpath',
+        type=str,
+        default=os.path.join(DEFAULT_DIR, 'fioservice.db'),
+        help="full path to the database",
+    )
 
     parser_stop = subparsers.add_parser(
         'stop',
@@ -115,7 +121,7 @@ def command_start():
         print("-> port in use")
         sys.exit(1)
 
-    server = FIOWebService(handler=handler, debug_mode=args.debug_only)
+    server = FIOWebService(handler=handler, debug_mode=args.debug_only, dbpath=args.dbpath)
     print("Checking connection to {}".format(handler._target))
     if server.ready or args.debug_only:
         print("Starting the engine")

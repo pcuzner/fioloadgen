@@ -148,7 +148,7 @@ def command_profile():
             print("The server doesn't have a profile called '{}'. Available profiles are: {}".format(args.show, ', '.join(profiles)))
             sys.exit(1)
 
-        r = requests.get("{}/profile/{}".format(url, args.show)) 
+        r = requests.get("{}/profile/{}".format(url, args.show))
         data = r.json()['data']
         print(data)
     elif args.refresh:
