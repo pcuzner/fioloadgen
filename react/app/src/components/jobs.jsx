@@ -243,34 +243,21 @@ export class Jobs extends React.Component {
         if (this.state.jobs.length > 0) {
             console.log("jobs > 0, processing to create jobdatarow components");
             rows = this.state.jobs.map((job,i) => {
-                // let t = new Date(job.started * 1000);
-                // // let t_str = t.toLocaleString()
-                // let t_str = t.getFullYear() + '/' +
-                //             (t.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                //             t.getDate().toString().padStart(2, '0') + ' ' +
-                //             t.getHours().toString().padStart(2, '0') + ':' +
-                //             t.getMinutes().toString().padStart(2, '0') + ':' +
-                //             t.getSeconds().toString().padStart(2, '0');
-                // let d_str = new Intl.DateTimeFormat(options).format(t)
-                // console.log(t + " = " + t_str + ", " + d_str);
+
+                let details = Object.keys(this.state.jobInfo);
+                let selected = (details.includes(job.id)) ? true : false;
+
                 return (
                     <JobDataRow 
                         job={job}
                         key={i}
+                        selected={selected}
                         viewCallback={this.manageJobOutput}
                         deleteJob={this.deleteJob}
                         exportJob={this.exportJob}
                         rerunJob={this.rerunJob}
                         showJob={this.showJob}/>
                 );
-                    // <tr key={i} onClick={() => {this.fetchJobData(job.id);}}>
-                    //     <td className="job_id">{job.id}</td>
-                    //     <td className="job_title">{job.title}</td>
-                    //     <td className="job_provider" >{job.provider}</td>
-                    //     <td className="job_platform">{job.platform}</td>
-                    //     <td className="job_start">{t_str}</td>
-                    //     <td className="job_status">{job.status}</td>
-                    // </tr>);
             });
         } else {
             rows = (<tr />);
@@ -657,7 +644,7 @@ class JobDataRow extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            selected: false,
+            selected: props.selected,
         };
     }
 
@@ -748,7 +735,7 @@ class JobDataRow extends React.Component {
         return (
             <tr className={rowClass}> 
                 <td className="job_selector">
-                    <input type="checkbox" disabled={!checkboxEnabled} onChange={() => {this.toggleSelected(event);}} />
+                    <input type="checkbox" disabled={!checkboxEnabled} checked={this.state.selected} onChange={() => {this.toggleSelected(event);}} />
                 </td>
                 <td className="job_id">{this.props.job.id}</td>
                 <td className="job_title">{this.props.job.title}</td>
