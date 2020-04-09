@@ -118,7 +118,57 @@ def cmd_parser():
         help="show raw json from a completed job",
     )
 
+    parser_db = subparsers.add_parser(
+        'db',
+        help="manage the jobs table in the fioservice database")
+    parser_db.set_defaults(func=command_db)
+    parser_db.add_argument(
+        '--dump',
+        default='',
+        type=str,
+        help="dump a table from the database",
+    )
+    parser_db.add_argument(
+        '--query',
+        default='',
+        type=str,
+        help="query string (key=value) to dump a specific row from a table",
+    )
+    parser_db.add_argument(
+        '--out',
+        type=str,
+        help="filename for the database dump output",
+    )
     return parser
+
+
+def command_db():
+    qstring = ''
+    outfile = ''
+    if args.dump not in ['jobs', 'profiles']:
+        print("must specify a valid table name to dump - jobs or profiles")
+        sys.exit(1)
+
+    if args.query:
+        if args.query.count('=') > 1:
+            print("query must be a single key=value")
+            sys.exit(1)
+
+        qstring = '?{}'.format(args.query)
+
+    if args.out:
+        outfile = args.out
+    else:
+        sfx = '-row' if args.query else ''
+        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}{}.sql".format(args.dump, sfx))
+
+    r = requests.get("{}/db/{}{}".format(url, args.dump, qstring))
+    if r.status_code == 200:
+        with open(outfile, 'wb') as f:
+            f.write(r.content)
+        print("dump written to {}".format(outfile))
+    else:
+        print("database dump API request failed ({}), please check fioservice log")
 
 
 def command_status():
