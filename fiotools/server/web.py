@@ -196,9 +196,8 @@ def remove_tracker(job_uuid):
 
 
 def dump_table(dbpath=DEFAULT_DBPATH,
-               table_name='jobs', 
-               job_id=None,
-               include_create=True):
+               table_name='jobs',
+               query={}):
     """ simple iterator function to dump specific row(s) from the job table """
 
     with sqlite3.connect(dbpath) as conn:
@@ -217,8 +216,8 @@ def dump_table(dbpath=DEFAULT_DBPATH,
 
         # create the create table syntax (ignore the type value..just using it preserve output)
         for _, sql in schema_res.fetchall():
-            # yield the create table syntax
-            if include_create:
+            # yield the create table syntax, if the request doesn't provide a query
+            if not query:
                 yield('{};'.format(sql))
 
             # fetch the column names of the table
@@ -229,8 +228,11 @@ def dump_table(dbpath=DEFAULT_DBPATH,
             q = "SELECT 'INSERT INTO \"{}\" VALUES(".format(table_name)
             q += ",".join(["'||quote(" + col + ")||'" for col in column_names])
             q += ")' FROM '{}'".format(table_name)
-            if job_id:
-                q += " WHERE id='{}'".format(job_id)
+
+            if query:
+                # FIXME query assumes the value is a string...is this a problem?
+                key_values = ["{}='{}'".format(k, query[k]) for k in query.keys()]
+                q += " WHERE {}".format(','.join(key_values))
 
             # Issue the query, then potentially filter to the desired row
             query_res = csr.execute(q % {'tbl_name': table_name})
@@ -509,13 +511,16 @@ class DB(object):
     def __init__(self, dbpath):
         self.dbpath = dbpath
 
-    def GET(self, job_id=None):
+    def GET(self, table='jobs', **params):
+        # look at querystring to get the key/value
+        qs = parse_query_string(cherrypy.request.query_string)
+        cherrypy.log(json.dumps(qs))
 
         tf = tempfile.NamedTemporaryFile(delete=False)
         cherrypy.log("export file created - {}".format(tf.name))
 
         with open(tf.name, 'w') as f:
-            for line in dump_table(self.dbpath, 'jobs', job_id=job_id):
+            for line in dump_table(self.dbpath, table_name=table, query=qs):
                 f.write('{}\n'.format(line))
 
         return static.serve_file(
@@ -594,7 +599,6 @@ class FIOWebService(object):
         self.dbpath = dbpath
         self.root.api = APIroot(self.service_state, self.dbpath)  # API
 
-
         if workdir:
             self.workdir = workdir
         else:
@@ -629,7 +633,6 @@ class FIOWebService(object):
 
         # remove any jobs in a queued state during webservice shutdown
         prune_db(self.dbpath)
-
 
     @property
     def ready(self):

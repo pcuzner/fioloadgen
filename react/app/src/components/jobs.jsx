@@ -195,7 +195,7 @@ export class Jobs extends React.Component {
     }
     exportJob = (jobID) => {
         console.log("export job " + jobID);
-        fetch(api_url + "/api/db/" + jobID)
+        fetch(api_url + "/api/db/jobs?id=" + jobID)
             .then((response) => {
                 /* Happy path */
                 if (!response.ok) {
