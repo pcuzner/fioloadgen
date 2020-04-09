@@ -19,6 +19,24 @@ Here's a demo against an openshift cluster. It shows the creation of the mgr pod
 ![demo gif](media/fioloadgen-demo.gif)
 
 
+## Requirements
+- python3
+- python3-cherrypy
+- python3-requests
+
+### Notes
+Cherrypy can be a pain to install, depending on your distro. Here's a quick table to provide some pointers  
+
+| Distro | Repo | Dev Tested
+|----------|---------|----------|
+| RHEL8 | ceph (rhcs4) or ocs4 repos | Yes via downstream repo rhceph repo |
+| Fedora | in the base repo | Yes via rpm |
+| CentOS8 | N/A | Untested |
+| OpenSuSE | base repo | Untested |
+| Ubuntu | base repo | Untested |
+
+If all else fails - install pip3, and install with ```pip3 install cherrypy```
+
 ## Deploying the FIOLOADGEN environment
 Before you deploy, you **must** have a working connection to openshift and the required CLI tool (oc) must be in your path.  
 Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup and tear down test environments
