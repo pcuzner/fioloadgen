@@ -241,12 +241,12 @@ export class Jobs extends React.Component {
         var rows;
         console.log("jobs ", this.state.jobs.length);
         if (this.state.jobs.length > 0) {
+            let details = Object.keys(this.state.jobInfo);
             console.log("jobs > 0, processing to create jobdatarow components");
             rows = this.state.jobs.map((job,i) => {
 
-                let details = Object.keys(this.state.jobInfo);
                 let selected = (details.includes(job.id)) ? true : false;
-
+                console.log("render job id " + job.id + " selected value of "+ selected);
                 return (
                     <JobDataRow 
                         job={job}
@@ -657,7 +657,7 @@ class JobDataRow extends React.Component {
     }
 
     render () {
-        console.log("render job data row");
+        console.log("render job data row " + this.props.job.id + " selected state " + this.props.selected);
         let checkboxEnabled;
         let t_str;
         if (this.props.job.status != 'queued') {
@@ -674,7 +674,7 @@ class JobDataRow extends React.Component {
         }
         
         let rowClass;
-        if (this.state.selected) {
+        if (this.props.selected) {
             rowClass = "selectedRow";
         } else {
             rowClass = "notSelectedRow";
@@ -735,7 +735,7 @@ class JobDataRow extends React.Component {
         return (
             <tr className={rowClass}> 
                 <td className="job_selector">
-                    <input type="checkbox" disabled={!checkboxEnabled} checked={this.state.selected} onChange={() => {this.toggleSelected(event);}} />
+                    <input type="checkbox" disabled={!checkboxEnabled} checked={this.props.selected} onChange={() => {this.toggleSelected(event);}} />
                 </td>
                 <td className="job_id">{this.props.job.id}</td>
                 <td className="job_title">{this.props.job.title}</td>
