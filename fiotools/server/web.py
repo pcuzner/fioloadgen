@@ -78,7 +78,7 @@ def fetch_row(dbpath, table, key=None, content=None):
 def prune_db(dbpath):
     # remove records from the database that represent queued jobs
     cherrypy.log("Pruning jobs still in a queued state from the database")
-    prune_query = "DELETE FROM jobs WHERE status = 'queued';"
+    prune_query = "DELETE FROM jobs WHERE status = 'queued' OR status = 'started';"
     with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
         csr.execute(prune_query)
