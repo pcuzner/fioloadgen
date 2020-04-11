@@ -170,7 +170,7 @@ export class Profiles extends React.Component {
         }
         let jobDefinition;
         if (this.state.modalOpen) {
-            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.state.workers}/>); 
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.state.workers} closeHandler={this.closeModal}/>); 
         } else {
             jobDefinition = (<div />);
         }
@@ -302,8 +302,12 @@ class JobParameters extends React.Component {
                         <option value="vmware">VMware</option>
                         <option value="baremetal">Bare metal</option>
                     </select> 
-                    <button className="modal-close btn btn-primary"
-                        onClick={this.callbackHandler}>Submit</button>
+                    <div>
+                        <button className="float-right modal-close btn btn-primary"
+                            onClick={this.callbackHandler}>Submit</button>
+                        <button className="float-right modal-close btn btn-default"
+                            onClick={this.props.closeHandler}>Cancel</button>
+                    </div>
                 </div>
             </div>
         );
