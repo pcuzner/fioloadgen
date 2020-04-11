@@ -100,7 +100,7 @@ class ServiceState extends React.Component {
                 <div className="float-right status-spacing">Job Active:<span className="spacer-left">{taskText}</span></div>
                 <div className="float-right status-spacing">Queued:<span className="spacer-left">{this.props.state.tasks_queued}</span></div>
                 <div className="float-right status-spacing">Target Platform:<span className="spacer-left">{this.props.state.target}</span></div>
-                <div className="float-right status-spacing state-failed bold">{debugFlag}</div>
+                <div className="float-right status-spacing state-warning bold">{debugFlag}</div>
             </div>
         )
     }
