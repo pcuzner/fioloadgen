@@ -29,7 +29,8 @@ export class Jobs extends React.Component {
             currentJob: "",
             jobInfo: {},
             modalOpen: false,
-            // visibility: 'inactive',
+            visibility: props.visibility,
+            refreshData: false,
         };
         this.jobDetails = (<div />);
     };
@@ -54,8 +55,33 @@ export class Jobs extends React.Component {
     //     };
 
     // }
+    static getDerivedStateFromProps(props, state) {
+        if (props.visibility != state.visibility) {
+            let data = (props.visibility == 'active') ? true : false;
+            return {
+                visibility: props.visibility,
+                refreshData: data
+            };
+        } else {
+            return {
+                refreshData: false,
+            };
+        }
+    }
 
+    componentDidUpdate(props, state) {
+        console.log('DEBUG refresh state ' + this.state.refreshData);
+        if (this.state.refreshData) {
+            this.fetchJobSummaryData();
+            this.setState({
+                refreshData: false,
+            });
+        }
+
+    }
+    
     fetchJobSummaryData() {
+        console.log("DEBUG refresh the job data");
         fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers")
           .then(handleAPIErrors)
           .then((json) => {
@@ -64,7 +90,6 @@ export class Jobs extends React.Component {
               this.setState({
                   jobs: srtd
               });
-              console.log(jobs);
           })
           .catch((error) => {
               console.error("Error:", error);
@@ -185,6 +210,7 @@ export class Jobs extends React.Component {
                 .then(handleAPIErrors)
                 .then((json) => {
                     console.log("job rerun submitted");
+                    this.fetchJobSummaryData();
                 })
                 .catch((err) => {
                     console.error("Job rerun failed - " + err);
@@ -232,6 +258,7 @@ export class Jobs extends React.Component {
 
     render() {
         if (this.props.visibility != 'active') {
+            console.log("jobs component inactive, rendering null div");
             return (
                 <div />
             );
@@ -246,7 +273,6 @@ export class Jobs extends React.Component {
             rows = this.state.jobs.map((job,i) => {
 
                 let selected = (details.includes(job.id)) ? true : false;
-                console.log("render job id " + job.id + " selected value of "+ selected);
                 return (
                     <JobDataRow 
                         job={job}
