@@ -182,7 +182,12 @@ def command_db():
 
 
 def command_status():
-    r = requests.get("{}/status".format(url))
+    try:
+        r = requests.get("{}/status".format(url))
+    except (requests.exceptions.ConnectionError, ConnectionRefusedError):
+        print("Please start the fioservice, before using the cli")
+        sys.exit(1)
+
     if r.status_code == 200:
         js = r.json()['data']
 
