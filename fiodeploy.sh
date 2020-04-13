@@ -95,11 +95,11 @@ setup() {
        cat yaml/${WORKER_YAML} | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
     done 
 
-    console ${INFO} "Waiting for worker pods to enter a running state"
+    console ${INFO} "Waiting for pods to reach a running state"
     t=1
-    while [ $t -lt $ITERATION_LIMIT ]; do # status=$(oc -n fio get pod -o=jsonpath='{..status.phase}')
-        status=$(oc -n ${NAMESPACE} get pod -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
-        if [[ "$status" != *"True" ]]; then
+    while [ $t -lt $ITERATION_LIMIT ]; do # get pod -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}'
+        status=$(oc -n ${NAMESPACE} get pod -o=jsonpath='{..status.phase}')
+        if [[ "$status" != *"Running" ]]; then
             console ${WARNING} "\t - waiting for pods to reach 'Running' state (${t}/${ITERATION_LIMIT})"
             sleep $ITERATION_DELAY
             t=$((t+1))
