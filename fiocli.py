@@ -8,10 +8,20 @@ import json
 import time
 
 
+from fiotools import __version__
+
+
 def cmd_parser():
     parser = argparse.ArgumentParser(
         description='Interact with the fio web service',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "--version",
+        action='store_true',
+        default=False,
+        help="Show fioloadgen version"
     )
 
     subparsers = parser.add_subparsers(help="sub-commands")
@@ -337,7 +347,9 @@ if __name__ == '__main__':
 
     api_address = os.environ.get('FIO_API_ADDRESS', 'localhost:8080')
 
-    if 'func' in args:
+    if args.version:
+        print("fioloadgen version : {}".format(__version__))
+    elif 'func' in args:
         url = 'http://{}/api'.format(api_address)  # used by all functions
         if args.func.__name__ == 'command_status':
             args.func()

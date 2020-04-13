@@ -8,6 +8,7 @@ import sys
 import signal
 import argparse
 
+from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import OpenshiftHandler, SSHHandler  # NOQA: F401
 from fiotools.utils import rfile, get_pid_file, port_in_use
@@ -22,6 +23,13 @@ def cmd_parser():
     parser = argparse.ArgumentParser(
         description='Manage the fio web service daemon',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        '--version',
+        action='store_true',
+        default=False,
+        help="Show fioloadgen version"
     )
 
     subparsers = parser.add_subparsers(help="sub-command")
@@ -153,8 +161,9 @@ def command_stop():
 if __name__ == '__main__':
     parser = cmd_parser()
     args = parser.parse_args()
-
-    if 'func' in args:
+    if args.version:
+        print('fioloadgen version: {}'.format(__version__))
+    elif 'func' in args:
         args.func()
     else:
-        print("skipped invocation - display help?")
+        print("Unknown option(s) provided - try -h to show available options")

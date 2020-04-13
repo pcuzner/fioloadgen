@@ -18,10 +18,9 @@ import tempfile
 # import requests
 # import logging
 
-
+from .. import __version__
 from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
-# from ..db import FIOdatabase
 
 DEFAULT_DBPATH = os.path.join(os.path.expanduser('~'), 'fioservice.db')
 JOB_DIR = "./data/fio/jobs"
@@ -77,7 +76,7 @@ def fetch_row(dbpath, table, key=None, content=None):
 
 def prune_db(dbpath):
     # remove records from the database that represent queued jobs
-    cherrypy.log("Pruning jobs still in a queued state from the database")
+    cherrypy.log("Pruning jobs still in a queued/started state from the database")
     prune_query = "DELETE FROM jobs WHERE status = 'queued' OR status = 'started';"
     with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
