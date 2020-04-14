@@ -249,16 +249,21 @@ def show_summary(api_response):
 
 
 def job_wait(job_uuid):
-    while True:
-        r = requests.get("{}/job/{}".format(url, job_uuid))
-        if r.status_code != 200:
-            break
-        js = json.loads(r.json()['data'])
-        if js['status'] in ['complete', 'failed']:
-            break
-        sys.stdout.write(".")
-        sys.stdout.flush()
-        time.sleep(2)
+
+    try:
+        while True:
+            r = requests.get("{}/job/{}".format(url, job_uuid))
+            if r.status_code != 200:
+                break
+            js = json.loads(r.json()['data'])
+            if js['status'] in ['complete', 'failed']:
+                break
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(2)
+    except KeyboardInterrupt:
+        print("\nWait aborted")
+        sys.exit(1)
     print("\n")
     return r
 
