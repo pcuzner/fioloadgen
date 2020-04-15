@@ -15,10 +15,8 @@ import datetime
 import time
 import glob
 import tempfile
-# import requests
-# import logging
 
-from .. import __version__
+# from .. import __version__
 from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
 
@@ -181,14 +179,14 @@ def delete_job(dbpath, uuid):
 
 
 def add_tracker(job):
-    cherrypy.log("job added to the tracker")
+    cherrypy.log("job {} added to the tracker".format(job.uuid))
     job_tracker_lock.acquire()
     job_tracker[job.uuid] = job
     job_tracker_lock.release()
 
 
 def remove_tracker(job_uuid):
-    cherrypy.log("job removed from the tracker")
+    cherrypy.log("job {} removed from the tracker".format(job_uuid))
     job_tracker_lock.acquire()
     del job_tracker[job_uuid]
     job_tracker_lock.release()
@@ -265,6 +263,9 @@ def jsonify_error(status, message, traceback, version):
 
 def run_job(dbpath, handler, service_state, debug_mode):
 
+    # delay (secs) between a job end and the fetch function being executed 
+    fetch_delay = 2
+
     if not work_queue.empty():
 
         if debug_mode:
@@ -291,23 +292,39 @@ def run_job(dbpath, handler, service_state, debug_mode):
                                     id = ?;""", ('started', int(datetime.datetime.now().strftime("%s")),
                                                  job.uuid)
                             )
-            cherrypy.log("job {} start".format(job.uuid))
+            cherrypy.log("job {} starting".format(job.uuid))
             runrc = handler.startfio(job.profile, job.workers, job.outfile)
             if runrc == 0:
-
-                cherrypy.log("job {} completed successfully".format(job.uuid))
-                cherrypy.log("job {} fetching report data".format(job.uuid))
+                # on some systems, the time between job end and the fetch can return empty files
+                # the delay makes the fetch more 
+                cherrypy.log("job {} completed successfully, waiting {}s".format(job.uuid, fetch_delay))
+                time.sleep(fetch_delay)
+                cherrypy.log("job {} fetching report data from file {}".format(job.uuid, job.outfile))
                 fetchrc = handler.fetch_report(job.outfile)
 
                 if fetchrc == 0:
+                    cherrypy.log("job {} report size: {}bytes".format(job.uuid, os.stat('/tmp/{}'.format(job.outfile)).st_size))
                     cherrypy.log("job {} adding job results to db".format(job.uuid))
                     job_output = rfile('/tmp/{}'.format(job.outfile))
 
                     # ignore any errors in the json - present at the start
                     job_data = job_output[job_output.find('{', 0):]
 
-                    job_json = json.loads(job_data)
-                    summary = latency_summary(job_json)  # use default percentile
+                    try:
+                        job_json = json.loads(job_data)
+                    except json.decoder.JSONDecodeError:
+                        cherrypy.log("job {} output file contained invalid JSON, unable to load".format(job.uuid))
+                        job_status = 'incomplete'
+                        summary = {
+                            "clients": 0,
+                            "total_iops": 0,
+                            "read ms min/avg/max": "0.0/0.0/0.0",
+                            "write ms min/avg/max": "0.0/0.0/0.0",
+                        }
+                    else:
+                        job_status = 'complete'
+                        summary = latency_summary(job_json)  # use default percentile
+
                     with sqlite3.connect(dbpath) as c:
                         csr = c.cursor()
                         csr.execute(""" UPDATE jobs
@@ -316,7 +333,8 @@ def run_job(dbpath, handler, service_state, debug_mode):
                                             raw_json = ?,
                                             summary = ?
                                         WHERE
-                                            id = ?;""", ('complete', int(datetime.datetime.now().strftime("%s")),
+                                            id = ?;""", (job_status, 
+                                                         int(datetime.datetime.now().strftime("%s")),
                                                          job_output,
                                                          json.dumps(summary),
                                                          job.uuid)
@@ -333,7 +351,8 @@ def run_job(dbpath, handler, service_state, debug_mode):
                                     SET status = ?,
                                         ended = ?
                                     WHERE
-                                        id = ?;""", ('failed', int(datetime.datetime.now().strftime("%s")),
+                                        id = ?;""", ('failed',
+                                                     int(datetime.datetime.now().strftime("%s")),
                                                      job.uuid)
                                 )
             remove_tracker(job.uuid)
@@ -403,8 +422,7 @@ class Job(object):
 
         js_in = cherrypy.request.json
         qs_in = parse_query_string(cherrypy.request.query_string)
-        cherrypy.log("DEBUG: qs = {}".format(json.dumps(qs_in)))
-        cherrypy.log("DEBUG: payload = {}".format(json.dumps(js_in)))
+        cherrypy.log("DEBUG: job request: {}".format(json.dumps(js_in)))
 
         parms = {**js_in, **qs_in}
 
@@ -415,7 +433,6 @@ class Job(object):
         if profile not in available_profiles:
             # raise APIError(status=404, message="FIO workload profile '{}' not found in ./data/fio/jobs".format(profile))
             raise cherrypy.HTTPError(404, "profile not found")
-        cherrypy.log("profile is {}".format(profile))
 
         job = AsyncJob()
         job.type = 'startfio'
@@ -447,6 +464,7 @@ class Job(object):
         # post request using a valid profile, place on the queue and in the tracker dict
         work_queue.put(job)
         add_tracker(job)
+        cherrypy.log("job {} queued, for profile {}".format(job.uuid, profile))
 
         self.service_state.tasks_queued = work_queue.qsize()
 
