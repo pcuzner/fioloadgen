@@ -302,7 +302,7 @@ def command_job():
         r = requests.get("{}/job?fields={}".format(url, ','.join(field_list)))
         data = r.json()['data']
         sdata = sorted(data, key=lambda i: i['ended'] if i['ended'] else 9999999999, reverse=True)
-        print("{:<37}  {:<9}  {:^19}  {}".format('Job ID', 'Status', "End Time", "Job Title"))
+        print("{:<37}  {:<11}  {:^19}  {}".format('Job ID', 'Status', "End Time", "Job Title"))
         row_count = 0
         for p in sdata:
             if args.queued and p['status'] != 'queued':
@@ -313,7 +313,7 @@ def command_job():
             else:
                 end_time = 'N/A'
 
-            print("{:<37}  {:<9}  {:^19}  {}".format(p['id'], p['status'], end_time, p['title']))
+            print("{:<37}  {:<11}  {:^19}  {}".format(p['id'], p['status'], end_time, p['title']))
             row_count += 1
         print("Jobs: {:>3}".format(row_count))
 
