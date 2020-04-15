@@ -3,6 +3,7 @@
 from .base import BaseHandler
 
 # import shutil
+import os
 import subprocess
 
 
@@ -38,12 +39,15 @@ class OpenshiftHandler(BaseHandler):
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
         args = '-p {} -w {} -o {}'.format(profile, workers, output)
-        o = subprocess.run(['oc', '-n', self.ns, 'exec', '-it', self.mgr, '--', cmd, args])
+        o = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
         return o.returncode
 
     def fetch_report(self, output):
-        o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp'])
+        source_file = os.path.join('/reports/', output)
+        target_file = os.path.join('/tmp/', output)
+        o = subprocess.run(['oc', 'cp', '{}/{}:{}'.format(self.ns, self.mgr, source_file), target_file])
+        # o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp/.'])
         return o.returncode
 
     def runcommand(self, command):
