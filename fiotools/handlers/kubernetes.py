@@ -38,7 +38,7 @@ class OpenshiftHandler(BaseHandler):
 
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
-        args = '-p {} -w {} -o {}'.format(profile, workers, output)
+        args = '-p {} -o {} -w {}'.format(profile, output, workers)
         o = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
         return o.returncode
