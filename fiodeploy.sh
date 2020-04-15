@@ -118,9 +118,26 @@ setup() {
     console ${INFO} "Fetching the worker IP information (pod and host)"
     declare -A lookup
     for n in $(seq ${WORKERS}); do
-       ip_info=$(oc -n ${NAMESPACE} get pod fioworker${n} -o=jsonpath='{.status.podIP} {.status.hostIP}')
-       podIP=$(echo ${ip_info} | cut -f1 -d ' ')
-       hostIP=$(echo ${ip_info} | cut -f2 -d ' ')
+       podIP_set="NO"
+       t=0
+       while [ $t -ne $ITERATION_LIMIT ]; do
+           ip_info=$(oc -n ${NAMESPACE} get pod fioworker${n} -o=jsonpath='{.status.podIP} {.status.hostIP}')
+           podIP=$(echo ${ip_info} | cut -f1 -d ' ')
+           hostIP=$(echo ${ip_info} | cut -f2 -d ' ')
+           if [ "$podIP" != "$hostIP" ]; then
+               break
+           else
+               t=$((t+1))
+               console ${WARNING} "\t - waiting for fioworker${n} to have a valid IP (${t}/${ITERATION_LIMIT})"
+               sleep $ITERATION_DELAY
+           fi
+       done
+
+       if [ $t -eq $ITERATION_LIMIT ]; then
+           console ${ERROR} "Waited too long for fioworker${n} to get a valid IP"
+           exit
+       fi
+       
        if [ ${lookup[${hostIP}]+_}  ]; then
            # add to the entry 
            ((lookup[${hostIP}]++)) # increment the map
@@ -130,7 +147,7 @@ setup() {
        fi
        echo -e "$hostIP" >> ./data/host-ip.list
        echo -e "$podIP" >> ./data/worker-ip.list
-       console ${INFO} "${TICK}${NC} fioworker${n} on ${hostIP}"
+       console ${INFO} "${TICK}${NC} fioworker${n} on ${hostIP} with POD IP ${podIP}"
     done
 
     # transfer the client ip addresses and fio jobs to the mgr
