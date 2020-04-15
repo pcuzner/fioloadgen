@@ -47,50 +47,50 @@ main() {
         case "${option}" in
             h)
                 usage
-                exit
+                exit 0
                 ;;
             p)
                 profile=${OPTARG}
                 ;;
             o)
- 		outfile=${OPTARG}
+ 		        outfile=${OPTARG}
                 ;;
             w)
-		workers=${OPTARG}
-	        if [ $workers -eq $workers 2>/dev/null ]; then
-           	    # workers is numeric
+		        workers=${OPTARG}
+	            if [ $workers -eq $workers 2>/dev/null ]; then
+           	        # workers is numeric
                     if [[ $workers -lt 1 || $workers -gt $max_workers ]]; then
                         workers=${max_workers}
-		    fi
-		fi
+		            fi
+		        fi
                 ;;
             :)
-		echo "Expected argument for -${OPTARG} missing"
- 		exit 1
+		        echo "Expected argument for -${OPTARG} missing"
+ 		        exit 4
                 ;;
             *)
                 echo "Unsupported option."
                 usage
-                exit 1
+                exit 8
                 ;;
         esac
         args_given=0
     done
     if [[ ! -v args_given ]]; then
         usage
-        exit
+        exit 4
     fi
     
     # -v tests needs bash 4.2 or later
     if [[ ! -v workers ]]; then 
-	workers=${max_workers}
+	    workers=${max_workers}
     fi
     if [[ ! -v profile ]]; then 
-	# profile must be given
-	exit 1
+	    # profile must be given
+	    exit 4
     fi
     if [[ ! -v outfile ]]; then 
-	outfile="${profile}-$(date +%s).json"
+	    outfile="${profile}-$(date +%s).json"
     fi
 
     run_fio "${workers}" "${profile}" "${outfile}"
