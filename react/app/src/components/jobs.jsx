@@ -712,6 +712,18 @@ class JobDataRow extends React.Component {
         }
         let actions = [];
         switch (this.props.job.status) {
+            case "incomplete":
+                actions = [
+                    { 
+                        action: 'rerun',
+                        callback: this.props.rerunJob,
+                    },
+                    { 
+                        action: 'delete',
+                        callback: this.props.deleteJob,
+                    },
+                ];
+                break;
             case "complete":
                 actions = [
                     { 
