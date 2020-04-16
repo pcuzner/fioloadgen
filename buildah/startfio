@@ -6,7 +6,7 @@ SCRIPT_NAME=$(basename $0)
 
 acquire_lock() {
     if [ -f ./fiojob.lock ]; then
-        exit 1
+        exit 16
     else
         touch ./fiojob.lock
     fi
