@@ -4,7 +4,7 @@ import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -290,7 +290,7 @@ export class Jobs extends React.Component {
         }
         let jobDetails;
         if (this.state.modalOpen) {
-            jobDetails = (<div><pre><code>{this.jobDetails}</code></pre></div>);
+            jobDetails = (<JobJSON data={this.jobDetails} closeHandler={this.closeModal}/>);
         } else {
             jobDetails = (<div />);
         }
@@ -786,6 +786,52 @@ class JobDataRow extends React.Component {
                 </td>
             </tr>
         )
+    }
+}
+
+class JobJSON extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            copyBtnText: 'Copy',
+        };
+    }
+    copyContent= () => {
+        if (this.state.copyBtnText == 'Copy') {
+            this.setState({
+                copyBtnText: 'Copied',
+            });
+            copyToClipboard(JSON.stringify(JSON.parse(this.props.data)));
+            window.setTimeout(() => {
+                this.setState({
+                    copyBtnText: 'Copy',
+                });
+            }, 2000);
+            
+        }
+    }
+
+    closeModal = () => {
+        this.props.closeHandler();
+    }
+
+    render () {
+        return (
+            <div>
+                <div>
+                    <div className="job-content">
+                        <pre>
+                            <code>
+                                {this.props.data}
+                            </code>
+                        </pre>
+                    </div>
+                    
+                    <button className="float-right btn btn-primary offset-right" onClick={()=>{ this.closeModal()}}>Close</button>
+                    <button className="float-right btn btn-default offset-right" style={{width: "60px"}} onClick={() => {this.copyContent()}}>{this.state.copyBtnText}</button>
+                </div>
+            </div>
+        );
     }
 }
 

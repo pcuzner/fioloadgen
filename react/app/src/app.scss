@@ -165,6 +165,12 @@ height:100%;}
 .job-actions {
   min-width:30px;
 }
+.job-content pre {
+    height:400px;
+    border: 1px solid grey;
+    margin-bottom: 20px;
+    overflow-y:scroll;
+}
 
 .offset-right {
   margin-right:15px;
