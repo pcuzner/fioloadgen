@@ -295,25 +295,25 @@ def run_job(dbpath, handler, service_state, debug_mode):
         service_state.tasks_queued = work_queue.qsize
 
         if job.type == 'startfio':
-
+            cherrypy.log("job {} started processing".format(job.uuid))
             tf = tempfile.NamedTemporaryFile(delete=False)
-            cherrypy.log("job file created - {}".format(tf.name))
+            cherrypy.log("job {} fio job spec file created - {}".format(job.uuid, tf.name))
             job.status = 'prepare'
             update_job_status(dbpath, job.uuid, job.status)
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
-            cherrypy.log("job file transferring to fiomgr pod")
+            cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
             rc = handler.copy_file(tf.name, '/fio/jobs/fioloadgen.job')
             if rc != 0:
 
-                cherrypy.log("job file transfer failed : {}".format(rc))
+                cherrypy.log("job {} file transfer failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
                 update_job_status(dbpath, job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
                 return
 
-            cherrypy.log("job file transfer succcessful")
+            cherrypy.log("job {} file transfer succcessful".format(job.uuid))
             # job spec transferred, so OK to continue
             job.status = 'started'
             service_state.active_job_type = 'FIO'
@@ -367,7 +367,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
                                                          job.uuid)
                                     )
                     job.status = 'complete'
-                    cherrypy.log("job {} finished".format(job.uuid))
+                    cherrypy.log("job {} processing successful".format(job.uuid))
             else:
                 cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
                 job.status = 'failed'
