@@ -38,29 +38,35 @@ export class Profiles extends React.Component {
         });
     }
 
-    componentDidMount() {
-        fetch(api_url + "/api/profile")
-          .then((response) => {
-              console.debug("Profile fetch : ", response.status);
-              if (response.status == 200) {
-                  return response.json();
-              } else {}
-                  throw Error(`Fetch failed with HTTP status: ${response.status}`);
-              })
-          .then((profiles) => {
-              /* Happy path */
-              let profileNames = [];
-              profiles.data.forEach(profile => {
+    fetchAllProfiles(refresh = false) {
+        let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
+        fetch(api_url + endpoint)
+            .then((response) => {
+                console.debug("Profile fetch : ", response.status);
+                if (response.status == 200) {
+                    return response.json();
+                } else {}
+                    throw Error(`Profile fetch failed with HTTP status: ${response.status}`);
+                })
+            .then((profiles) => {
+                /* Happy path */
+                let profileNames = [];
+                profiles.data.forEach(profile => {
                 profileNames.push(profile.name);
-              });
-              this.setState({
+                });
+                this.setState({
                 profiles: profileNames
-              });
-              console.log(profiles);
-          })
-          .catch((error) => {
-              console.error("Error:", error);
-          });
+                });
+                console.log(profiles);
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+    }
+    
+    componentDidMount() {
+
+        this.fetchAllProfiles();
 
         fetch(api_url + "/api/status")
           .then((response) => {
@@ -144,6 +150,15 @@ export class Profiles extends React.Component {
         this.runJob(parms)
     }
 
+    refreshProfiles() {
+        console.debug("in refresh profiles");
+        this.fetchAllProfiles(true);
+        // clear content in the profile textarea
+        this.setState({
+            profileContent: ''
+        });
+    }
+
     render() {
         console.debug("render profiles called with visibility: ", this.props.visibility);
         if (this.props.visibility != 'active') {
@@ -165,7 +180,7 @@ export class Profiles extends React.Component {
                     <select id="profiles" size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
-                    <button className="btn btn-default profile-reload" onClick={() => {alert('TODO: refresh profile list');}}>Reload</button><br />
+                    <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Reload</button><br />
                 </div>
             );
         }
