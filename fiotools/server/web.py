@@ -133,9 +133,18 @@ def setup_db(dbpath):
         print("Using existing database @ {}".format(dbpath))
 
 
+def valid_fio_profile(profile_spec):
+    # TODO validate the profile
+    # is valid fio syntax
+    # one workload, called workload
+    # uses /mnt
+    return True
+
+
 def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
-    def message(msg_string, out='console'):
-        if out == 'console':
+
+    def message(msg_string, output=out):
+        if output == 'console':
             print(msg_string)
         else:
             cherrypy.log(msg_string)
@@ -145,6 +154,7 @@ def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
         "new": [],
         "changed": [],
         "skipped": [],
+        "errors": [],
     }
 
     message("Refreshing job profiles, syncing the db versions with the local files in {}".format(jobdir), out)
@@ -155,6 +165,12 @@ def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
             name = os.path.basename(profile)
             changes['processed'].append(profile)
             profile_spec = rfile(profile)
+
+            if not valid_fio_profile(profile_spec):
+                changes['errors'].append(profile)
+                message("profile '{}' is invalid, and can not be loaded".format(profile))
+                continue
+
             cursor.execute("SELECT * from profiles WHERE name=?;",
                            (name,))
             data = cursor.fetchone()
@@ -528,22 +544,32 @@ class Profile(object):
         self.dbpath = dbpath
 
     @cherrypy.tools.json_out()
-    def GET(self, profile=None):
+    def GET(self, profile=None, **params):
+        qs = parse_query_string(cherrypy.request.query_string)
+        # cherrypy.log(json.dumps(qs))
+
         if profile is None:
+            if qs.keys():
+                refresh = qs.get('refresh', None)
+                if refresh == 'true':
+                    # need to refresh the profiles from the filesystem, before returning the profiles
+                    load_db_profiles(dbpath=self.dbpath, out='cherrypy')
+                else:
+                    raise cherrypy.HTTPError(400, "profile endpoint only supports a refresh=true query string")
+
             return {"data": fetch_all(self.dbpath, 'profiles', list(['name']))}
         else:
             return {"data": fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']}
+   
+    # def PUT(self):
+    #     summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
 
-    @cherrypy.tools.json_out()
-    def PUT(self):
-        summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
+    #     if summary['new'] or summary['changed']:
+    #         # TODO: need to sync the fiomgr pod with these changes
+    #         # by submitting a background job
+    #         pass
 
-        if summary['new'] or summary['changed']:
-            # TODO: need to sync the fiomgr pod with these changes
-            # by submitting a background job
-            pass
-
-        return {"data": {"summary": summary}}
+    #     return {"data": {"summary": summary}}
 
 
 class DB(object):
