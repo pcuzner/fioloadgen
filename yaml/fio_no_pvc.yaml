@@ -2,6 +2,9 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: fioclient
+    # this label is important, it's how we determine the worker count
+  labels:
+    app: fioloadgen
 spec:
   containers:
    - name: fioclient
