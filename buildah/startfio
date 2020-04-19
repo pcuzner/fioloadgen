@@ -1,0 +1,99 @@
+#!/bin/bash
+
+WORKER_LIST='./worker-ip.list'
+SCRIPT_NAME=$(basename $0)
+
+
+acquire_lock() {
+    if [ -f ./fiojob.lock ]; then
+        exit 16
+    else
+        touch ./fiojob.lock
+    fi
+}
+
+release_lock() {
+    rm -f ./fiojob.lock
+}
+
+
+run_fio() {
+    acquire_lock
+    
+    # build a client list based on the requested worker count
+    cat ${WORKER_LIST} | head -n $1 > ./clients
+
+    # run the fio job across the clients
+    fio --client=./clients fio/jobs/"$2" --output-format=json --output=/reports/"$3"
+
+    release_lock
+}
+    
+usage() {
+    echo -e "Usage: ${SCRIPT_NAME} [-puwh]"
+    echo -e "\t-h ... display usage information"
+    echo -e "\t-p ... fio profile name (from /fio/jobs directory)"
+    echo -e "\t-o ... output file name to use (within /reports)"
+    echo -e "\t-w ... number of workers to run the workload against"
+
+    echo "e.g."
+    echo -e "> ./${SCRIPT_NAME} -p randrw7030.job -w 5 -o randrw7030-output.json\n"
+}
+
+main() {
+    max_workers=$(grep -c "" ${WORKER_LIST})
+
+    while getopts "p:o:w:h" option; do
+        case "${option}" in
+            h)
+                usage
+                exit 0
+                ;;
+            p)
+                profile=${OPTARG}
+                ;;
+            o)
+ 		        outfile=${OPTARG}
+                ;;
+            w)
+		        workers=${OPTARG}
+	            if [ $workers -eq $workers 2>/dev/null ]; then
+           	        # workers is numeric
+                    if [[ $workers -lt 1 || $workers -gt $max_workers ]]; then
+                        workers=${max_workers}
+		            fi
+		        fi
+                ;;
+            :)
+		        echo "Expected argument for -${OPTARG} missing"
+ 		        exit 4
+                ;;
+            *)
+                echo "Unsupported option."
+                usage
+                exit 8
+                ;;
+        esac
+        args_given=0
+    done
+    if [[ ! -v args_given ]]; then
+        usage
+        exit 4
+    fi
+    
+    # -v tests needs bash 4.2 or later
+    if [[ ! -v workers ]]; then 
+	    workers=${max_workers}
+    fi
+    if [[ ! -v profile ]]; then 
+	    # profile must be given
+	    exit 4
+    fi
+    if [[ ! -v outfile ]]; then 
+	    outfile="${profile}-$(date +%s).json"
+    fi
+
+    run_fio "${workers}" "${profile}" "${outfile}"
+}
+
+main $@ 

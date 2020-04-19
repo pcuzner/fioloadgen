@@ -1,18 +1,32 @@
 
 ## DEV Notes
-To build the front end
+
+### Testing the UI
+To test the front end, first ensure your webservice is running (this will sit on port 8080), then run the code under the dev server (normally on 8081)
+
 ```
-cd react/fioweb
-npm run build
+./fioservice.py start --debug-only
+cd react/app
+npm start
 ```
-this places the updated content into the build directory
+Now point you're browser at 8081, to confirm functionality
+
+### Building the components for cherrypy
+Once your changes have been tested, you need to rebuild the artifacts that cherrypy serves.  
+```
+cd react/app
+npm run-script build
+```
+this places the updated and compiled content into the react/app/dist directory
 
 Promote the build to the live location where cherrypy picks it up from
 ```
-cd <root of project>
-cp -r react/fioweb/build/* www
-```
+cd ../..
+rm -fr www/*
+cp -r react/app/dist/* www
+```  
 
-To edit any of the base html (title etc)
-- react/fioweb/public dir to make the changes then build
+Stop the fioservice, and restart.
+
+
 

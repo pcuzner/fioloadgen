@@ -9,11 +9,12 @@ buildah run $container apk add fio
 buildah run $container apk add bash
 buildah run $container apk add sysstat
 buildah run $container apk add iperf
+buildah run $container apk add rsync
 #buildah run $container apk add prometheus-node-exporter --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 buildah run $container apk add s3cmd --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 
 
-buildah run $container mkdir /fio/jobs
+buildah run $container mkdir -p /fio/jobs
 buildah run $container mkdir /reports
 buildah copy $container ./startup.sh /startup.sh
 buildah copy $container ./startfio /usr/bin/startfio

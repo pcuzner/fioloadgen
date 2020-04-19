@@ -8,6 +8,7 @@ import sys
 import signal
 import argparse
 
+from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import OpenshiftHandler, SSHHandler  # NOQA: F401
 from fiotools.utils import rfile, get_pid_file, port_in_use
@@ -22,6 +23,13 @@ def cmd_parser():
     parser = argparse.ArgumentParser(
         description='Manage the fio web service daemon',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        '--version',
+        action='store_true',
+        default=False,
+        help="Show fioloadgen version"
     )
 
     subparsers = parser.add_subparsers(help="sub-command")
@@ -46,7 +54,14 @@ def cmd_parser():
     parser_start.add_argument(
         '--debug-only',
         action='store_true',
+        default=False,
         help="run standalone without a connection to help debug",
+    )
+    parser_start.add_argument(
+        '--dbpath',
+        type=str,
+        default=os.path.join(DEFAULT_DIR, 'fioservice.db'),
+        help="full path to the database",
     )
 
     parser_stop = subparsers.add_parser(
@@ -114,7 +129,7 @@ def command_start():
         print("-> port in use")
         sys.exit(1)
 
-    server = FIOWebService(handler=handler)
+    server = FIOWebService(handler=handler, debug_mode=args.debug_only, dbpath=args.dbpath)
     print("Checking connection to {}".format(handler._target))
     if server.ready or args.debug_only:
         print("Starting the engine")
@@ -146,8 +161,9 @@ def command_stop():
 if __name__ == '__main__':
     parser = cmd_parser()
     args = parser.parse_args()
-
-    if 'func' in args:
+    if args.version:
+        print('fioloadgen version: {}'.format(__version__))
+    elif 'func' in args:
         args.func()
     else:
-        print("skipped invocation - display help?")
+        print("Unknown option(s) provided - try -h to show available options")

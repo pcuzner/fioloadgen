@@ -12,6 +12,8 @@ export function sortByKey(property) {
     }
 
     return function (a, b) {
+        a[property] = a[property] || 9999999999;
+        b[property] = b[property] || 9999999999;
         if (sortOrder == -1) {
             return b[property].toString().localeCompare(a[property].toString());
         } else {
@@ -37,4 +39,21 @@ export function decPlaces(num, precision = 2) {
     // 2 dec places by default
     let m = Math.pow(10, precision);
     return Math.round( ( num + Number.EPSILON ) * m ) / m;
+}
+
+export function handleAPIErrors(response) {
+    if (!response.ok) {
+        throw Error(response.statusText);
+    }
+    return response.json();
+}
+
+export function copyToClipboard(text) {
+    console.log("copying to clipboard");
+    var textField = document.createElement('textarea');
+    textField.innerText = text;
+    document.body.appendChild(textField);
+    textField.select();
+    document.execCommand('copy');
+    textField.remove();
 }

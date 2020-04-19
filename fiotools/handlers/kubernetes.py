@@ -3,6 +3,7 @@
 from .base import BaseHandler
 
 # import shutil
+import os
 import subprocess
 
 
@@ -37,13 +38,20 @@ class OpenshiftHandler(BaseHandler):
 
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
-        args = '-p {} -w {} -o {}'.format(profile, workers, output)
-        o = subprocess.run(['oc', '-n', self.ns, 'exec', '-it', self.mgr, '--', cmd, args])
+        args = '-p {} -o {} -w {}'.format(profile, output, workers)
+        o = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
         return o.returncode
 
     def fetch_report(self, output):
-        o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp'])
+        source_file = os.path.join('/reports/', output)
+        target_file = os.path.join('/tmp/', output)
+        o = subprocess.run(['oc', 'cp', '{}/{}:{}'.format(self.ns, self.mgr, source_file), target_file])
+        # o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp/.'])
+        return o.returncode
+
+    def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
+        o = subprocess.run(['oc', 'cp', local_file, '{}/{}:{}'.format(self.ns, self.mgr, remote_file)])
         return o.returncode
 
     def runcommand(self, command):

@@ -12,8 +12,9 @@ export class App extends React.Component {
             profiles: 'active',
             jobs: 'inactive',
             current: 'profiles',
-            workers: 2
+            // workers: 2
         };
+        // this.workers = 2;
     };
 
     menuSelect(item) {
@@ -26,25 +27,28 @@ export class App extends React.Component {
             newState[item] = 'active';
             console.log(item);
             this.setState(newState);
+            console.log(JSON.stringify(newState));
         }
     }
 
-    updateWorker = (workerCount) => {
-        this.setState({
-            workers: workerCount
-        });
-    }
+    // updateWorker = (workerCount) => {
+    //     this.workers = workerCount;
+    //     this.setState({
+    //         workers: workerCount
+    //     });
+    // }
 
     render() {
+        console.log("render main");
         return (
             <div>
-                <MastHead workerCB={this.updateWorker}/>
+                <MastHead />
                 <ul id="menu">
-                    <li className={"menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
-                    <li className={"menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
+                    <li className={"menu menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
+                    <li className={"menu menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
                 </ul>
                 <div id="container">
-                    <Profiles visibility={this.state.profiles} clientLimit={this.state.workers}/>
+                    <Profiles visibility={this.state.profiles} /> 
                     <Jobs visibility={this.state.jobs}/>
                 </div>
                 
