@@ -7,11 +7,11 @@ Project that provides a structured test environment based on fio workload patter
 
 These components provide the following features;  
 - standard repeatable deployment of an fio testing framework 
-- persistent store for job results and profiles to future reference (regression testing anyone?)
+- persistent store for job results and profiles for future reference (regression testing anyone?)
 - fio job management through a RESTful API
 - cli tool to interact with the API to run jobs, query output, query profiles
-- web front end supporting job submission and results visualisation (using chartjs)
-- supported backends (openshift is all I'm testing against at the moment!)
+- web front end supporting fio profile view/refresh, job submission and visualisation of fio results (using chartjs)
+- supported backend - openshift only at the moment, but adding kubernetes should be a no brainer!
 
 ## What does the workflow look like?
 Here's a demo against an openshift cluster. It shows the creation of the mgr pod and workers, and illustrates the use of the CLI to run and query jobs.  
@@ -121,10 +121,10 @@ Runtime files and a the database are placed in the users home directory
 - [x] UI - view results from db
 - [X] UI - show profiles, submit jobs (submit remaining)
 - [X] UI - add use chart.js to visualize the results a run
-- [ ] UI - reload the fiomgr pod with local changes (reload button on the profiles page)
+- [X] UI - reload the profiles in the UI with changes in the filesystem
 - [ ] extend the 'fiotester' container to include other benchmarking tools  
 - [ ] enable the fioservice to run away from the cli (remote loadgen deployments)
 - [ ] provide an fioservice container that can be run on the target infrastructure, instead of locally
-- [ ] optimize the react code base
+- [ ] react optimization
 
   
