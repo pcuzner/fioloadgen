@@ -72,6 +72,20 @@ def fetch_row(dbpath, table, key=None, content=None):
         return response
 
 
+def update_job_status(dbpath, job_uuid, status):
+
+    with sqlite3.connect(dbpath) as c:
+        csr = c.cursor()
+        csr.execute(""" UPDATE jobs
+                        SET status = ?,
+                            started = ?
+                        WHERE
+                            id = ?;""", (status,
+                                         int(datetime.datetime.now().strftime("%s")),
+                                         job_uuid)
+                    )
+
+
 def prune_db(dbpath):
     # remove records from the database that represent queued jobs
     cherrypy.log("Pruning jobs still in a queued/started state from the database")
@@ -264,7 +278,7 @@ def jsonify_error(status, message, traceback, version):
 def run_job(dbpath, handler, service_state, debug_mode):
 
     # delay (secs) between a job end and the fetch function being executed 
-    fetch_delay = 2
+    # fetch_delay = 2
 
     if not work_queue.empty():
 
@@ -281,24 +295,37 @@ def run_job(dbpath, handler, service_state, debug_mode):
         service_state.tasks_queued = work_queue.qsize
 
         if job.type == 'startfio':
+
+            tf = tempfile.NamedTemporaryFile(delete=False)
+            cherrypy.log("job file created - {}".format(tf.name))
+            job.status = 'prepare'
+            update_job_status(dbpath, job.uuid, job.status)
+            with open(tf.name, 'w') as f:
+                f.write('{}\n'.format(job.spec))
+            cherrypy.log("job file transferring to fiomgr pod")
+            rc = handler.copy_file(tf.name, '/fio/jobs/fioloadgen.job')
+            if rc != 0:
+
+                cherrypy.log("job file transfer failed : {}".format(rc))
+                job.status = 'failed'
+                update_job_status(dbpath, job.uuid, job.status)
+                remove_tracker(job.uuid)
+                service_state.reset()
+                return
+
+            cherrypy.log("job file transfer succcessful")
+            # job spec transferred, so OK to continue
             job.status = 'started'
             service_state.active_job_type = 'FIO'
-            with sqlite3.connect(dbpath) as c:
-                csr = c.cursor()
-                csr.execute(""" UPDATE jobs
-                                SET status = ?,
-                                    started = ?
-                                WHERE
-                                    id = ?;""", ('started', int(datetime.datetime.now().strftime("%s")),
-                                                 job.uuid)
-                            )
+            update_job_status(dbpath, job.uuid, job.status)
+
             cherrypy.log("job {} starting".format(job.uuid))
-            runrc = handler.startfio(job.profile, job.workers, job.outfile)
+            runrc = handler.startfio('fioloadgen.job', job.workers, job.outfile)
             if runrc == 0:
                 # on some systems, the time between job end and the fetch can return empty files
                 # the delay makes the fetch more 
-                cherrypy.log("job {} completed successfully, waiting {}s".format(job.uuid, fetch_delay))
-                time.sleep(fetch_delay)
+                # cherrypy.log("job {} completed successfully, waiting {}s".format(job.uuid, fetch_delay))
+                # time.sleep(fetch_delay)
                 cherrypy.log("job {} fetching report data from file {}".format(job.uuid, job.outfile))
                 fetchrc = handler.fetch_report(job.outfile)
 
@@ -344,23 +371,14 @@ def run_job(dbpath, handler, service_state, debug_mode):
             else:
                 cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
                 job.status = 'failed'
-                # update state of job with failure
-                with sqlite3.connect(dbpath) as c:
-                    csr = c.cursor()
-                    csr.execute(""" UPDATE jobs
-                                    SET status = ?,
-                                        ended = ?
-                                    WHERE
-                                        id = ?;""", ('failed',
-                                                     int(datetime.datetime.now().strftime("%s")),
-                                                     job.uuid)
-                                )
+                update_job_status(dbpath, job.uuid, job.status)
+
             remove_tracker(job.uuid)
 
         else:
             cherrypy.log("WARNING: unknown job type requested - {} - ignoring".format(job.type))
-        service_state.task_active = False
-        service_state.active_job_type = 'N/A'
+
+        service_state.reset()
 
 
 class Status(object):
@@ -434,14 +452,20 @@ class Job(object):
             # raise APIError(status=404, message="FIO workload profile '{}' not found in ./data/fio/jobs".format(profile))
             raise cherrypy.HTTPError(404, "profile not found")
 
+        # if we have a jobspec passed to us, use that, otherwise read the spec from the profile in the db
+        profile_spec = parms.get('spec', None)
+        if not profile_spec:
+            profile_spec = fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']
+
         job = AsyncJob()
         job.type = 'startfio'
         job.stale = False
         job.status = 'queued'
         job.uuid = str(uuid.uuid4())
         job.profile = profile
+        job.spec = profile_spec
         job.outfile = '{}.{}'.format(job.uuid, profile)
-        job.workers = parms.get('workers', 9999)
+        job.workers = parms.get('workers', 9999) # FIX ME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
         job.title = parms.get('title', '{} on '.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
@@ -604,6 +628,10 @@ class ServiceStatus(object):
         self.start_time = time.time()
         self.debug_mode = debug_mode
 
+    def reset(self):
+        self.task_active = False
+        self.active_job_type = 'N/A'
+
 
 class FIOWebService(object):
 
@@ -702,9 +730,6 @@ class FIOWebService(object):
 
         self.worker = plugins.BackgroundTask(interval=1, function=run_job, args=[self.dbpath, self.handler, self.service_state, self.debug_mode])
         cherrypy.engine.subscribe('stop', self.cleanup)
-
-        # prevent CP loggers from propagating entries to the root logger
-        # (i.e stop duplicate log entries)
 
         try:
             cherrypy.engine.start()
