@@ -152,16 +152,21 @@ def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
     changes = {
         "processed": [],
         "new": [],
+        "deleted": [],
         "changed": [],
         "skipped": [],
         "errors": [],
     }
 
     message("Refreshing job profiles, syncing the db versions with the local files in {}".format(jobdir), out)
+
+    profile_paths = glob.glob('{}/*'.format(jobdir))
+    fs_profile_names = [os.path.basename(p) for p in profile_paths]
+
     with sqlite3.connect(dbpath) as c:
         c.row_factory = sqlite3.Row
         cursor = c.cursor()
-        for profile in glob.glob('{}/*'.format(jobdir)):
+        for profile in profile_paths:
             name = os.path.basename(profile)
             changes['processed'].append(profile)
             profile_spec = rfile(profile)
@@ -196,6 +201,18 @@ def load_db_profiles(jobdir=JOB_DIR, dbpath=DEFAULT_DBPATH, out='console'):
                                             WHERE
                                             name=?;""",
                                    (profile_spec, int(datetime.datetime.now().strftime("%s")), name))
+
+        stored_profiles = [p['name'] for p in fetch_all(dbpath, 'profiles', list(['name']))]
+        # message("profiles in db are: {}".format(','.join(stored_profiles)))
+        for db_profile_name in stored_profiles:
+            if db_profile_name not in fs_profile_names:
+                message('- deleting db profile {}'.format(db_profile_name))
+                changes['deleted'].append(db_profile_name)
+                # message("changes {}".format(json.dumps(changes)))
+                cursor.execute(""" DELETE FROM profiles
+                                        WHERE name=?;""",
+                               (db_profile_name,))
+
     return changes
 
 
@@ -549,15 +566,17 @@ class Profile(object):
         # cherrypy.log(json.dumps(qs))
 
         if profile is None:
+            response_data = {"data": fetch_all(self.dbpath, 'profiles', list(['name']))}
             if qs.keys():
                 refresh = qs.get('refresh', None)
                 if refresh == 'true':
                     # need to refresh the profiles from the filesystem, before returning the profiles
-                    load_db_profiles(dbpath=self.dbpath, out='cherrypy')
+                    summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
+                    response_data['summary'] = summary
                 else:
                     raise cherrypy.HTTPError(400, "profile endpoint only supports a refresh=true query string")
 
-            return {"data": fetch_all(self.dbpath, 'profiles', list(['name']))}
+            return response_data
         else:
             return {"data": fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']}
    
