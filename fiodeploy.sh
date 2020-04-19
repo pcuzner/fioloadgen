@@ -2,8 +2,13 @@
 
 DEFAULT_NAMESPACE='fio'
 DEFAULT_WORKERS=2
+DEFAULT_SC='ocs-storagecluster-ceph-rbd'
+DEFAULT_SEED_METHOD='parallel'
+
+SEED_METHOD=''
 WORKER_YAML='fio.yaml'
 WORKERS=0
+STORAGECLASS=''
 NAMESPACE=""
 WORKER_LIMIT=20
 SCRIPT_NAME=$(basename $0)
@@ -20,7 +25,6 @@ TICK='\xE2\x9C\x94' # tickmark
 console () {
     echo -e "${1}${2}${NC}"
 }
-    
 
 check_ready() {
     console ${INFO} "Checking access to kubernetes"
@@ -44,12 +48,13 @@ release_lock() {
 }
 
 get_environment() {
-    console ${INFO} "Deployment will use worker pods based on yaml/${WORKER_YAML}"
+
     read -p $(echo -e ${INFO})"What namespace should be created for the workload test [${DEFAULT_NAMESPACE}]? "$(echo -e ${NC}) NAMESPACE
     if [ -z "$NAMESPACE" ]; then 
         NAMESPACE=$DEFAULT_NAMESPACE
         console ${WARNING} "- defaulting to '${NAMESPACE}' namespace"
     fi
+
     read -p $(echo -e ${INFO})"How many fio workers [${DEFAULT_WORKERS}]? "$(echo -e ${NC}) WORKERS
     if [ -z "$WORKERS" ]; then 
         WORKERS=$DEFAULT_WORKERS
@@ -66,11 +71,59 @@ get_environment() {
             exit
         fi
     fi
+
+    read -p $(echo -e ${INFO})"What storageclass should the fio worker pods use [$DEFAULT_SC]. (Enter 'none' to not use PVCs)? "$(echo -e ${NC}) STORAGECLASS
+    if [ -z $STORAGECLASS ]; then
+        STORAGECLASS=$DEFAULT_SC
+        console ${WARNING} "- storageclass for PVCs defaulting to ${DEFAULT_SC}"
+    else
+        # convert storageclass to lowercase for the compare
+        if [ "${STORAGECLASS,,}" == 'none' ]; then
+            STORAGECLASS=''
+        fi
+    fi
+
+    if [ -z "$STORAGECLASS" ]; then
+        WORKER_YAML='fio_no_pvc.yaml'
+    else
+        sed "s/{STORAGECLASS}/${STORAGECLASS}/g" ./yaml/fio.yaml > ./yaml/fioworker.yaml
+        WORKER_YAML='fioworker.yaml'
+    fi
+
+    while [ -z "$SEED_METHOD" ]; do
+        read -p $(echo -e ${INFO})"Seed I/O test files in parallel or serial mode [$DEFAULT_SEED_METHOD] ? "$(echo -e ${NC}) SEED_METHOD
+        if [ -z "$SEED_METHOD" ]; then
+            SEED_METHOD=$DEFAULT_SEED_METHOD
+        fi
+
+        case "${SEED_METHOD,,}" in
+            s|serial)
+                SEED_METHOD='serial'
+                ;;
+            p|parallel)
+                SEED_METHOD='parallel'
+                ;;
+            *)
+                echo "Unknown response, please try again - parallel or serial (you can shorten this to p or s)"
+                SEED_METHOD=''
+        esac
+    done
+
+}
+
+check_fio_complete() {
+    oc -n $NAMESPACE exec fiomgr -- pidof fio
+    if [ $? -eq 0 ]; then
+        console ${ERROR} "fio tasks still running on the fiomgr pod. These will block/delay workload testing"
+        console ${ERROR} "Please login to fiomgr to investigate and check for cluster for errors that could prevent I/O"
+    fi
 }
 
 setup() {
     acquire_lock
+
     check_ready
+
     console ${INFO} "Setting up the environment"
 
     # create namespace
@@ -159,12 +212,28 @@ setup() {
     fi
 
     # seed the test files
-    console ${INFO} "Seeding the test files on the workers"
-    oc -n $NAMESPACE exec -it fiomgr -- fio --client=worker-ip.list fio/jobs/randrw7030.job --output=seed.output
-    if [ $? != 0 ]; then 
-        console ${ERROR} "failed to seed the test files on the workers"
-        exit
+    console ${INFO} "Seeding the test files on the workers (mode=$SEED_METHOD)"
+    if [ "$SEED_METHOD" == 'parallel' ]; then 
+        console ${INFO} "- seeding $WORKERS pods in parallel"
+        oc -n $NAMESPACE exec fiomgr -- fio --client=worker-ip.list fio/jobs/randr.job --output=seed.output
+        if [ $? != 0 ]; then 
+            console ${ERROR} "  failed to seed the test files on the workers"
+            console ${ERROR} "Deployment aborted"
+            exit
+        fi
+    else
+        for pod in $(cat ./data/worker-ip.list); do 
+            console ${INFO} "- seeding $pod"
+            oc -n $NAMESPACE exec fiomgr -- fio --client=$pod fio/jobs/randr.job --output=seed.output
+            if [ $? != 0 ]; then
+                console ${ERROR} "  failed to seed the test file on $pod"
+                console ${ERROR} "Deployment aborted"
+                exit
+            fi
+        done
     fi
+
+    check_fio_complete
 
     echo -e "\n"
     if [ ${#lookup[@]} -eq 1 ]; then
@@ -181,7 +250,7 @@ setup() {
 
 destroy() {
 
-    console ${WARNING} "Are you sure you want to delete the '${NAMESPACE}' namespace and all it's pods?"
+    console ${WARNING} "Are you sure you want to delete the '${NAMESPACE}' namespace and all it's pods/PVCs?"
     select confirm in 'Yes' 'No' ; do
         case $confirm in
             Yes)
@@ -205,7 +274,7 @@ destroy() {
 usage() {
     echo -e "Usage: ${SCRIPT_NAME} [-hwsdr]"
     echo -e "\t-h        ... display usage information"
-    echo -e "\t-w <file> ... yaml filename to use for the worker pod (must be defined before -s!)"
+    # echo -e "\t-w <file> ... yaml filename to use for the worker pod (must be defined before -s!)"
     echo -e "\t-s        ... setup an fio test environment"
     echo -e "\t-d <ns>   ... destroy the given namespace"
     echo -e "\t-r        ... reset - remove the lockfile"
@@ -217,19 +286,19 @@ usage() {
 main() {
 
     args=1
-    while getopts ":w:sd:hr" option; do
+    while getopts "hsd:r" option; do
         case "${option}" in
             h)
                 usage
                 exit
                 ;;
-            w)
-                WORKER_YAML=${OPTARG}
-                if [ ! -f "yaml/${WORKER_YAML}" ]; then
-                    console ${ERROR} "-w provided a file name that does not exist in the yaml directory"
-                    exit 1
-                fi
-                ;;
+            # w)
+            #     WORKER_YAML=${OPTARG}
+            #     if [ ! -f "yaml/${WORKER_YAML}" ]; then
+            #         console ${ERROR} "-w provided a file name that does not exist in the yaml directory"
+            #         exit 1
+            #     fi
+            #     ;;
             s)
                 get_environment
                 setup
