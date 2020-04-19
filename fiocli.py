@@ -218,14 +218,14 @@ def command_profile():
         print(data)
     elif args.refresh:
         # refresh the profiles from the local filesystem
-        r = requests.put("{}/profile".format(url))
+        r = requests.get("{}/profile?refresh=true".format(url))
         if r.status_code == 200:
             print("Profiles refreshed from the filesystem versions")
-            summary = r.json()['data']['summary']
+            summary = r.json()['summary']
             for k in summary:
                 print(" - {:<11s}: {:>2}".format(k, len(summary[k])))
         else:
-            print("Profile refresh failed")
+            print("Profile refresh failed: {}".format(r.status_code))
 
 
 def show_summary(api_response):
