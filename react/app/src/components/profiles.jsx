@@ -111,6 +111,7 @@ export class Profiles extends React.Component {
         console.debug("run the job - issue a put request to the API");
         // remove specific attributes from parms object
         delete parms.titleBorder;
+        parms['spec'] = this.state.profileContent;
         console.debug("in runJob handler " + JSON.stringify(parms));
         console.debug("profile is " + this.state.activeProfile);
 
