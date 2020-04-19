@@ -292,7 +292,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
             return
 
         service_state.task_active = True
-        service_state.tasks_queued = work_queue.qsize
+        service_state.tasks_queued = work_queue.qsize()
 
         if job.type == 'startfio':
             cherrypy.log("job {} started processing".format(job.uuid))
