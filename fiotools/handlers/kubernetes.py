@@ -50,6 +50,10 @@ class OpenshiftHandler(BaseHandler):
         # o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp/.'])
         return o.returncode
 
+    def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
+        o = subprocess.run(['oc', 'cp', local_file, '{}/{}:{}'.format(self.ns, self.mgr, remote_file)])
+        return o.returncode
+
     def runcommand(self, command):
         pass
 
