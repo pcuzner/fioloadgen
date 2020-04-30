@@ -5,7 +5,7 @@ import datetime
 
 from ..utils import rfile
 import logging
-logger = logging.getLogger()
+logger = logging.getLogger("cherrypy.error")
 
 
 def setup_db(dbpath):
@@ -56,7 +56,7 @@ def load_db_profiles(jobdir, dbpath, out='console'):
         if output == 'console':
             print(msg_string)
         else:
-            logger(msg_string)
+            logger.info(msg_string)
 
     changes = {
         "processed": [],
