@@ -425,7 +425,6 @@ class Status(object):
     def GET(self):
         # keep the data returned fast so it can be polled easily and quickly
         run_time = time.time() - self.service_state.start_time
-        cherrypy.log("settings = {}".format(configuration.settings.db_dir))
         return {
             "data": {
                 "target": self.service_state.target,
@@ -526,7 +525,7 @@ class Job(object):
         cherrypy.log("job {} queued, for profile {}".format(job.uuid, profile))
 
         self.service_state.tasks_queued = work_queue.qsize()
-
+        cherrypy.response.status = 202  # 202 = Accepted
         return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
                          "uuid": job.uuid}}
 
