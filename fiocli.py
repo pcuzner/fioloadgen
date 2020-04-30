@@ -280,7 +280,7 @@ def command_run():
                       },
                       headers=headers)
 
-    if r.status_code == 200:
+    if r.status_code == 202:
         response = r.json()['data']
         print("- Request queued with uuid = {}".format(response['uuid']))
         if args.wait:
