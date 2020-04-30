@@ -62,6 +62,10 @@ class Config(object):
 
         self._apply_overrides()
 
+    @property
+    def dbpath(self):
+        return os.path.join(self.db_dir, 'fioservice.db')
+
     def _apply_overrides(self):
 
         def converted_value(value):

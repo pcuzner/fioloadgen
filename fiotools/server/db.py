@@ -4,11 +4,13 @@ import sqlite3
 import datetime
 
 from ..utils import rfile
+from fiotools import configuration
+
 import logging
 logger = logging.getLogger("cherrypy.error")
 
 
-def setup_db(dbpath):
+def setup_db():
 
     profiles_table = """ CREATE TABLE IF NOT EXISTS profiles (
                             name text PRIMARY KEY,
@@ -32,6 +34,7 @@ def setup_db(dbpath):
                         platform text,
                         FOREIGN KEY(profile) REFERENCES profiles (name)
                         ); """
+    dbpath = configuration.settings.dbpath
 
     if not os.path.exists(dbpath):
         print("Creating results database @ {}".format(dbpath))
@@ -50,7 +53,8 @@ def valid_fio_profile(profile_spec):
     return True
 
 
-def load_db_profiles(jobdir, dbpath, out='console'):
+# def load_db_profiles(jobdir, dbpath, out='console'):
+def load_db_profiles(out='console'):
 
     def message(msg_string, output=out):
         if output == 'console':
@@ -67,9 +71,10 @@ def load_db_profiles(jobdir, dbpath, out='console'):
         "errors": [],
     }
 
-    message("Refreshing job profiles, syncing the db versions with the local files in {}".format(jobdir), out)
+    dbpath = os.path.join(configuration.settings.db_dir, 'fioservice.db')
+    message("Refreshing job profiles, syncing the db versions with the local files in {}".format(configuration.settings.job_dir), out)
 
-    profile_paths = glob.glob('{}/*'.format(jobdir))
+    profile_paths = glob.glob('{}/*'.format(configuration.settings.job_dir))
     fs_profile_names = [os.path.basename(p) for p in profile_paths]
 
     with sqlite3.connect(dbpath) as c:
@@ -111,7 +116,7 @@ def load_db_profiles(jobdir, dbpath, out='console'):
                                             name=?;""",
                                    (profile_spec, int(datetime.datetime.now().strftime("%s")), name))
 
-        stored_profiles = [p['name'] for p in fetch_all(dbpath, 'profiles', list(['name']))]
+        stored_profiles = [p['name'] for p in fetch_all('profiles', list(['name']))]
         # message("profiles in db are: {}".format(','.join(stored_profiles)))
         for db_profile_name in stored_profiles:
             if db_profile_name not in fs_profile_names:
@@ -125,7 +130,8 @@ def load_db_profiles(jobdir, dbpath, out='console'):
     return changes
 
 
-def fetch_all(dbpath, table, keys):
+def fetch_all(table, keys):
+    dbpath = configuration.settings.dbpath
     assert isinstance(keys, list)
     if not keys:
         return list()
@@ -144,11 +150,12 @@ def fetch_all(dbpath, table, keys):
     return data
 
 
-def fetch_row(dbpath, table, key=None, content=None):
+def fetch_row(table, key=None, content=None):
+    dbpath = configuration.settings.dbpath
     response = dict()
     if not key:
         return response
-    available = [row[key] for row in fetch_all(dbpath, table, list([key]))]
+    available = [row[key] for row in fetch_all(table, list([key]))]
     if not content or content not in available:
         return response
     else:
@@ -164,7 +171,8 @@ def fetch_row(dbpath, table, key=None, content=None):
         return response
 
 
-def delete_row(dbpath, table=None, query=dict()):
+def delete_row(table=None, query=dict()):
+    dbpath = configuration.settings.dbpath
     if not query or len(query) > 1:
         logger.info("delete_row called with empty query, or too many parameters - ignoring")
         return
@@ -178,8 +186,8 @@ def delete_row(dbpath, table=None, query=dict()):
         c.commit()
 
 
-def update_job_status(dbpath, job_uuid, status):
-
+def update_job_status(job_uuid, status):
+    dbpath = configuration.settings.dbpath
     with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
         csr.execute(""" UPDATE jobs
@@ -192,7 +200,8 @@ def update_job_status(dbpath, job_uuid, status):
                     )
 
 
-def prune_db(dbpath):
+def prune_db():
+    dbpath = configuration.settings.dbpath
     # remove records from the database that represent queued jobs
     # cherrypy.log("Pruning jobs still in a queued/started state from the database")
     prune_query = "DELETE FROM jobs WHERE status = 'queued' OR status = 'started';"
@@ -201,11 +210,10 @@ def prune_db(dbpath):
         csr.execute(prune_query)
 
 
-def dump_table(dbpath,
-               table_name='jobs',
+def dump_table(table_name='jobs',
                query={}):
     """ simple iterator function to dump specific row(s) from the job table """
-
+    dbpath = configuration.settings.dbpath
     with sqlite3.connect(dbpath) as conn:
         csr = conn.cursor()
         yield('BEGIN TRANSACTION;')

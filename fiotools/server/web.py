@@ -333,7 +333,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
             tf = tempfile.NamedTemporaryFile(delete=False)
             cherrypy.log("job {} fio job spec file created - {}".format(job.uuid, tf.name))
             job.status = 'prepare'
-            db.update_job_status(dbpath, job.uuid, job.status)
+            db.update_job_status(job.uuid, job.status)
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
             cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
@@ -342,7 +342,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
 
                 cherrypy.log("job {} file transfer failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
-                db.update_job_status(dbpath, job.uuid, job.status)
+                db.update_job_status(job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
                 return
@@ -351,7 +351,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
             # job spec transferred, so OK to continue
             job.status = 'started'
             service_state.active_job_type = 'FIO'
-            db.update_job_status(dbpath, job.uuid, job.status)
+            db.update_job_status(job.uuid, job.status)
 
             cherrypy.log("job {} starting".format(job.uuid))
             runrc = handler.startfio('fioloadgen.job', job.workers, job.outfile)
@@ -405,7 +405,7 @@ def run_job(dbpath, handler, service_state, debug_mode):
             else:
                 cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
                 job.status = 'failed'
-                db.update_job_status(dbpath, job.uuid, job.status)
+                db.update_job_status(job.uuid, job.status)
 
             remove_tracker(job.uuid)
 
@@ -457,11 +457,11 @@ class Job(object):
             fields = qs['fields'].split(',')
 
         if uuid is None:
-            return {"data": db.fetch_all(self.dbpath, 'jobs', fields)}
+            return {"data": db.fetch_all('jobs', fields)}
         else:
-            data = db.fetch_row(self.dbpath, 'jobs', 'id', uuid)
+            data = db.fetch_row('jobs', 'id', uuid)
             if data:
-                return {"data": json.dumps(db.fetch_row(self.dbpath, 'jobs', 'id', uuid))}
+                return {"data": json.dumps(db.fetch_row('jobs', 'id', uuid))}
             else:
                 raise cherrypy.HTTPError(404, "Invalid job id")
 
@@ -481,7 +481,7 @@ class Job(object):
         if not all([k in parms.keys() for k in required]):
             raise cherrypy.HTTPError(400, "missing fields in request")
 
-        available_profiles = [p['name'] for p in db.fetch_all(self.dbpath, 'profiles', list(['name']))]
+        available_profiles = [p['name'] for p in db.fetch_all('profiles', list(['name']))]
         if profile not in available_profiles:
             # raise APIError(status=404, message="FIO workload profile '{}' not found in ./data/fio/jobs".format(profile))
             raise cherrypy.HTTPError(404, "profile not found")
@@ -489,7 +489,7 @@ class Job(object):
         # if we have a jobspec passed to us, use that, otherwise read the spec from the profile in the db
         profile_spec = parms.get('spec', None)
         if not profile_spec:
-            profile_spec = db.fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']
+            profile_spec = db.fetch_row('profiles', 'name', profile)['spec']
 
         job = AsyncJob()
         job.type = 'startfio'
@@ -548,7 +548,7 @@ class Job(object):
 
         # delete the job from the database
         cherrypy.log("request to delete queued job {} issued".format(uuid))
-        db.delete_row(self.dbpath, 'jobs', {"id": uuid})
+        db.delete_row('jobs', {"id": uuid})
 
         return {"data": {"msg": "job marked stale, and will be ignored"}}
 
@@ -568,19 +568,20 @@ class Profile(object):
         # cherrypy.log(json.dumps(qs))
 
         if profile is None:
-            response_data = {"data": db.fetch_all(self.dbpath, 'profiles', list(['name']))}
+            response_data = {"data": db.fetch_all('profiles', list(['name']))}
             if qs.keys():
                 refresh = qs.get('refresh', None)
                 if refresh == 'true':
                     # need to refresh the profiles from the filesystem, before returning the profiles
-                    summary = db.load_db_profiles(JOB_DIR, dbpath=self.dbpath, out='cherrypy')
+                    summary = db.load_db_profiles(out='cherrypy')
+                    # summary = db.load_db_profiles(JOB_DIR, dbpath=self.dbpath, out='cherrypy')
                     response_data['summary'] = summary
                 else:
                     raise cherrypy.HTTPError(400, "profile endpoint only supports a refresh=true query string")
 
             return response_data
         else:
-            return {"data": db.fetch_row(self.dbpath, 'profiles', 'name', profile)['spec']}
+            return {"data": db.fetch_row('profiles', 'name', profile)['spec']}
    
     # def PUT(self):
     #     summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
@@ -608,7 +609,7 @@ class DB(object):
         cherrypy.log("export file created - {}".format(tf.name))
 
         with open(tf.name, 'w') as f:
-            for line in db.dump_table(self.dbpath, table_name=table, query=qs):
+            for line in db.dump_table(table_name=table, query=qs):
                 f.write('{}\n'.format(line))
 
         return static.serve_file(
@@ -723,9 +724,9 @@ class FIOWebService(object):
         }
         cherrypy.tools.CORS = cherrypy.Tool('before_handler', cors_handler)
 
-        db.setup_db(self.dbpath)
+        db.setup_db()  # self.dbpath)
 
-        db.load_db_profiles(JOB_DIR, dbpath=self.dbpath)
+        db.load_db_profiles()  # (JOB_DIR, dbpath=self.dbpath)
 
     def cleanup(self):
         # cancel the worker background thread based on current interval
@@ -733,7 +734,7 @@ class FIOWebService(object):
 
         # remove any jobs in a queued state during webservice shutdown
         cherrypy.log("Pruning jobs still in a queued/started state from the database")
-        db.prune_db(self.dbpath)
+        db.prune_db()
 
     @property
     def ready(self):
@@ -747,7 +748,7 @@ class FIOWebService(object):
             return False
 
         # no profiles in the db
-        if not db.fetch_all(self.dbpath, 'profiles', ['name']):
+        if not db.fetch_all('profiles', ['name']):
             return False
 
         # use the handler to determine the number of workers
