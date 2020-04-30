@@ -29,15 +29,19 @@ class Config(object):
     _global_defaults = {
         "prod": {
             "db_dir": "/var/lib/fioloadgen",
+            "job_dir": "/var/lib/fioloadgen/jobs",
             "log_dir": "/var/log/fioloadgen",
             "ssl": True,
+            "ip_address": "0.0.0.0",
             "port": 8080,
             "debug": False,
         },
         "dev": {
             "db_dir": os.path.expanduser('~'),
+            "job_dir": os.path.join(os.getcwd(), "data", "fio", "jobs"),
             "log_dir": os.path.expanduser('~'),
             "ssl": True,
+            "ip_address": "0.0.0.0",
             "port": 8080,
             "debug": False,
         }
