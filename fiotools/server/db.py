@@ -165,14 +165,16 @@ def fetch_row(dbpath, table, key=None, content=None):
 
 
 def delete_row(dbpath, table=None, query=dict()):
-
-    sql = "DELETE FROM {} WHERE ".format(table)
-    for k in query:
-        sql += "{}={}".format(k, query[k])
+    if not query or len(query) > 1:
+        logger.info("delete_row called with empty query, or too many parameters - ignoring")
+        return
+    
+    k = list(query)[0]
+    sql = "DELETE FROM {} WHERE {}=?".format(table, k)
 
     with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
-        csr.execute(sql,)
+        csr.execute(sql, (query[k],))
         c.commit()
 
 
