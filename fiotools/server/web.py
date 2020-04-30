@@ -771,12 +771,12 @@ class FIOWebService(object):
         daemon.subscribe()
         cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
-        cherrypy.server.socket_host = '0.0.0.0'
+        cherrypy.server.socket_host = configuration.settings.ip_address
         cherrypy.tree.mount(self.root, config=self.conf)
         cherrypy.config.update({
             'engine.autoreload.on': False,
-            'server.socket_host': '0.0.0.0',
-            'server.socket_port': self.port,
+            'server.socket_host': configuration.settings.ip_address,
+            'server.socket_port': configuration.settings.port,
             'error_page.default': jsonify_error,
             'tools.encode.encoding': 'utf-8',
             'cors.expose.on': True,

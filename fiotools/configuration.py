@@ -57,6 +57,8 @@ class Config(object):
         self.ssl = Config._global_defaults[mode].get('ssl')
         self.port = Config._global_defaults[mode].get('port')
         self.debug = Config._global_defaults[mode].get('debug')
+        self.job_dir = Config._global_defaults[mode].get('job_dir')
+        self.ip_address = Config._global_defaults[mode].get('ip_address')
 
         self._apply_overrides()
 
