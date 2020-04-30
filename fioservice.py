@@ -12,6 +12,9 @@ from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import OpenshiftHandler, SSHHandler  # NOQA: F401
 from fiotools.utils import rfile, get_pid_file, port_in_use
+import fiotools.configuration as settings
+
+# settings.init()
 # import logging
 
 DEFAULT_DIR = os.path.expanduser('~')
@@ -128,6 +131,8 @@ def command_start():
     if port_in_use(8080):
         print("-> port in use")
         sys.exit(1)
+
+    settings.init()
 
     server = FIOWebService(handler=handler, debug_mode=args.debug_only, dbpath=args.dbpath)
     print("Checking connection to {}".format(handler._target))
