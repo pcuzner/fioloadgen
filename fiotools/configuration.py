@@ -96,7 +96,7 @@ class Config(object):
             sys.exit(12)
 
         if config:
-            sections = config.sections()
+            sections = parser.sections()
             if not sections or not all(s in valid_sections for s in sections):
                 print("config file has missing/unsupported sections")
                 print("valid sections are: {}".format(','.join(valid_sections)))
@@ -105,7 +105,7 @@ class Config(object):
             # Apply the overrides
             for section_name in sections:
                 if section_name == 'global':
-                    for name, value in config.items(section_name):
+                    for name, value in parser.items(section_name):
                         if name in global_vars:
                             print("applying override for {}".format(name))
                             setattr(self, name, converted_value(value))

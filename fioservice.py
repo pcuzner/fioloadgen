@@ -12,7 +12,7 @@ from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import OpenshiftHandler, SSHHandler  # NOQA: F401
 from fiotools.utils import rfile, get_pid_file, port_in_use
-import fiotools.configuration as settings
+import fiotools.configuration as configuration
 
 # settings.init()
 # import logging
@@ -120,6 +120,8 @@ def command_start():
     if os.path.exists(get_pid_file()):
         raise OSError("Already running")
 
+    configuration.init()
+
     if args.type == 'oc':
         print("Using Openshift handler")
         handler = OpenshiftHandler(ns=args.namespace, mgr='fiomgr')
@@ -127,12 +129,10 @@ def command_start():
         print("'{}' handler has not been implemented yet".format(args.type))
         sys.exit(1)
 
-    print("Checking port 8080 is free")
-    if port_in_use(8080):
+    print("Checking port {} is free".format(configuration.settings.port))
+    if port_in_use(configuration.settings.port):
         print("-> port in use")
         sys.exit(1)
-
-    settings.init()
 
     server = FIOWebService(handler=handler, debug_mode=args.debug_only, dbpath=args.dbpath)
     print("Checking connection to {}".format(handler._target))
