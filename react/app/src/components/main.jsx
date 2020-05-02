@@ -39,7 +39,7 @@ export class App extends React.Component {
     // }
 
     render() {
-        console.log("render main");
+        console.log("render main. env vars: " + JSON.stringify(process.env));
         return (
             <div>
                 <MastHead />
