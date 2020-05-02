@@ -254,3 +254,20 @@ def dump_table(table_name='jobs',
                 yield("%s;" % row[0])
 
         yield('COMMIT;')
+
+
+def run_script(sql_script):
+    dbpath = configuration.settings.dbpath
+    err = ''
+    with sqlite3.connect(dbpath) as conn:
+        csr = conn.cursor()
+        try:
+            csr.executescript(sql_script)
+        except sqlite3.Error as e:
+            err = "SQL failure: {}".format(e)
+        except Exception as e:
+            err = "generic exception: {}".format(e)
+        else:
+            err = ''
+
+    return err
