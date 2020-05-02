@@ -10,6 +10,7 @@ import time
 
 from fiotools import __version__
 from fiotools import configuration
+from fiotools.utils import rfile
 
 
 def cmd_parser():
@@ -133,54 +134,136 @@ def cmd_parser():
         'db-dump',
         help="manage the jobs table in the fioservice database")
     parser_db_dump.set_defaults(func=command_db_dump)
+    # example:  db-dump --table jobs --row id=0ca72318-c4ed-4a17-b81a-262c44a52fdc
     parser_db_dump.add_argument(
         '--table',
-        default='',
-        required=True,
+        choices=['jobs', 'profiles'],
+        default='jobs',
         type=str,
-        help="dump a table from the database",
-    )
-    parser_db_dump.add_argument(
-        '--row',
-        default='',
-        type=str,
-        help="query string (key=value) to dump a specific row from a table",
+        help="dump a table (jobs or profiles from the database (default is jobs)",
     )
     parser_db_dump.add_argument(
         '--out',
         type=str,
+        required=False,
         help="filename for the database dump output",
+    )
+
+    parser_db_export = subparsers.add_parser(
+        'db-export',
+        help="export a database row to a script file (for import)")
+    parser_db_export.set_defaults(func=command_db_export)
+    parser_db_export.add_argument(
+        '--table',
+        choices=['jobs', 'profiles'],
+        default='jobs',
+        type=str,
+        help="table name to export a row from",
+    )
+    parser_db_export.add_argument(
+        '--row',
+        default='',
+        required=True,
+        type=str,
+        help="query string (key=value) that identifies a specific row in the table",
+    )
+    parser_db_export.add_argument(
+        '--out',
+        type=str,
+        help="filename for the exported row output",
+    )
+
+    parser_db_import = subparsers.add_parser(
+        'db-import',
+        help="import a database row export file")
+    parser_db_import.set_defaults(func=command_db_import)
+    parser_db_import.add_argument(
+        '--table',
+        default='jobs',
+        choices=['jobs', 'profiles'],
+        type=str,
+        help="table to restore the export file to (either jobs or profiles)",
+    )
+    parser_db_import.add_argument(
+        '--file',
+        default='',
+        required=True,
+        type=str,
+        help="backup file to import to the database",
     )
     return parser
 
 
-def command_db_dump():
+def command_db_export():
     qstring = ''
     outfile = ''
-    if args.table not in ['jobs', 'profiles']:
-        print("must specify a valid table name to dump - jobs or profiles")
-        sys.exit(1)
 
     if args.row:
-        if args.row.count('=') > 1:
-            print("query must be a single key=value")
+        try:
+            k, v = args.row.split('=')
+        except ValueError:
+            # trigger if >1 '=' sign or no '=' sign at all
+            print("row must specify a single key=value string i.e. --row id=mykey")
             sys.exit(1)
-
-        qstring = '?{}'.format(args.row)
+        else:
+            qstring = '?{}'.format(args.row)
 
     if args.out:
         outfile = args.out
     else:
-        sfx = '-row' if args.row else ''
-        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}{}.sql".format(args.table, sfx))
+        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}-row.sql".format(args.table))
 
     r = requests.get("{}/db/{}{}".format(url, args.table, qstring))
     if r.status_code == 200:
         with open(outfile, 'wb') as f:
             f.write(r.content)
-        print("dump written to {}".format(outfile))
+        print("database table row from '{}' written to {}".format(args.table, outfile))
     else:
-        print("database dump API request failed ({}), please check fioservice log")
+        print("database dump API request failed ({}), please check fioservice log".format(r.status_code))
+
+
+def command_db_import():
+    # file must contain a single insert into "<table>" clause
+    if not os.path.exists(args.file):
+        print("file not found")
+        sys.exit(1)
+
+    sql_script = rfile(args.file)
+    if sql_script.count('INSERT INTO "{}"'.format(args.table)) != 1:
+        print("file invalid format - must contain a single INSERT command")
+        sys.exit(1)
+
+    headers = {'Content-type': 'application/json'}
+    r = requests.post(
+        "{}/db/{}".format(url, args.table),
+        json={
+            "sql_script": sql_script,
+        },
+        headers=headers
+    )
+    if r.status_code == 200:
+        print("data import successful")
+    else:
+        js = json.loads(r._content.decode())
+        print("database import failed ({}), please check fioservice log".format(r.status_code))
+        print("Error: {}".format(js['message']))
+
+
+def command_db_dump():
+    outfile = ''
+
+    if args.out:
+        outfile = args.out
+    else:
+        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}.sql".format(args.table))
+
+    r = requests.get("{}/db/{}".format(url, args.table))
+    if r.status_code == 200:
+        with open(outfile, 'wb') as f:
+            f.write(r.content)
+        print("database dump of table '{}' written to {}".format(args.table, outfile))
+    else:
+        print("database dump API request failed ({}), please check fioservice log".format(r.status_code))
 
 
 def command_status():
@@ -363,7 +446,13 @@ if __name__ == '__main__':
     elif 'func' in args:
         configuration.init()
 
-        api_address = os.environ.get('FIO_API_ADDRESS', '{}:{}'.format(configuration.settings.ip_address, configuration.settings.port))
+        api_address = os.environ.get(
+            'FIO_API_ADDRESS',
+            '{}:{}'.format(
+                configuration.settings.ip_address,
+                configuration.settings.port
+            )
+        )
         url = 'http://{}/api'.format(api_address)  # used by all functions
         if args.func.__name__ == 'command_status':
             args.func()

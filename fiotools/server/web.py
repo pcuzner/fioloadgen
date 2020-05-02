@@ -603,7 +603,7 @@ class DB(object):
     def GET(self, table='jobs', **params):
         # look at querystring to get the key/value
         qs = parse_query_string(cherrypy.request.query_string)
-        cherrypy.log(json.dumps(qs))
+        # cherrypy.log(json.dumps(qs))
 
         tf = tempfile.NamedTemporaryFile(delete=False)
         cherrypy.log("export file created - {}".format(tf.name))
@@ -621,9 +621,20 @@ class DB(object):
     def DELETE(self, table, **params):
         """ allow the caller to delete a database row """
         pass
-    
+
+    @cherrypy.tools.json_in()
     def POST(self, table, **params):
         """ receive a record in script format to insert into the database """
+        js_in = cherrypy.request.json
+        
+        # tf = tempfile.NamedTemporaryFile(delete=False)
+        # cherrypy.log("sql script written to {}".format(tf.name))
+        # with open(tf.name, 'w') as f:
+        #     f.write(js_in['sql_script'])
+        
+        err = db.run_script(js_in['sql_script'])
+        if err:
+            raise cherrypy.HTTPError(500, "import script for {} table failed : {}".format(table, err))
         pass
 
 
