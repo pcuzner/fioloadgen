@@ -9,6 +9,7 @@ import time
 
 
 from fiotools import __version__
+from fiotools import configuration
 
 
 def cmd_parser():
@@ -128,23 +129,24 @@ def cmd_parser():
         help="show raw json from a completed job",
     )
 
-    parser_db = subparsers.add_parser(
-        'db',
+    parser_db_dump = subparsers.add_parser(
+        'db-dump',
         help="manage the jobs table in the fioservice database")
-    parser_db.set_defaults(func=command_db)
-    parser_db.add_argument(
-        '--dump',
+    parser_db_dump.set_defaults(func=command_db_dump)
+    parser_db_dump.add_argument(
+        '--table',
         default='',
+        required=True,
         type=str,
         help="dump a table from the database",
     )
-    parser_db.add_argument(
-        '--query',
+    parser_db_dump.add_argument(
+        '--row',
         default='',
         type=str,
         help="query string (key=value) to dump a specific row from a table",
     )
-    parser_db.add_argument(
+    parser_db_dump.add_argument(
         '--out',
         type=str,
         help="filename for the database dump output",
@@ -152,27 +154,27 @@ def cmd_parser():
     return parser
 
 
-def command_db():
+def command_db_dump():
     qstring = ''
     outfile = ''
-    if args.dump not in ['jobs', 'profiles']:
+    if args.table not in ['jobs', 'profiles']:
         print("must specify a valid table name to dump - jobs or profiles")
         sys.exit(1)
 
-    if args.query:
-        if args.query.count('=') > 1:
+    if args.row:
+        if args.row.count('=') > 1:
             print("query must be a single key=value")
             sys.exit(1)
 
-        qstring = '?{}'.format(args.query)
+        qstring = '?{}'.format(args.row)
 
     if args.out:
         outfile = args.out
     else:
-        sfx = '-row' if args.query else ''
-        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}{}.sql".format(args.dump, sfx))
+        sfx = '-row' if args.row else ''
+        outfile = os.path.join(os.path.expanduser('~'), "fioservice-db-{}{}.sql".format(args.table, sfx))
 
-    r = requests.get("{}/db/{}{}".format(url, args.dump, qstring))
+    r = requests.get("{}/db/{}{}".format(url, args.table, qstring))
     if r.status_code == 200:
         with open(outfile, 'wb') as f:
             f.write(r.content)
@@ -355,17 +357,19 @@ if __name__ == '__main__':
     parser = cmd_parser()
     args = parser.parse_args()
 
-    api_address = os.environ.get('FIO_API_ADDRESS', 'localhost:8080')
-
     if args.version:
         print("fioloadgen version : {}".format(__version__))
+
     elif 'func' in args:
+        configuration.init()
+
+        api_address = os.environ.get('FIO_API_ADDRESS', '{}:{}'.format(configuration.settings.ip_address, configuration.settings.port))
         url = 'http://{}/api'.format(api_address)  # used by all functions
         if args.func.__name__ == 'command_status':
             args.func()
         else:
             try:
-                r = requests.get('http://localhost:8080/api/profile')
+                r = requests.get('{}/profile'.format(url))
             except (requests.exceptions.ConnectionError, ConnectionRefusedError):
                 print("Please start the fioservice, before using the cli")
                 sys.exit(1)
