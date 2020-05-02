@@ -28,6 +28,7 @@ class Config(object):
 
     _global_defaults = {
         "prod": {
+            "db_name": "fioservice.db",
             "db_dir": "/var/lib/fioloadgen",
             "job_dir": "/var/lib/fioloadgen/jobs",
             "log_dir": "/var/log/fioloadgen",
@@ -37,6 +38,7 @@ class Config(object):
             "debug": False,
         },
         "dev": {
+            "db_name": "fioservice.db",
             "db_dir": os.path.expanduser('~'),
             "job_dir": os.path.join(os.getcwd(), "data", "fio", "jobs"),
             "log_dir": os.path.expanduser('~'),
@@ -52,6 +54,7 @@ class Config(object):
     def __init__(self, mode='dev'):
         # establish defaults based on the mode
         self.run_mode = mode
+        self.db_name = Config._global_defaults[mode].get('db_name')
         self.db_dir = Config._global_defaults[mode].get('db_dir')
         self.log_dir = Config._global_defaults[mode].get('db_dir')
         self.ssl = Config._global_defaults[mode].get('ssl')
