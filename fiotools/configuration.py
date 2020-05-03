@@ -110,7 +110,7 @@ class Config(object):
                 if section_name == 'global':
                     for name, value in parser.items(section_name):
                         if name in global_vars:
-                            print("applying override for {}".format(name))
+                            print("[CONFIG] applying override: {}={}".format(name, value))
                             setattr(self, name, converted_value(value))
                         else:
                             print("-> {} is unsupported, ignoring")
