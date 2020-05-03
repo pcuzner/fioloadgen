@@ -533,26 +533,27 @@ class Job(object):
     def DELETE(self, uuid=None):
         if not uuid:
             raise cherrypy.HTTPError(400, "Request must provide a job id to act against")
-        if uuid not in job_tracker.keys():
-            raise cherrypy.HTTPError(404, "Job with id '{}' not found".format(uuid))
 
-        job = job_tracker[uuid]
-        if job.status != 'queued':
-            raise cherrypy.HTTPError(409, "Job is not in a queued state, and can not be cancelled")
-        if job.stale:
-            raise cherrypy.HTTPError(400, "Job has already been marked for deletion")
-        cherrypy.log("Marking job {} as stale for later deletion".format(uuid))
-
-        # mark the job as stale, so it's not processed
-        job.stale = True
+        cherrypy.log("delete request for job {} received".format(uuid))
+        if uuid in job_tracker.keys():
+            job = job_tracker[uuid]
+            if job.stale:
+                cherrypy.log("delete requested, but job '{}' is already marked stale".format(uuid))
+                raise cherrypy.HTTPError(400, "Job has already been marked for deletion")
+            else:
+                cherrypy.log("delete request marking queued job '{}' as stale".format(uuid))
+                # mark the job as stale, so it's not processed
+                job.stale = True
 
         # delete the job from the database
-        cherrypy.log("request to delete queued job {} issued".format(uuid))
+
         err = db.delete_row('jobs', {"id": uuid})
         if err:
+            cherrypy.log("delete request for job '{}' failed: {}".format(uuid, err))
             raise cherrypy.HTTPError(400, err)
         else:
-            return {"data": {"msg": "job marked stale, and will be ignored"}}
+            cherrypy.log("delete request for job '{}' successful".format(uuid))
+            return {"data": {"msg": "job deleted from database"}}
 
 
 # @cherrypy.tools.accept(media='application/json')
