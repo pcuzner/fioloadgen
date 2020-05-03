@@ -173,18 +173,27 @@ def fetch_row(table, key=None, content=None):
 
 def delete_row(table=None, query=dict()):
     dbpath = configuration.settings.dbpath
+    err = ''
+
     if not query or len(query) > 1:
         logger.info("delete_row called with empty query, or too many parameters - ignoring")
-        return
-    
+        return 'Invalid or missing query'
+
     k = list(query)[0]
     sql = "DELETE FROM {} WHERE {}=?".format(table, k)
 
     with sqlite3.connect(dbpath) as c:
         csr = c.cursor()
-        csr.execute(sql, (query[k],))
-        c.commit()
-
+        try:
+            csr.execute(sql, (query[k],))
+        except sqlite3.Error as e:
+            err = 'delete_row failed: {}'.format(e)
+        else:
+            if c.total_changes == 0:
+                err = "row not found"
+            c.commit()
+    
+    return err
 
 def update_job_status(job_uuid, status):
     dbpath = configuration.settings.dbpath

@@ -548,9 +548,11 @@ class Job(object):
 
         # delete the job from the database
         cherrypy.log("request to delete queued job {} issued".format(uuid))
-        db.delete_row('jobs', {"id": uuid})
-
-        return {"data": {"msg": "job marked stale, and will be ignored"}}
+        err = db.delete_row('jobs', {"id": uuid})
+        if err:
+            raise cherrypy.HTTPError(400, err)
+        else:
+            return {"data": {"msg": "job marked stale, and will be ignored"}}
 
 
 # @cherrypy.tools.accept(media='application/json')
@@ -618,24 +620,44 @@ class DB(object):
             'attachment',
             os.path.basename(tf.name))
 
+    @cherrypy.tools.json_out()
     def DELETE(self, table, **params):
         """ allow the caller to delete a database row """
-        pass
+        qstring = cherrypy.request.query_string
+        qs = parse_query_string(qstring)
+        if len(qs) != 1:
+            raise cherrypy.HTTPError(400, "Invalid or missing query")
 
+        if table == 'profiles' and not qs.get('name', None):
+            raise cherrypy.HTTPError(400, "invalid key used for profiles table, must be name=")
+        elif table == 'jobs' and not qs.get('id', None):
+            raise cherrypy.HTTPError(400, "invalid key used for jobs table, must be id=")
+
+        cherrypy.log("delete request for {}/{}".format(table, qstring))
+        err = db.delete_row(table, qs)
+        if err:
+            cherrypy.log("delete request failed: {}".format(err))
+            raise cherrypy.HTTPError(400, err)
+        else:
+            cherrypy.log("delete successful")
+            return {"data": {"msg": "row successufully removed"}}
+
+    @cherrypy.tools.json_out()
     @cherrypy.tools.json_in()
-    def POST(self, table, **params):
+    def POST(self, table):  # **params):
         """ receive a record in script format to insert into the database """
         js_in = cherrypy.request.json
-        
+
         # tf = tempfile.NamedTemporaryFile(delete=False)
         # cherrypy.log("sql script written to {}".format(tf.name))
         # with open(tf.name, 'w') as f:
         #     f.write(js_in['sql_script'])
-        
+
         err = db.run_script(js_in['sql_script'])
         if err:
-            raise cherrypy.HTTPError(500, "import script for {} table failed : {}".format(table, err))
-        pass
+            raise cherrypy.HTTPError(500, "import script for '{}' table failed: {}".format(table, err))
+        else:
+            return {"data": {"msg": "import script successful"}}
 
 
 def cors_handler():

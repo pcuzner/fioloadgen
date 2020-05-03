@@ -191,22 +191,63 @@ def cmd_parser():
         type=str,
         help="backup file to import to the database",
     )
+    parser_db_delete = subparsers.add_parser(
+        'db-delete',
+        help="delete a row from a table")
+    parser_db_delete.set_defaults(func=command_db_delete)
+    parser_db_delete.add_argument(
+        '--table',
+        choices=['jobs', 'profiles'],
+        default='jobs',
+        type=str,
+        help="table where the row will be deleted from (default is jobs)",
+    )
+    parser_db_delete.add_argument(
+        '--row',
+        default='',
+        required=True,
+        type=str,
+        help="query string (key=value) that identifies a specific row in the table",
+    )
     return parser
 
 
+def _build_qry_string(qs):
+    try:
+        k, v = args.row.split('=')
+    except ValueError:
+        # trigger if >1 '=' sign or no '=' sign at all
+        return ''
+    else:
+        return '?{}'.format(qs)
+
+
+def _extract_API_error(response):
+    js = json.loads(response._content.decode())
+    return "Error: {}".format(js['message'])    
+
+
+def command_db_delete():
+    qstring = _build_qry_string(args.row)
+    if not qstring:
+        print("row must specify a single key=value string i.e. --row id=mykey")
+        sys.exit(1)
+
+    r = requests.delete("{}/db/{}{}".format(url, args.table, qstring))
+    if r.status_code == 200:
+        print("database table row from '{}' deleted".format(args.table))
+    else:
+        print("database delete API request failed: {}".format(r.status_code))
+        print(_extract_API_error(r))
+
+
 def command_db_export():
-    qstring = ''
     outfile = ''
 
-    if args.row:
-        try:
-            k, v = args.row.split('=')
-        except ValueError:
-            # trigger if >1 '=' sign or no '=' sign at all
-            print("row must specify a single key=value string i.e. --row id=mykey")
-            sys.exit(1)
-        else:
-            qstring = '?{}'.format(args.row)
+    qstring = _build_qry_string(args.row)
+    if not qstring:
+        print("row must specify a single key=value string i.e. --row id=mykey")
+        sys.exit(1)
 
     if args.out:
         outfile = args.out
@@ -219,7 +260,8 @@ def command_db_export():
             f.write(r.content)
         print("database table row from '{}' written to {}".format(args.table, outfile))
     else:
-        print("database dump API request failed ({}), please check fioservice log".format(r.status_code))
+        print("database dump API request failed: {}".format(r.status_code))
+        print(_extract_API_error(r))
 
 
 def command_db_import():
@@ -244,9 +286,8 @@ def command_db_import():
     if r.status_code == 200:
         print("data import successful")
     else:
-        js = json.loads(r._content.decode())
-        print("database import failed ({}), please check fioservice log".format(r.status_code))
-        print("Error: {}".format(js['message']))
+        print("database import failed: {}".format(r.status_code))
+        print(_extract_API_error(r))
 
 
 def command_db_dump():
@@ -263,7 +304,7 @@ def command_db_dump():
             f.write(r.content)
         print("database dump of table '{}' written to {}".format(args.table, outfile))
     else:
-        print("database dump API request failed ({}), please check fioservice log".format(r.status_code))
+        print("database dump API request failed: {}".format(r.status_code))
 
 
 def command_status():
