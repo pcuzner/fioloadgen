@@ -24,7 +24,8 @@ export function sortByKey(property) {
 
 export function setAPIURL() {
     if (process.env.NODE_ENV == 'development') {
-        return 'http://localhost:8080';
+        let port = (process.env.API_PORT || 8080);
+        return 'http://localhost:' + port;
     } else {
         return '';
     }

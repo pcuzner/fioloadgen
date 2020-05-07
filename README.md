@@ -8,9 +8,11 @@ Project that provides a structured test environment based on fio workload patter
 These components provide the following features;  
 - standard repeatable deployment of an fio testing framework 
 - persistent store for job results and profiles for future reference (regression testing anyone?)
-- fio job management through a RESTful API
-- cli tool to interact with the API to run jobs, query output, query profiles
-- web front end supporting fio profile view/refresh, job submission and visualisation of fio results (using chartjs)
+- ability to export job results for reuse in other systems
+- ability to dump all jobs or a specific job in sqlite format for import in another system
+- fio job management through a RESTful API supporting
+   - cli tool to interact with the API to run jobs, query output, query profiles
+   - web front end supporting fio profile view/refresh, job submission and visualisation of fio results (using chartjs)
 - supported backend - openshift only at the moment, but adding kubernetes should be a no brainer!
 
 ## What does the workflow look like?
@@ -126,5 +128,6 @@ Runtime files and a the database are placed in the users home directory
 - [ ] enable the fioservice to run away from the cli (remote loadgen deployments)
 - [ ] provide an fioservice container that can be run on the target infrastructure, instead of locally
 - [ ] react optimization
+- [ ] formalise the code as an installable python package(why not add an rpm too?)
 
   

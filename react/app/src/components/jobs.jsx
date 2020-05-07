@@ -738,6 +738,10 @@ class JobDataRow extends React.Component {
                         action: 'show',
                         callback: this.props.showJob,
                     },
+                    { 
+                        action: 'delete',
+                        callback: this.props.deleteJob,
+                    },
                 ];
                 break;
             case "failed":
@@ -749,6 +753,10 @@ class JobDataRow extends React.Component {
                     { 
                         action: 'show',
                         callback: this.props.showJob,
+                    },
+                    { 
+                        action: 'delete',
+                        callback: this.props.deleteJob,
                     },
                 ];
                 break;
