@@ -725,11 +725,11 @@ class ServiceStatus(object):
 
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False, dbpath=DEFAULT_DBPATH):
+    def __init__(self, handler=None, workdir=None, debug_mode=False, dbpath=DEFAULT_DBPATH):
         self.handler = handler
         self.debug_mode = debug_mode
         self.service_state = ServiceStatus(handler=handler, debug_mode=debug_mode)
-        self.port = port
+        # self.port = port
         self.root = Root()         # web UI
         self.dbpath = dbpath
         self.root.api = APIroot(self.service_state, self.dbpath)  # API
@@ -796,13 +796,21 @@ class FIOWebService(object):
 
         self.service_state.workers = self.handler.workers
 
-        daemon = plugins.Daemonizer(
-            cherrypy.engine,
-            stdout=os.path.join(self.workdir, 'fioservice.access.log'),
-            stderr=os.path.join(self.workdir, 'fioservice.log'),
-            )
+        if configuration.settings.run_mode == 'dev':
+            daemon = plugins.Daemonizer(
+                cherrypy.engine,
+                stdout=os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
+                stderr=os.path.join(configuration.settings.log_dir, 'fioservice.log'),
+                )
 
-        daemon.subscribe()
+            daemon.subscribe()
+        else:
+            cherrypy.config.update({
+                'log.screen': True,
+                'log.access_file': os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
+                'log.error_file': os.path.join(configuration.settings.log_dir, 'fioservice.log'),
+            })
+
         cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
         cherrypy.server.socket_host = configuration.settings.ip_address
@@ -816,7 +824,7 @@ class FIOWebService(object):
             'cors.expose.on': True,
         })
 
-        plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
+        plugins.PIDFile(cherrypy.engine, get_pid_file(configuration.settings.pid_dir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc
 
         self.worker = plugins.BackgroundTask(
