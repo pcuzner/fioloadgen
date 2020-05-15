@@ -32,7 +32,8 @@ class Config(object):
             "db_dir": "/var/lib/fioloadgen",
             "job_dir": "/var/lib/fioloadgen/jobs",
             "log_dir": "/var/log/fioloadgen",
-            "ssl": True,
+            "pid_dir": "/var/run",
+            "ssl": False,
             "ip_address": "0.0.0.0",
             "port": 8080,
             "debug": False,
@@ -42,7 +43,8 @@ class Config(object):
             "db_dir": os.path.expanduser('~'),
             "job_dir": os.path.join(os.getcwd(), "data", "fio", "jobs"),
             "log_dir": os.path.expanduser('~'),
-            "ssl": True,
+            "pid_dir": os.path.expanduser('~'),
+            "ssl": False,
             "ip_address": "0.0.0.0",
             "port": 8080,
             "debug": False,
@@ -56,20 +58,29 @@ class Config(object):
         self.run_mode = mode
         self.db_name = Config._global_defaults[mode].get('db_name')
         self.db_dir = Config._global_defaults[mode].get('db_dir')
-        self.log_dir = Config._global_defaults[mode].get('db_dir')
+        self.log_dir = Config._global_defaults[mode].get('log_dir')
+        self.pid_dir = Config._global_defaults[mode].get('pid_dir')
         self.ssl = Config._global_defaults[mode].get('ssl')
         self.port = Config._global_defaults[mode].get('port')
         self.debug = Config._global_defaults[mode].get('debug')
         self.job_dir = Config._global_defaults[mode].get('job_dir')
         self.ip_address = Config._global_defaults[mode].get('ip_address')
 
-        self._apply_overrides()
+        self._apply_file_overrides()
+        self._apply_env_vars()
 
     @property
     def dbpath(self):
         return os.path.join(self.db_dir, 'fioservice.db')
 
-    def _apply_overrides(self):
+    def _apply_env_vars(self):
+        vars = [v.upper() for v in self.__dict__]
+        for v in vars:
+            env_setting = os.getenv(v)
+            if env_setting:
+                setattr(self, v.lower(), env_setting)
+
+    def _apply_file_overrides(self):
 
         def converted_value(value):
             bool_types = {
