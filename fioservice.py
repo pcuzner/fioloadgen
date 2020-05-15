@@ -34,6 +34,12 @@ def cmd_parser():
         default=False,
         help="Show fioloadgen version"
     )
+    parser.add_argument(
+        '--mode',
+        type=str,
+        default='dev',
+        help="mode to run the service in (default is %(default)s)"
+    )
 
     subparsers = parser.add_subparsers(help="sub-command")
 
@@ -120,7 +126,7 @@ def command_start():
     if os.path.exists(get_pid_file()):
         raise OSError("Already running")
 
-    configuration.init()
+    configuration.init(args.mode)
 
     if args.type == 'oc':
         print("Using Openshift handler")
