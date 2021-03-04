@@ -1,5 +1,13 @@
 #!/usr/bin/bash
-# use buildah to create a container holding fio
+# use buildah to create a container holding the fio web service (UI+API)
+
+if [ ! -z "$1" ]; then
+  TAG=$1
+else
+  TAG='latest'
+fi
+
+echo "Build image with the tag: $TAG"
 
 IMAGE="alpine:latest"
 
@@ -11,15 +19,19 @@ buildah run $container apk add sysstat
 buildah run $container apk add iperf
 buildah run $container apk add rsync
 buildah run $container apk add python3
+buildah run $container apk add py3-pip --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/
+
+buildah run $container apk add py3-cherrypy --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
+buildah run $container apk add py3-more-itertools
+
 buildah run $container pip3 install --upgrade pip
 buildah run $container pip3 install jaraco.collections
 buildah run $container pip3 install zc.lockfile
 buildah run $container pip3 install cheroot
 buildah run $container pip3 install portend
 buildah run $container pip3 install kubernetes
-# buildah run $container apk add py3-more-itertools
+
 # buildah run $container apk add py3-wheel --repository http://dl-cdn.alpinelinux.org/alpine/edge/main/
-buildah run $container apk add py3-cherrypy --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 
 buildah run $container mkdir -p /var/lib/fioloadgen/{jobs,reports}
 buildah run $container mkdir -p /var/log/fioloadgen
@@ -49,5 +61,4 @@ buildah config --entrypoint "./fioservice.py start" $container
 buildah config --label maintainer="Paul Cuzner <pcuzner@redhat.com>" $container
 buildah config --label description="fioservice API/UI" $container
 buildah config --label summary="fioservice focal point to interact with fiomgr/fioworker pods" $container
-buildah commit --format docker --squash $container fioservice:latest
-
+buildah commit --format docker --squash $container fioservice:$TAG
