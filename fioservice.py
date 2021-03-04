@@ -10,7 +10,12 @@ import argparse
 
 from fiotools import __version__
 from fiotools.server import FIOWebService
-from fiotools.handlers import OpenshiftHandler, SSHHandler  # NOQA: F401
+from fiotools.handlers import (  # NOQA: F401
+    OpenshiftHandler,
+    SSHHandler,
+    LocalFIOHandler
+)
+
 from fiotools.utils import rfile, get_pid_file, port_in_use
 import fiotools.configuration as configuration
 
@@ -19,7 +24,6 @@ import fiotools.configuration as configuration
 
 DEFAULT_DIR = os.path.expanduser('~')
 DEFAULT_NAMESPACE = 'fio'
-DEFAULT_ENV = 'oc'
 
 
 def cmd_parser():
@@ -37,53 +41,45 @@ def cmd_parser():
     parser.add_argument(
         '--mode',
         type=str,
-        default='dev',
-        help="mode to run the service in (default is %(default)s)"
+        help="mode to run the service"
     )
 
     subparsers = parser.add_subparsers(help="sub-command")
 
     parser_start = subparsers.add_parser(
         'start',
-        help="start the local FIO web service (manager)")
+        help="start the FIO web service")
     parser_start.set_defaults(func=command_start)
     parser_start.add_argument(
         '--type',
-        choices=['oc', 'ssh', 'kube'],
-        default=DEFAULT_ENV,
-        help="type of fio target Openshift or ssh(default is %(default)s)",
+        required=False,
+        choices=['oc', 'local', 'kube'],
+        help="type of fioservice target",
     )
     parser_start.add_argument(
         '--namespace',
         required=False,
         type=str,
-        default=DEFAULT_NAMESPACE,
-        help="Namespace for Openshift based tests(default is %(default)s)",
+        help="Namespace for Openshift based tests",
     )
     parser_start.add_argument(
-        '--debug-only',
+        '--debug',
         action='store_true',
-        default=False,
         help="run standalone without a connection to help debug",
-    )
-    parser_start.add_argument(
-        '--dbpath',
-        type=str,
-        default=os.path.join(DEFAULT_DIR, 'fioservice.db'),
-        help="full path to the database",
     )
 
     parser_stop = subparsers.add_parser(
         'stop',
-        help="stop the local FIO manager")
+        help="stop the FIO service")
     parser_stop.set_defaults(func=command_stop)
+
     parser_stop = subparsers.add_parser(
         'restart',
         help="restart the service")
     parser_stop.set_defaults(func=command_restart)
     parser_status = subparsers.add_parser(
         'status',
-        help="show current state of the local FIO manager")
+        help="show current state of the FIO service")
     parser_status.set_defaults(func=command_status)
 
     return parser
@@ -126,13 +122,20 @@ def command_start():
     if os.path.exists(get_pid_file()):
         raise OSError("Already running")
 
-    configuration.init(args.mode)
+    configuration.init(args)
 
-    if args.type == 'oc':
-        print("Using Openshift handler")
-        handler = OpenshiftHandler(ns=args.namespace, mgr='fiomgr')
+    if configuration.settings.type == 'oc':
+        print("Using 'oc' command handler")
+        handler = OpenshiftHandler(mgr='fiomgr')
+    elif configuration.settings.type == 'local':
+        print("Using 'local' fio handler")
+        handler = LocalFIOHandler()  # ns=args.namespace)
     else:
-        print("'{}' handler has not been implemented yet".format(args.type))
+        print("'{}' handler has not been implemented yet".format(configuration.settings.type))
+        sys.exit(1)
+
+    if not handler.has_connection:
+        print("Handler is not usable: environment or configuration problem")
         sys.exit(1)
 
     print("Checking port {} is free".format(configuration.settings.port))
@@ -140,14 +143,14 @@ def command_start():
         print("-> port in use")
         sys.exit(1)
 
-    server = FIOWebService(handler=handler, debug_mode=args.debug_only, dbpath=args.dbpath)
+    server = FIOWebService(handler=handler)  #, debug_mode=args.debug_only)
     print("Checking connection to {}".format(handler._target))
-    if server.ready or args.debug_only:
+    if server.ready or configuration.settings.debug:
         print("Starting the engine")
         # Call the run handler to start the web service
         server.run()
     else:
-        print("Unable to connect to {}. Are you logged in?".format(handler._target))
+        print("{} connection unavailable, or workers not ready".format(handler._target))
 
     # NB. run() forks the daemon, so anything here is never reached
 

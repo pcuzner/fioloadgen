@@ -309,14 +309,14 @@ def jsonify_error(status, message, traceback, version):
     return json.dumps({'status': status, 'message': message})
 
 
-def run_job(dbpath, handler, service_state, debug_mode):
+def run_job(dbpath, handler, service_state):  #, debug_mode):
 
     # delay (secs) between a job end and the fetch function being executed 
     # fetch_delay = 2
 
     if not work_queue.empty():
 
-        if debug_mode:
+        if configuration.settings.debug:
             return
 
         # not in debug mode, so we act on the content of the queue
@@ -337,17 +337,17 @@ def run_job(dbpath, handler, service_state, debug_mode):
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
             cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
-            rc = handler.copy_file(tf.name, '/fio/jobs/fioloadgen.job')
+            rc = handler.copy_file(tf.name, os.path.join(configuration.settings.job_dir, 'fioloadgen.job'))
             if rc != 0:
 
-                cherrypy.log("job {} file transfer failed : {}".format(job.uuid, rc))
+                cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
                 db.update_job_status(job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
                 return
 
-            cherrypy.log("job {} file transfer succcessful".format(job.uuid))
+            cherrypy.log("job {} file copy succcessful".format(job.uuid))
             # job spec transferred, so OK to continue
             job.status = 'started'
             service_state.active_job_type = 'FIO'
@@ -707,7 +707,7 @@ def cors_handler():
 
 
 class ServiceStatus(object):
-    def __init__(self, handler, debug_mode):
+    def __init__(self, handler):  #, debug_mode):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
@@ -716,7 +716,7 @@ class ServiceStatus(object):
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
-        self.debug_mode = debug_mode
+        self.debug_mode = configuration.settings.debug
 
     def reset(self):
         self.task_active = False
@@ -725,13 +725,13 @@ class ServiceStatus(object):
 
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None, debug_mode=False, dbpath=DEFAULT_DBPATH):
+    def __init__(self, handler=None, workdir=None):  #, debug_mode=False):
         self.handler = handler
-        self.debug_mode = debug_mode
-        self.service_state = ServiceStatus(handler=handler, debug_mode=debug_mode)
+        # self.debug_mode = debug_mode
+        self.service_state = ServiceStatus(handler=handler)  #, debug_mode=configuration.settings.debug)
         # self.port = port
         self.root = Root()         # web UI
-        self.dbpath = dbpath
+        self.dbpath = os.path.join(configuration.settings.db_dir, configuration.settings.db_name)
         self.root.api = APIroot(self.service_state, self.dbpath)  # API
 
         if workdir:
@@ -775,19 +775,23 @@ class FIOWebService(object):
 
         # command missing
         if not self.handler._can_run:
+            print("handler's can_run method returned False")
             return False
 
         # no external connection
         if not self.handler.has_connection:
+            print("handler's has_connection method returned False")
             return False
 
         # no profiles in the db
         if not db.fetch_all('profiles', ['name']):
+            print("handler reporting no profiles")
             return False
 
         # use the handler to determine the number of workers
-        rc = self.handler.num_workers()
-        if self.handler.workers == 0 or rc != 0:
+        # rc = self.handler.num_workers()
+        if self.handler.workers == 0:  # or rc != 0:
+            print("handler not seeing any workers")
             return False
 
         return True
@@ -796,7 +800,7 @@ class FIOWebService(object):
 
         self.service_state.workers = self.handler.workers
 
-        if configuration.settings.run_mode == 'dev':
+        if configuration.settings.mode == 'dev':
             daemon = plugins.Daemonizer(
                 cherrypy.engine,
                 stdout=os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
@@ -833,7 +837,7 @@ class FIOWebService(object):
             args=[self.dbpath,
                   self.handler,
                   self.service_state,
-                  self.debug_mode]
+            ]
         )
         cherrypy.engine.subscribe('stop', self.cleanup)
 

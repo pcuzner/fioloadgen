@@ -320,6 +320,7 @@ def command_status():
         job_running = 'Yes' if js['task_active'] else 'No'
         debug = 'Yes' if js['debug_mode'] else 'No'
         print("Target      : {}".format(js['target']))
+        print("Workers     : {}".format(js['workers']))
         print("Debug Mode  : {}".format(debug))
         print("Job running : {}".format(job_running))
         print("Jobs queued : {}".format(js['tasks_queued']))

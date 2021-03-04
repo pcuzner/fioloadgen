@@ -6,6 +6,8 @@ from .base import BaseHandler
 import os
 import subprocess
 
+from fiotools import configuration
+
 
 class OpenshiftHandler(BaseHandler):
 
@@ -13,10 +15,14 @@ class OpenshiftHandler(BaseHandler):
     _cmd = 'oc'
     _connection_test = 'oc status'
 
-    def __init__(self, ns='fio', mgr='fiomgr'):
-        self.ns = ns
+    def __init__(self, mgr='fiomgr'):
+        self.ns = configuration.settings.namespace
         self.mgr = mgr
         self.workers = 10
+
+    @property
+    def usable(self):
+        return True
 
     # @property
     # def _can_run(self):

@@ -63,3 +63,7 @@ class BaseHandler(object):
     def reset(self):
         """reset the engines state to teardown the test environment"""
         raise NotImplementedError
+
+    def fio_valid(self, fiojob):
+        """check whether an fiojob 'deck' syntax is valid"""
+        raise NotImplementedError
