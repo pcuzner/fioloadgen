@@ -4,6 +4,7 @@ from .base import BaseHandler
 
 # import shutil
 import os
+import shutil
 import subprocess
 
 from fiotools import configuration
@@ -27,17 +28,17 @@ class OpenshiftHandler(BaseHandler):
     def workers(self):
         return self._get_workers()
 
-    # @property
-    # def _can_run(self):
-    #     return shutil.which(self._cmd) is not None
+    @property
+    def _can_run(self):
+        return shutil.which(self._cmd) is not None
 
-    # @property
-    # def has_connection(self):
-    #     if self._can_run:
-    #         r = subprocess.run(self._connection_test.split(' '), capture_output=True)
-    #         return r.returncode == 0
-    #     else:
-    #         return False
+    @property
+    def has_connection(self):
+        if self._can_run:
+            r = subprocess.run(self._connection_test.split(' '), capture_output=True)
+            return r.returncode == 0
+        else:
+            return False
 
     def _get_workers(self):
         o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
