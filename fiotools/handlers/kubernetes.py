@@ -18,11 +18,14 @@ class OpenshiftHandler(BaseHandler):
     def __init__(self, mgr='fiomgr'):
         self.ns = configuration.settings.namespace
         self.mgr = mgr
-        self.workers = 10
 
     @property
     def usable(self):
         return True
+
+    @property
+    def workers(self):
+        return self._get_workers()
 
     # @property
     # def _can_run(self):
@@ -36,11 +39,13 @@ class OpenshiftHandler(BaseHandler):
     #     else:
     #         return False
 
-    def num_workers(self):
-        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen'])
-        # TODO: insert code to count the response
-        self.workers = 10
-        return o.returncode
+    def _get_workers(self):
+        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
+                           capture_output=True)
+        if o.returncode == 0:
+            return len(o.stdout.decode('utf-8').strip().split('\n'))
+        else:
+            return 0
 
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
