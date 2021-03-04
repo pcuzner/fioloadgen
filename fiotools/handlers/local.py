@@ -66,7 +66,7 @@ class LocalFIOHandler(BaseHandler):
 
     def _list_namespaced_pod(self):
         try:
-            response = self.k8s.list_namespaced_pod(self.namespace, label_selector='app=fioworker')
+            response = self.k8s.list_namespaced_pod(self.namespace, label_selector='app=fioloadgen')
         except ApiException:
             return None
         else:
