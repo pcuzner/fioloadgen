@@ -84,10 +84,9 @@ class Config(object):
         if os.getenv('MODE'):
             print("setting mode from environment variable")
             mode = os.getenv('MODE')
-        elif args:
-            if args.mode:
-                print("settings mode from args")
-                mode = args.mode
+        elif args.mode:
+            print("settings mode from args")
+            mode = args.mode
         else:
             print("using default mode of dev")
             mode = 'dev'
