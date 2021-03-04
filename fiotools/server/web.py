@@ -311,7 +311,7 @@ def jsonify_error(status, message, traceback, version):
 
 def run_job(dbpath, handler, service_state):  #, debug_mode):
 
-    # delay (secs) between a job end and the fetch function being executed 
+    # delay (secs) between a job end and the fetch function being executed
     # fetch_delay = 2
 
     if not work_queue.empty():
@@ -354,10 +354,10 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             db.update_job_status(job.uuid, job.status)
 
             cherrypy.log("job {} starting".format(job.uuid))
-            runrc = handler.startfio('fioloadgen.job', job.workers, job.outfile)
-            if runrc == 0:
+            run_job = handler.startfio('fioloadgen.job', job.workers, job.outfile)
+            if run_job.returncode == 0:
                 # on some systems, the time between job end and the fetch can return empty files
-                # the delay makes the fetch more 
+                # the delay makes the fetch more
                 # cherrypy.log("job {} completed successfully, waiting {}s".format(job.uuid, fetch_delay))
                 # time.sleep(fetch_delay)
                 cherrypy.log("job {} fetching report data from file {}".format(job.uuid, job.outfile))
@@ -394,7 +394,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
                                             raw_json = ?,
                                             summary = ?
                                         WHERE
-                                            id = ?;""", (job_status, 
+                                            id = ?;""", (job_status,
                                                          int(datetime.datetime.now().strftime("%s")),
                                                          job_output,
                                                          json.dumps(summary),
@@ -403,7 +403,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
                     job.status = 'complete'
                     cherrypy.log("job {} processing successful".format(job.uuid))
             else:
-                cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
+                cherrypy.log("job {} failed with rc={}".format(job.uuid, run_job.returncode))
                 job.status = 'failed'
                 db.update_job_status(job.uuid, job.status)
 
@@ -585,7 +585,7 @@ class Profile(object):
             return response_data
         else:
             return {"data": db.fetch_row('profiles', 'name', profile)['spec']}
-   
+
     # def PUT(self):
     #     summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
 

@@ -101,13 +101,13 @@ class LocalFIOHandler(BaseHandler):
             for pod in working_set:
                 t.write("{}\n".format(pod.status.pod_ip))
 
-        result = subprocess.run(['fio',
+        fio_cmd = subprocess.run(['fio',
                                  '--client={}'.format(tf.name),
                                  os.path.join(self.job_dir, profile),
                                  '--output-format=json',
                                  '--output={}'.format(os.path.join(self.reports, output))]
                                 )
-        return result
+        return fio_cmd
 
     def fetch_report(self, output):
         """ retrieve report"""

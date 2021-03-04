@@ -51,9 +51,9 @@ class OpenshiftHandler(BaseHandler):
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
         args = '-p {} -o {} -w {}'.format(profile, output, workers)
-        o = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
+        oc_command = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
-        return o.returncode
+        return oc_command
 
     def fetch_report(self, output):
         source_file = os.path.join('/reports/', output)
