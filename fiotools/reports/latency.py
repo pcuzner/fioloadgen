@@ -33,7 +33,10 @@ def latency_summary(fio_json, percentile=95):
         }
         for v in vars_list:
             path = v.split('/')
-            path_value = get_item(item, path)
+            try:
+                path_value = get_item(item, path)
+            except KeyError:
+                path_value = 0
             hostdata[v] = str(path_value)
         extract.append(hostdata)
 
