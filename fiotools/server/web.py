@@ -396,7 +396,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
                                         WHERE
                                             id = ?;""", (job_status,
                                                          int(datetime.datetime.now().strftime("%s")),
-                                                         job_output,
+                                                         job_data,
                                                          json.dumps(summary),
                                                          job.uuid)
                                     )
