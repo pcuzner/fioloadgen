@@ -4,7 +4,7 @@ import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -79,7 +79,7 @@ export class Jobs extends React.Component {
         }
 
     }
-    
+
     fetchJobSummaryData() {
         console.log("DEBUG refresh the job data");
         fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers")
@@ -274,7 +274,7 @@ export class Jobs extends React.Component {
 
                 let selected = (details.includes(job.id)) ? true : false;
                 return (
-                    <JobDataRow 
+                    <JobDataRow
                         job={job}
                         key={i}
                         selected={selected}
@@ -298,10 +298,10 @@ export class Jobs extends React.Component {
         return (
             <div id="jobs" className={this.props.visibility}>
                 <a className="hidden" ref={this.downloadLink} />
-                <GenericModal 
-                    show={this.state.modalOpen} 
+                <GenericModal
+                    show={this.state.modalOpen}
                     title={"FIO Job Output"}
-                    content={jobDetails} 
+                    content={jobDetails}
                     closeHandler={this.closeModal} />
                 <br />
                 <div className="inline-block align-right" style={{marginLeft: "50px"}}>
@@ -310,8 +310,10 @@ export class Jobs extends React.Component {
                         <thead>
                             <tr>
                                 <th className="job_selector">View</th>
+
+                                <th className="job_title">Job Title</th>
                                 <th className="job_id">Job ID</th>
-                                <th className="job_title">Title</th>
+                                <th className="job_profile">Profile</th>
                                 <th className="job_provider">Provider</th>
                                 <th className="job_platform">Platform</th>
                                 <th className="job_start">Start Time</th>
@@ -333,7 +335,7 @@ export class Jobs extends React.Component {
                 <div id="jobsContainer">
                     <JobAnalysis data={this.state.jobInfo} />
                 </div>
-                
+
             </div>
         );
     }
@@ -383,7 +385,12 @@ class FIOJobAnalysis extends React.Component {
     calcMedian(dataset, opType = "read", percentile="95.000000") {
         let values = [];
         dataset.forEach((client) => {
-            values.push(client[opType].clat_ns.percentile[percentile]);
+            if ("percentile" in client[opType].clat_ns) {
+                values.push(client[opType].clat_ns.percentile[percentile]);
+            } else {
+                values.push(0);
+            }
+
         });
         values.sort();
         let idx = Math.ceil(0.5 * dataset.length);
@@ -405,7 +412,7 @@ class FIOJobAnalysis extends React.Component {
             let writeMedian95 = 0;
 
             if (this.state.jobData.summary) {
-    
+
                 rawJSON = JSON.parse(this.state.jobData.raw_json);
                 lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
                 clientSummary = rawJSON.client_stats[lastItem];
@@ -475,21 +482,22 @@ class FIOJobAnalysis extends React.Component {
                         hoverBorderColor: 'rgba(31, 60, 69,1)',
                         data : latencyData
                     }
-                    
+
                 ]
             };
- 
+
             return (
                 <div className="job-details-container">
                     <div className="inline-block job-summary align-top">
-                        
+
                         {/* <div className="inline-block align-top" style={{width: "15%"}}>Job Title:</div> */}
                         {/* <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div> */}
                         <div className="align-center bold" style={{marginBottom: "10px"}}>{this.state.jobData.title}</div>
-                        <div><span style={{display: "inline-block", minWidth: "50px"}}>ID</span>: {this.state.jobData.id}</div>
-                        <div><span style={{display: "inline-block", minWidth: "50px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
-                        <div><span style={{display: "inline-block", minWidth: "50px"}}>Clients</span>: {this.state.jobData.workers}</div>
-                        <div><span style={{display: "inline-block", minWidth: "50px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>ID</span>: {this.state.jobData.id.split('-')[0]}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Completed</span>: {formatTimestamp(this.state.jobData.ended)}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
                         <table className="lat-table">
                             <caption>Overall IO Breakdown (ms)</caption>
                             <thead>
@@ -534,7 +542,7 @@ class FIOJobAnalysis extends React.Component {
                         {/* <Panel title="IOPS" /> */}
                     </div>
                     <div className="inline-block chart-item">
-                        <Bar 
+                        <Bar
                             data={data}
                             width={450}
                             height={250}
@@ -571,7 +579,7 @@ class FIOJobAnalysis extends React.Component {
                                     //   ticks: {
                                     //       fontSize: 9,
                                     //       maxRotation: 90,
-                                    //       minRotation: 90                                          
+                                    //       minRotation: 90
                                     //   }
                                     }],
                                   }
@@ -687,18 +695,19 @@ class JobDataRow extends React.Component {
         let checkboxEnabled;
         let t_str;
         if (this.props.job.status != 'queued') {
-            let t = new Date(this.props.job.started * 1000);
+            t_str = formatTimestamp(this.props.job.started);
+            // let t = new Date(this.props.job.started * 1000);
             // let t_str = t.toLocaleString()
-            t_str = t.getFullYear() + '/' +
-                    (t.getMonth() + 1).toString().padStart(2, '0') + '/' +
-                    t.getDate().toString().padStart(2, '0') + ' ' +
-                    t.getHours().toString().padStart(2, '0') + ':' +
-                    t.getMinutes().toString().padStart(2, '0') + ':' +
-                    t.getSeconds().toString().padStart(2, '0');
+            // t_str = t.getFullYear() + '/' +
+            //         (t.getMonth() + 1).toString().padStart(2, '0') + '/' +
+            //         t.getDate().toString().padStart(2, '0') + ' ' +
+            //         t.getHours().toString().padStart(2, '0') + ':' +
+            //         t.getMinutes().toString().padStart(2, '0') + ':' +
+            //         t.getSeconds().toString().padStart(2, '0');
         } else {
             t_str = 'N/A';
         }
-        
+
         let rowClass;
         if (this.props.selected) {
             rowClass = "selectedRow";
@@ -714,11 +723,11 @@ class JobDataRow extends React.Component {
         switch (this.props.job.status) {
             case "incomplete":
                 actions = [
-                    { 
+                    {
                         action: 'rerun',
                         callback: this.props.rerunJob,
                     },
-                    { 
+                    {
                         action: 'delete',
                         callback: this.props.deleteJob,
                     },
@@ -726,19 +735,19 @@ class JobDataRow extends React.Component {
                 break;
             case "complete":
                 actions = [
-                    { 
+                    {
                         action: 'rerun',
                         callback: this.props.rerunJob,
                     },
-                    { 
+                    {
                         action: 'export',
                         callback: this.props.exportJob,
                     },
-                    { 
-                        action: 'show',
+                    {
+                        action: 'show job',
                         callback: this.props.showJob,
                     },
-                    { 
+                    {
                         action: 'delete',
                         callback: this.props.deleteJob,
                     },
@@ -746,15 +755,15 @@ class JobDataRow extends React.Component {
                 break;
             case "failed":
                 actions = [
-                    { 
+                    {
                         action: 'rerun',
                         callback: this.props.rerunJob,
                     },
-                    { 
-                        action: 'show',
+                    {
+                        action: 'show job',
                         callback: this.props.showJob,
                     },
-                    { 
+                    {
                         action: 'delete',
                         callback: this.props.deleteJob,
                     },
@@ -762,7 +771,7 @@ class JobDataRow extends React.Component {
                 break;
             case "queued":
                 actions = [
-                    { 
+                    {
                         action: 'delete',
                         callback: this.props.deleteJob,
                     },
@@ -775,12 +784,14 @@ class JobDataRow extends React.Component {
         }
 
         return (
-            <tr className={rowClass}> 
+            <tr className={rowClass}>
                 <td className="job_selector">
                     <input type="checkbox" disabled={!checkboxEnabled} checked={this.props.selected} onChange={() => {this.toggleSelected(event);}} />
                 </td>
-                <td className="job_id">{this.props.job.id}</td>
+
                 <td className="job_title">{this.props.job.title}</td>
+                <td className="job_id">{this.props.job.id.split('-')[0]}</td>
+                <td className="job_profile">{this.props.job.profile}</td>
                 <td className="job_provider" >{this.props.job.provider}</td>
                 <td className="job_platform">{this.props.job.platform}</td>
                 <td className="job_start">{t_str}</td>
@@ -811,7 +822,7 @@ class JobJSON extends React.Component {
                     copyBtnText: 'Copy',
                 });
             }, 2000);
-            
+
         }
     }
 
@@ -830,7 +841,7 @@ class JobJSON extends React.Component {
                             </code>
                         </pre>
                     </div>
-                    
+
                     <button className="float-right btn btn-primary offset-right" onClick={()=>{ this.closeModal()}}>Close</button>
                     <button className="float-right btn btn-default offset-right" style={{width: "60px"}} onClick={() => {this.copyContent()}}>{this.state.copyBtnText}</button>
                 </div>

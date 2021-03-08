@@ -68,11 +68,11 @@ export class MastHead extends React.Component {
         return (
             <div id="masthead">
                 <div>
-                    <div className="page-heading">LoadGen</div>
+                    <div className="page-heading">FIOLoadGen</div>
                     <ServiceState state={this.state}/>
                 </div>
                 <div style={{clear: 'both'}}/>
-            </div>    
+            </div>
         );
     }
 }
