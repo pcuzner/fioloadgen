@@ -11,9 +11,10 @@ import argparse
 from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import (  # NOQA: F401
-    OpenshiftHandler,
+    OpenshiftCMDHandler,
     SSHHandler,
-    LocalFIOHandler
+    NativeFIOHandler,
+    DebugHandler,
 )
 
 from fiotools.utils import rfile, get_pid_file, port_in_use
@@ -36,12 +37,13 @@ def cmd_parser():
         '--version',
         action='store_true',
         default=False,
-        help="Show fioloadgen version"
+        help="Show fioloadgen version",
     )
     parser.add_argument(
         '--mode',
         type=str,
-        help="mode to run the service"
+        choices=['dev', 'prod', 'debug'],
+        help="mode to run the service",
     )
 
     subparsers = parser.add_subparsers(help="sub-command")
@@ -53,7 +55,7 @@ def cmd_parser():
     parser_start.add_argument(
         '--type',
         required=False,
-        choices=['oc', 'local', 'kube'],
+        choices=['oc', 'native', 'kube'],
         help="type of fioservice target",
     )
     parser_start.add_argument(
@@ -62,11 +64,11 @@ def cmd_parser():
         type=str,
         help="Namespace for Openshift based tests",
     )
-    parser_start.add_argument(
-        '--debug',
-        action='store_true',
-        help="run standalone without a connection to help debug",
-    )
+    # parser_start.add_argument(
+    #     '--debug',
+    #     action='store_true',
+    #     help="run standalone without a connection to help debug",
+    # )
 
     parser_stop = subparsers.add_parser(
         'stop',
@@ -124,12 +126,15 @@ def command_start():
 
     configuration.init(args)
 
-    if configuration.settings.type == 'oc':
+    if args.mode == 'debug':
+        print("Using debug handler")
+        handler = DebugHandler()
+    elif configuration.settings.type == 'oc':
         print("Using 'oc' command handler")
-        handler = OpenshiftHandler(mgr='fiomgr')
-    elif configuration.settings.type == 'local':
-        print("Using 'local' fio handler")
-        handler = LocalFIOHandler()  # ns=args.namespace)
+        handler = OpenshiftCMDHandler(mgr='fiomgr')
+    elif configuration.settings.type == 'native':
+        print("Using 'native' fio handler")
+        handler = NativeFIOHandler()  # ns=args.namespace)
     else:
         print("'{}' handler has not been implemented yet".format(configuration.settings.type))
         sys.exit(1)
@@ -145,7 +150,7 @@ def command_start():
 
     server = FIOWebService(handler=handler)  #, debug_mode=args.debug_only)
     print("Checking connection to {}".format(handler._target))
-    if server.ready or configuration.settings.debug:
+    if server.ready or configuration.settings.mode == 'debug':
         print("Starting the engine")
         # Call the run handler to start the web service
         server.run()
