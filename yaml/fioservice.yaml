@@ -16,7 +16,7 @@ rules:
     verbs:
       - get
       - list
-  - apiGroups: 
+  - apiGroups:
     - extensions
     resources:
       - deployments
@@ -57,7 +57,7 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: pcuzner/fioservice:debug-v4
+        image: pcuzner/fioservice:debug-v5
         ports:
         - containerPort: 8080
         env:
@@ -69,8 +69,6 @@ spec:
         #   value: 'local'
         - name: MODE
           value: "prod"
-        - name: DEBUG
-          value: "false"
         # command: [ 'usr/bin/tail']
         # args: ['-f','/dev/null']
 
