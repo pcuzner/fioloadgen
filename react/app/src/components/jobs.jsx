@@ -607,7 +607,7 @@ class FIOJobAnalysis extends React.Component {
                                 },
                                 title: {
                                     display: true,
-                                    text:["IO Latency @ 95%ile", "\u25C0 is better"]
+                                    text:["I/O Latency @ 95%ile", "\u25C0 is better"]
                                 },
                                 legend: {
                                     display: false
