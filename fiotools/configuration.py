@@ -43,6 +43,9 @@ class Config(object):
         ],
         "dev": [
             os.path.join(os.path.expanduser('~'), 'fioservice.ini'),
+        ],
+        "debug": [
+            os.path.join(os.path.expanduser('~'), 'fioservice.ini'),
         ]
     }
 
@@ -59,7 +62,7 @@ class Config(object):
             "debug": False,
             "runtime": "package",
             "namespace": "fio",
-            "type": "local",
+            "type": "native",
         },
         "dev": {
             "db_name": "fioservice.db",
@@ -76,6 +79,8 @@ class Config(object):
             "type": "oc",
         }
     }
+
+    _global_defaults.update({"debug": _global_defaults['dev']})
 
     _client_defaults = {}
 
@@ -99,7 +104,7 @@ class Config(object):
         self.pid_dir = Config._global_defaults[mode].get('pid_dir')
         self.ssl = Config._global_defaults[mode].get('ssl')
         self.port = Config._global_defaults[mode].get('port')
-        self.debug = Config._global_defaults[mode].get('debug')
+        # self.debug = Config._global_defaults[mode].get('debug')
         self.job_dir = Config._global_defaults[mode].get('job_dir')
         self.ip_address = Config._global_defaults[mode].get('ip_address')
         self.runtime = Config._global_defaults[mode].get('runtime')

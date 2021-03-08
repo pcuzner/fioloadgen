@@ -19,7 +19,7 @@ else:
     kubernetes_imported = True
 
 
-class LocalFIOHandler(BaseHandler):
+class NativeFIOHandler(BaseHandler):
     _target = "Openshift"
 
     def __init__(self):  # , namespace):
@@ -42,6 +42,7 @@ class LocalFIOHandler(BaseHandler):
             self.k8s = None
             self.beta = None
 
+        super().__init__()
     # def init(self):
     #     # determine the replicaset name for the workers
     #     pass

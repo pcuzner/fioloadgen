@@ -10,7 +10,7 @@ import subprocess
 from fiotools import configuration
 
 
-class OpenshiftHandler(BaseHandler):
+class OpenshiftCMDHandler(BaseHandler):
 
     _target = "Openshift"
     _cmd = 'oc'
@@ -70,7 +70,7 @@ class OpenshiftHandler(BaseHandler):
         pass
 
 
-class KubernetesHandler(OpenshiftHandler):
+class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
     _cmd = 'kubectl'
     _connection_test = 'kubectl status'

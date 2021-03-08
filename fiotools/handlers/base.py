@@ -7,7 +7,7 @@ class BaseHandler(object):
 
     _target = "Base"
     _cmd = 'missing'
-    _connection_test = 'missing command'
+    _connection_test = 'missing'
 
     @property
     def _can_run(self):
@@ -15,13 +15,7 @@ class BaseHandler(object):
 
     @property
     def has_connection(self):
-        if self._can_run:
-            r = subprocess.run(self._connection_test.split(' '),
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-            return r.returncode == 0
-        else:
-            return False
+        return False
 
     def check(self):
         """check the stored config against the target environment"""
@@ -67,3 +61,12 @@ class BaseHandler(object):
     def fio_valid(self, fiojob):
         """check whether an fiojob 'deck' syntax is valid"""
         raise NotImplementedError
+
+    def startfio(self, profile, workers, output):
+        return None
+
+    def fetch_report(self, output):
+        return 0
+
+    def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
+        return 0
