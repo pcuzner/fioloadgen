@@ -607,7 +607,7 @@ class FIOJobAnalysis extends React.Component {
                                 },
                                 title: {
                                     display: true,
-                                    text:["Median Latency @ 95%ile", "\u25C0 is better"]
+                                    text:["IO Latency @ 95%ile", "\u25C0 is better"]
                                 },
                                 legend: {
                                     display: false
@@ -647,7 +647,7 @@ class FIOJobAnalysis extends React.Component {
                                 },
                                 title: {
                                     display: true,
-                                    text:["Bandwidth", "\u25B6 is better"]
+                                    text:["Bandwidth / Throughput", "\u25B6 is better"]
                                 },
                                 legend: {
                                     display: false
