@@ -1,0 +1,34 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fioworker
+spec:
+  selector:
+    matchLabels:
+      app: fioloadgen # has to match .spec.template.metadata.labels
+  replicas: 2 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: fioloadgen # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: fioclient
+        image: pcuzner/fiotester
+        env:
+          - name: FIOMODE
+            value: server
+        volumeMounts:
+          - name: testdata
+            mountPath: /mnt
+  volumeClaimTemplates:
+  - metadata:
+      name: testdata
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "ocs-storagecluster-ceph-rbd"
+      resources:
+        requests:
+          storage: 10Gi

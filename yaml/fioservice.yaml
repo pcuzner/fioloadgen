@@ -57,7 +57,7 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: pcuzner/fioservice:latest
+        image: pcuzner/fioservice:debug-v4
         ports:
         - containerPort: 8080
         env:
@@ -70,7 +70,7 @@ spec:
         - name: MODE
           value: "prod"
         - name: DEBUG
-          value: "true"
+          value: "false"
         # command: [ 'usr/bin/tail']
         # args: ['-f','/dev/null']
 
