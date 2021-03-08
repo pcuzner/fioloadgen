@@ -316,7 +316,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
 
     if not work_queue.empty():
 
-        if configuration.settings.debug:
+        if configuration.settings.mode == 'debug':
             return
 
         # not in debug mode, so we act on the content of the queue
@@ -337,7 +337,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
             cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
-            rc = handler.copy_file(tf.name, os.path.join(configuration.settings.job_dir, 'fioloadgen.job'))
+            rc = handler.copy_file(tf.name, os.path.join('/fio/jobs', 'fioloadgen.job'))
             if rc != 0:
 
                 cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
@@ -502,7 +502,7 @@ class Job(object):
         job.workers = parms.get('workers', 9999)  # FIX ME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
-        job.title = parms.get('title', '{} on '.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
+        job.title = parms.get('title', '{} on {}'.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
 
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
@@ -716,7 +716,7 @@ class ServiceStatus(object):
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
-        self.debug_mode = configuration.settings.debug
+        self.debug_mode = True if configuration.settings.mode == 'debug' else False
 
     def reset(self):
         self.task_active = False
