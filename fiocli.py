@@ -25,6 +25,12 @@ def cmd_parser():
         default=False,
         help="Show fioloadgen version"
     )
+    parser.add_argument(
+        "--mode",
+        choices=['debug', 'dev', 'prod'],
+        default='dev',
+        help="Mode of the CLI"
+    )
 
     subparsers = parser.add_subparsers(help="sub-commands")
 
@@ -224,7 +230,7 @@ def _build_qry_string(qs):
 
 def _extract_API_error(response):
     js = json.loads(response._content.decode())
-    return "Error: {}".format(js['message'])    
+    return "Error: {}".format(js['message'])
 
 
 def command_db_delete():
@@ -486,7 +492,7 @@ if __name__ == '__main__':
         print("fioloadgen version : {}".format(__version__))
 
     elif 'func' in args:
-        configuration.init()
+        configuration.init(args)
 
         api_address = os.environ.get(
             'FIO_API_ADDRESS',
