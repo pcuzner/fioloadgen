@@ -337,7 +337,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
             cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
-            rc = handler.copy_file(tf.name, configuration.settings.job_dir, 'fioloadgen.job')
+            rc = handler.copy_file(tf.name, os.path.join(configuration.settings.job_dir, 'fioloadgen.job'))
             if rc != 0:
 
                 cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
