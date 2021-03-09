@@ -67,7 +67,7 @@ class Config(object):
         "dev": {
             "db_name": "fioservice.db",
             "db_dir": os.path.expanduser('~'),
-            "job_dir": os.path.join(os.getcwd(), "data", "fio", "jobs"),
+            "job_dir": os.path.join(os.getcwd(), "fio", "jobs"),
             "log_dir": os.path.expanduser('~'),
             "pid_dir": os.path.expanduser('~'),
             "ssl": False,
