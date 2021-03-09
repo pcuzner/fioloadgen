@@ -57,7 +57,7 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: pcuzner/fioservice:debug-v5
+        image: pcuzner/fioservice:debug-v8
         ports:
         - containerPort: 8080
         env:
