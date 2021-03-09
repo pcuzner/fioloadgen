@@ -135,7 +135,7 @@ get_environment() {
     console ${INFO} "\nTo manage the tests, FIOLoadgen can use either a local daemon on your machine (local), or"
     console ${INFO} "deploy the management daemon to the target environment (remote)"
     while [ -z "$FIOSERVICE_MODE" ]; do
-        read -p $(echo -e ${INFO})"How do you want to manage the tests (local/remote) [local]?"$(echo -e ${NC}) FIOSERVICE_MODE
+        read -p $(echo -e ${INFO})"How do you want to manage the tests (local/remote) [local]? "$(echo -e ${NC}) FIOSERVICE_MODE
         if [ -z "$FIOSERVICE_MODE" ]; then
             FIOSERVICE_MODE=$DEFAULT_FIOSERVICE_MODE
         fi
@@ -185,7 +185,7 @@ get_environment() {
 setup() {
     acquire_lock
 
-    console ${INFO} "\nSetting up the environment"
+    console ${INFO} "\nSetting up the environment\n"
 
     # create namespace
     console ${INFO} "Creating namespace (${NAMESPACE})"
@@ -206,6 +206,8 @@ setup() {
         $CLUSTER_CMD -n ${NAMESPACE} create -f -
     # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
     echo $?
+    # TODO - capture the output o f the deploy and use tick or error based on the rc
+
     # for n in $(seq ${WORKERS}); do
     #    cat yaml/${WORKER_YAML} | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
     # done
@@ -293,8 +295,30 @@ setup() {
         # Use remote fioservice deployed to the target cluster
         console ${INFO} "Submitting the fioservice daemon"
         $CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml
-        # wait for it ti be ready
-        # add the port-forward
+        pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
+        status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
+        console ${INFO} "Waiting for fioservice to reach Ready state"
+        t=1
+        while [ $t -lt $ITERATION_LIMIT ]; do
+            status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
+            if [ "$status" != "True" ]; then
+                console ${INFO} "\t - waiting (${t}/${ITERATION_LIMIT})"
+                sleep $ITERATION_DELAY
+                t=$((t+1))
+            else
+                break
+            fi
+        done
+        if [ $t -ne $ITERATION_LIMIT ]; then
+            console ${INFO} "${TICK}${NC} FIOservice pod ready"
+        else
+            console ${ERROR} "Timed out Waiting too long for fioservice to reach ready, unable to continue."
+            console ${ERROR} "Deployment : fioservice"
+            console ${ERROR} "Pod        : ${pod_name}"
+            exit
+        fi
+        console ${INFO} "Adding port-forward rule"
+        $CLUSTER_CMD -n $NAMESPACE port-forward $pod_name 8080:8080 &
         console ${INFO} "\nAccess the UI at http://localhost:8080. From there you may submit jobs and view"
         console ${INFO} "job output and graphs"
         echo ""
