@@ -155,6 +155,19 @@ export class Jobs extends React.Component {
         })
             .then(handleAPIErrors)
             .then((json) => {
+                // delete the entry from the jobinfo, so it gets removed from the
+                // charts section
+                let tJobInfo = Object.assign({}, this.state.jobInfo);
+                if (tJobInfo.hasOwnProperty(jobID)) {
+                    console.debug("removing the job from the analysis section")
+                    delete tJobInfo[jobID];
+                    this.setState({
+                        jobInfo: tJobInfo
+                    });
+                } else {
+                    console.debug("jobid to remove is not in the analysis section")
+                }
+
                 this.fetchJobSummaryData();
             })
             .catch((err) => {
