@@ -15,6 +15,7 @@ import datetime
 import time
 # import glob
 import tempfile
+import logging
 
 from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
@@ -24,6 +25,7 @@ from fiotools import configuration
 DEFAULT_DBPATH = os.path.join(os.path.expanduser('~'), 'fioservice.db')
 # JOB_DIR = "./data/fio/jobs"
 
+logger = logging.getLogger(__name__)
 log = cherrypy.log
 # logging.getLogger('cherrypy').propagate = False
 
@@ -774,25 +776,38 @@ class FIOWebService(object):
     def ready(self):
 
         # command missing
+        logger.debug("calling handlers can_run method")
         if not self.handler._can_run:
-            print("handler's can_run method returned False")
+            logger.error("handler's can_run method returned False")
             return False
+
+        logger.debug("handler's can_run passed")
 
         # no external connection
+        logger.debug("calling has_connection")
         if not self.handler.has_connection:
-            print("handler's has_connection method returned False")
+            logger.error("handler's has_connection method returned False")
             return False
 
+        logger.debug("handler's has_connection passed")
+
         # no profiles in the db
+        logger.debug("checking job profiles are available")
         if not db.fetch_all('profiles', ['name']):
-            print("handler reporting no profiles")
+            logger.error("handler reporting no profiles")
             return False
+
+        logger.debug("profiles are available")
 
         # use the handler to determine the number of workers
         # rc = self.handler.num_workers()
+        logger.debug("checking handler sees worker pods")
         if self.handler.workers == 0:  # or rc != 0:
-            print("handler not seeing any workers")
+            logger.error("handler not seeing any workers")
             return False
+        logger.debug("handler has discovered worker pods")
+
+        logger.info("All checks passed, ready to start the fioservice")
 
         return True
 
