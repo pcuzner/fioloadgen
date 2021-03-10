@@ -156,6 +156,7 @@ def command_start():
         server.run()
     else:
         print("{} connection unavailable, or workers not ready".format(handler._target))
+        print("stopped")
 
     # NB. run() forks the daemon, so anything here is never reached
 
