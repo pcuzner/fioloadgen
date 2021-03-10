@@ -12,7 +12,7 @@ export class App extends React.Component {
             profiles: 'active',
             jobs: 'inactive',
             current: 'profiles',
-            // workers: 2
+            workers: 0,
         };
         // this.workers = 2;
     };
@@ -38,20 +38,27 @@ export class App extends React.Component {
     //     });
     // }
 
+    updateWorkers = (count) => {
+        console.debug("updating workers to ", count);
+        this.setState({
+            workers: count,
+        });
+    }
+
     render() {
         console.log("render main. env vars: " + JSON.stringify(process.env));
         return (
             <div>
-                <MastHead />
+                <MastHead workersCallback={this.updateWorkers}/>
                 <ul id="menu">
                     <li className={"menu menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
                     <li className={"menu menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
                 </ul>
                 <div id="container">
-                    <Profiles visibility={this.state.profiles} /> 
+                    <Profiles visibility={this.state.profiles} workers={this.state.workers}/>
                     <Jobs visibility={this.state.jobs}/>
                 </div>
-                
+
             </div>
         );
     }
