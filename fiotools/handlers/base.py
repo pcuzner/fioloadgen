@@ -70,3 +70,6 @@ class BaseHandler(object):
 
     def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
         return 0
+
+    def scale_workers(self, replica_count):
+        raise NotImplementedError

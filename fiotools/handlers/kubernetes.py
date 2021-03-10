@@ -69,6 +69,10 @@ class OpenshiftCMDHandler(BaseHandler):
     def runcommand(self, command):
         pass
 
+    def scale_workers(self, replica_count):
+        o = subprocess.run(['oc', '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
+        return o.returncode
+
 
 class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
