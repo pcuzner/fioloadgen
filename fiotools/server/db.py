@@ -74,7 +74,7 @@ def load_db_profiles(out='console'):
     dbpath = os.path.join(configuration.settings.db_dir, 'fioservice.db')
     message("Refreshing job profiles, syncing the db versions with the local files in {}".format(configuration.settings.job_dir), out)
 
-    profile_paths = glob.glob('{}/*'.format(configuration.settings.job_dir))
+    profile_paths = glob.glob('{}/*'.format(configuration.settings.job_src))
     fs_profile_names = [os.path.basename(p) for p in profile_paths]
 
     with sqlite3.connect(dbpath) as c:
@@ -192,7 +192,7 @@ def delete_row(table=None, query=dict()):
             if c.total_changes == 0:
                 err = "row not found"
             c.commit()
-    
+
     return err
 
 def update_job_status(job_uuid, status):

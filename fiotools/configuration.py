@@ -3,13 +3,8 @@ import sys
 
 from configparser import ConfigParser, ParsingError
 
-# create a settings object
-
-# TODO
-# settings fron env vars coming too late, and not resetting all the variables, so dev taking precedence
-# if env says mode, use it first
-# else if args say mode
-# else default to 'dev'
+import logging
+logger = logging.getLogger(__name__)
 
 global settings
 
@@ -54,6 +49,7 @@ class Config(object):
             "db_name": "fioservice.db",
             "db_dir": "/var/lib/fioloadgen",
             "job_dir": "/var/lib/fioloadgen/jobs",
+            "job_src": "/var/lib/fioloadgen/jobs",
             "log_dir": "/var/log/fioloadgen",
             "pid_dir": "/var/run/fioloadgen",
             "ssl": False,
@@ -67,7 +63,8 @@ class Config(object):
         "dev": {
             "db_name": "fioservice.db",
             "db_dir": os.path.expanduser('~'),
-            "job_dir": os.path.join(os.getcwd(), "data", "fio", "jobs"),
+            "job_dir": os.path.join("fio", "jobs"),
+            "job_src": os.path.join(os.getcwd(), "data", "fio", "jobs"),
             "log_dir": os.path.expanduser('~'),
             "pid_dir": os.path.expanduser('~'),
             "ssl": False,
@@ -87,13 +84,16 @@ class Config(object):
     def __init__(self, args=None):
 
         if os.getenv('MODE'):
-            print("setting mode from environment variable")
+            logger.debug("setting mode from environment variable")
+            # print("setting mode from environment variable")
             mode = os.getenv('MODE')
         elif args.mode:
-            print("settings mode from args")
+            logger.debug("settings mode from args")
+            # print("settings mode from args")
             mode = args.mode
         else:
-            print("using default mode of dev")
+            logger.debug("using default mode of dev")
+            # print("using default mode of dev")
             mode = 'dev'
 
         # establish defaults based on the mode
@@ -106,6 +106,7 @@ class Config(object):
         self.port = Config._global_defaults[mode].get('port')
         # self.debug = Config._global_defaults[mode].get('debug')
         self.job_dir = Config._global_defaults[mode].get('job_dir')
+        self.job_src = Config._global_defaults[mode].get('job_src')
         self.ip_address = Config._global_defaults[mode].get('ip_address')
         self.runtime = Config._global_defaults[mode].get('runtime')
         self.namespace = Config._global_defaults[mode].get('namespace')
@@ -136,7 +137,7 @@ class Config(object):
         for v in vars:
             env_setting = os.getenv(v)
             if env_setting:
-                print("using env setting {} = {}".format(v, convert_value(env_setting)))
+                logger.debug("using env setting {} = {}".format(v, convert_value(env_setting)))
                 setattr(self, v.lower(), convert_value(env_setting))
 
     def _apply_file_overrides(self):
@@ -152,14 +153,14 @@ class Config(object):
         try:
             config = parser.read(Config._config_dir_list[self.mode])
         except ParsingError:
-            print("invalid ini file format, unable to parse")
+            logger.error("invalid ini file format, unable to parse")
             sys.exit(12)
 
         if config:
             sections = parser.sections()
             if not sections or not all(s in valid_sections for s in sections):
-                print("config file has missing/unsupported sections")
-                print("valid sections are: {}".format(','.join(valid_sections)))
+                logger.error("config file has missing/unsupported sections")
+                logger.error("valid sections are: {}".format(','.join(valid_sections)))
                 sys.exit(12)
 
             # Apply the overrides
@@ -167,10 +168,10 @@ class Config(object):
                 if section_name == 'global':
                     for name, value in parser.items(section_name):
                         if name in global_vars:
-                            print("[CONFIG] applying override: {}={}".format(name, value))
+                            logger.debug("[CONFIG] applying override: {}={}".format(name, value))
                             setattr(self, name, convert_value(value))
                         else:
-                            print("-> {} is unsupported, ignoring")
+                            logger.warning("-> {} is unsupported, ignoring")
         else:
             print("no configuration overrides from local files")
 
