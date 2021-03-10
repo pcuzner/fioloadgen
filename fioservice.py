@@ -21,7 +21,10 @@ from fiotools.utils import rfile, get_pid_file, port_in_use
 import fiotools.configuration as configuration
 
 # settings.init()
-# import logging
+import logging
+stream = logging.StreamHandler()
+logger = logging.getLogger()
+logger.addHandler(stream)
 
 DEFAULT_DIR = os.path.expanduser('~')
 DEFAULT_NAMESPACE = 'fio'
@@ -121,42 +124,46 @@ def command_start():
     if not os.path.isdir(DEFAULT_DIR):
         os.makedirs(DEFAULT_DIR)
 
+    if args.mode in ['debug', 'dev']:
+        logger.setLevel(logging.DEBUG)
+
     if os.path.exists(get_pid_file()):
-        raise OSError("Already running")
+        logger.error("Already running")
+        exit(1)
 
     configuration.init(args)
 
     if args.mode == 'debug':
-        print("Using debug handler")
+        logger.info("Using debug handler")
         handler = DebugHandler()
     elif configuration.settings.type == 'oc':
-        print("Using 'oc' command handler")
+        logger.info("Using 'oc' command handler")
         handler = OpenshiftCMDHandler(mgr='fiomgr')
     elif configuration.settings.type == 'native':
-        print("Using 'native' fio handler")
+        logger.info("Using 'native' fio handler")
         handler = NativeFIOHandler()  # ns=args.namespace)
     else:
-        print("'{}' handler has not been implemented yet".format(configuration.settings.type))
+        logger.error("'{}' handler has not been implemented yet".format(configuration.settings.type))
         sys.exit(1)
 
     if not handler.has_connection:
-        print("Handler is not usable: environment or configuration problem")
+        logger.error("Handler is not usable: environment or configuration problem")
         sys.exit(1)
 
-    print("Checking port {} is free".format(configuration.settings.port))
+    logger.info("Checking port {} is free".format(configuration.settings.port))
     if port_in_use(configuration.settings.port):
-        print("-> port in use")
+        logger.error("-> port in use, unable to continue")
         sys.exit(1)
 
     server = FIOWebService(handler=handler)  #, debug_mode=args.debug_only)
-    print("Checking connection to {}".format(handler._target))
+    logger.info("Checking connection to {}".format(handler._target))
     if server.ready or configuration.settings.mode == 'debug':
-        print("Starting the engine")
+        logger.info("Starting the fioservice daemon")
         # Call the run handler to start the web service
         server.run()
     else:
-        print("{} connection unavailable, or workers not ready".format(handler._target))
-        print("stopped")
+        logger.error("{} connection unavailable, or workers not ready".format(handler._target))
+        logger.error("stopped")
 
     # NB. run() forks the daemon, so anything here is never reached
 
