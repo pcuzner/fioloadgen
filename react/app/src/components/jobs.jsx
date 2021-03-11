@@ -326,6 +326,7 @@ export class Jobs extends React.Component {
 
                                 <th className="job_title">Job Title</th>
                                 <th className="job_id">Job ID</th>
+                                <th className="job_clients"># Clients</th>
                                 <th className="job_profile">Profile</th>
                                 <th className="job_provider">Provider</th>
                                 <th className="job_platform">Platform</th>
@@ -512,7 +513,7 @@ class FIOJobAnalysis extends React.Component {
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
                         <table className="lat-table">
-                            <caption>Overall IO Breakdown (ms)</caption>
+                            <caption>Overall I/O Breakdown (ms)</caption>
                             <thead>
                                 <tr>
                                     <th></th>
@@ -587,7 +588,7 @@ class FIOJobAnalysis extends React.Component {
                                     xAxes: [{
                                       scaleLabel: {
                                         display: true,
-                                        labelString: 'IO Latency Group'
+                                        labelString: 'I/O Latency Group'
                                       },
                                     //   ticks: {
                                     //       fontSize: 9,
@@ -757,7 +758,7 @@ class JobDataRow extends React.Component {
                         callback: this.props.exportJob,
                     },
                     {
-                        action: 'show job',
+                        action: 'show output',
                         callback: this.props.showJob,
                     },
                     {
@@ -773,7 +774,7 @@ class JobDataRow extends React.Component {
                         callback: this.props.rerunJob,
                     },
                     {
-                        action: 'show job',
+                        action: 'show output',
                         callback: this.props.showJob,
                     },
                     {
@@ -804,6 +805,7 @@ class JobDataRow extends React.Component {
 
                 <td className="job_title">{this.props.job.title}</td>
                 <td className="job_id">{this.props.job.id.split('-')[0]}</td>
+                <td className="job_clients">{this.props.job.workers}</td>
                 <td className="job_profile">{this.props.job.profile}</td>
                 <td className="job_provider" >{this.props.job.provider}</td>
                 <td className="job_platform">{this.props.job.platform}</td>
