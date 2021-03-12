@@ -63,7 +63,7 @@ export class Profiles extends React.Component {
                 console.error("Error:", error);
             });
     }
-    
+
     componentDidMount() {
 
         this.fetchAllProfiles();
@@ -81,9 +81,9 @@ export class Profiles extends React.Component {
               });
           })
           .catch((error) => {
-              console.error("initial status call failure, unable to fetch worker info, using default of 2");
+              console.error("initial status call failure, unable to fetch worker info, using default of 0");
               this.setState({
-                  workers: 2,
+                  workers: 0,
               });
           })
     }
@@ -186,17 +186,17 @@ export class Profiles extends React.Component {
         }
         let jobDefinition;
         if (this.state.modalOpen) {
-            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.state.workers} closeHandler={this.closeModal}/>); 
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.props.workers} closeHandler={this.closeModal}/>);
         } else {
             jobDefinition = (<div />);
         }
-        
+
         return (
             <div id="profiles" className={this.props.visibility}>
-                <GenericModal 
-                    show={this.state.modalOpen} 
-                    title={"Runtime Parameters : " + this.state.activeProfile} 
-                    content={jobDefinition} 
+                <GenericModal
+                    show={this.state.modalOpen}
+                    title={"Runtime Parameters : " + this.state.activeProfile}
+                    content={jobDefinition}
                     closeHandler={this.closeModal} />
                 <br />
                 <div className="profile-container">
@@ -243,7 +243,7 @@ class JobParameters extends React.Component {
             titleBorder: {},
         };
     }
-    
+
     updateState(event) {
         /* Could add additional logic here to validate content? */
         this.setState({
@@ -261,7 +261,7 @@ class JobParameters extends React.Component {
                 });
                 console.log("title has content - make it normal");
             }
-        } 
+        }
     }
 
     callbackHandler = () => {
@@ -282,12 +282,12 @@ class JobParameters extends React.Component {
                 <div>
                     <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients&nbsp;</b></div>
                     <div className="inline-block">
-                        <input id="workers" 
-                            className="workers-slider" 
-                            type="range" 
-                            min="1" 
+                        <input id="workers"
+                            className="workers-slider"
+                            type="range"
+                            min="1"
                             max={this.props.clientLimit}
-                            value={this.state.workers} 
+                            value={this.state.workers}
                             onChange={() => {this.updateState(event);}}>
                         </input>
                         <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{this.state.workers}</div>
@@ -298,10 +298,10 @@ class JobParameters extends React.Component {
                     <label forhtml="title">Job Title<span style={{color: "red", verticalAlign: "super", fontSize: ".8em"}}>*</span>&nbsp;</label>
                     <input
                         style={this.state.titleBorder}
-                        type="text" 
-                        id="title" 
-                        size="80" 
-                        name="title" 
+                        type="text"
+                        id="title"
+                        size="80"
+                        name="title"
                         placeholder="Enter a title that uniquely describes the test run"
                         onChange={() => {this.updateState(event);}}/>
                     <p />
@@ -317,7 +317,7 @@ class JobParameters extends React.Component {
                         <option value="aws">AWS</option>
                         <option value="vmware">VMware</option>
                         <option value="baremetal">Bare metal</option>
-                    </select> 
+                    </select>
                     <div>
                         <button className="float-right modal-close btn btn-primary"
                             onClick={this.callbackHandler}>Submit</button>

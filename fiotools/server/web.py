@@ -15,6 +15,7 @@ import datetime
 import time
 # import glob
 import tempfile
+import logging
 
 from ..utils import get_pid_file, rfile
 from ..reports import latency_summary
@@ -22,8 +23,9 @@ from . import db
 from fiotools import configuration
 
 DEFAULT_DBPATH = os.path.join(os.path.expanduser('~'), 'fioservice.db')
-JOB_DIR = "./data/fio/jobs"
+# JOB_DIR = "./data/fio/jobs"
 
+logger = logging.getLogger(__name__)
 log = cherrypy.log
 # logging.getLogger('cherrypy').propagate = False
 
@@ -309,14 +311,14 @@ def jsonify_error(status, message, traceback, version):
     return json.dumps({'status': status, 'message': message})
 
 
-def run_job(dbpath, handler, service_state, debug_mode):
+def run_job(dbpath, handler, service_state):  #, debug_mode):
 
-    # delay (secs) between a job end and the fetch function being executed 
+    # delay (secs) between a job end and the fetch function being executed
     # fetch_delay = 2
 
     if not work_queue.empty():
 
-        if debug_mode:
+        if configuration.settings.mode == 'debug':
             return
 
         # not in debug mode, so we act on the content of the queue
@@ -337,27 +339,27 @@ def run_job(dbpath, handler, service_state, debug_mode):
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
             cherrypy.log("job {} transferring spec to fiomgr pod".format(job.uuid))
-            rc = handler.copy_file(tf.name, '/fio/jobs/fioloadgen.job')
+            rc = handler.copy_file(tf.name, os.path.join(configuration.settings.job_dir, 'fioloadgen.job'))
             if rc != 0:
 
-                cherrypy.log("job {} file transfer failed : {}".format(job.uuid, rc))
+                cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
                 db.update_job_status(job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
                 return
 
-            cherrypy.log("job {} file transfer succcessful".format(job.uuid))
+            cherrypy.log("job {} file copy succcessful".format(job.uuid))
             # job spec transferred, so OK to continue
             job.status = 'started'
             service_state.active_job_type = 'FIO'
             db.update_job_status(job.uuid, job.status)
 
             cherrypy.log("job {} starting".format(job.uuid))
-            runrc = handler.startfio('fioloadgen.job', job.workers, job.outfile)
-            if runrc == 0:
+            run_job = handler.startfio('fioloadgen.job', job.workers, job.outfile)
+            if run_job.returncode == 0:
                 # on some systems, the time between job end and the fetch can return empty files
-                # the delay makes the fetch more 
+                # the delay makes the fetch more
                 # cherrypy.log("job {} completed successfully, waiting {}s".format(job.uuid, fetch_delay))
                 # time.sleep(fetch_delay)
                 cherrypy.log("job {} fetching report data from file {}".format(job.uuid, job.outfile))
@@ -394,16 +396,16 @@ def run_job(dbpath, handler, service_state, debug_mode):
                                             raw_json = ?,
                                             summary = ?
                                         WHERE
-                                            id = ?;""", (job_status, 
+                                            id = ?;""", (job_status,
                                                          int(datetime.datetime.now().strftime("%s")),
-                                                         job_output,
+                                                         job_data,
                                                          json.dumps(summary),
                                                          job.uuid)
                                     )
                     job.status = 'complete'
                     cherrypy.log("job {} processing successful".format(job.uuid))
             else:
-                cherrypy.log("job {} failed with rc={}".format(job.uuid, runrc))
+                cherrypy.log("job {} failed with rc={}".format(job.uuid, run_job.returncode))
                 job.status = 'failed'
                 db.update_job_status(job.uuid, job.status)
 
@@ -502,7 +504,7 @@ class Job(object):
         job.workers = parms.get('workers', 9999)  # FIX ME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
-        job.title = parms.get('title', '{} on '.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
+        job.title = parms.get('title', '{} on {}'.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
 
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
@@ -585,7 +587,7 @@ class Profile(object):
             return response_data
         else:
             return {"data": db.fetch_row('profiles', 'name', profile)['spec']}
-   
+
     # def PUT(self):
     #     summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
 
@@ -707,7 +709,7 @@ def cors_handler():
 
 
 class ServiceStatus(object):
-    def __init__(self, handler, debug_mode):
+    def __init__(self, handler):  #, debug_mode):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
@@ -716,7 +718,7 @@ class ServiceStatus(object):
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
-        self.debug_mode = debug_mode
+        self.debug_mode = True if configuration.settings.mode == 'debug' else False
 
     def reset(self):
         self.task_active = False
@@ -725,13 +727,13 @@ class ServiceStatus(object):
 
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None, port=8080, debug_mode=False, dbpath=DEFAULT_DBPATH):
+    def __init__(self, handler=None, workdir=None):  #, debug_mode=False):
         self.handler = handler
-        self.debug_mode = debug_mode
-        self.service_state = ServiceStatus(handler=handler, debug_mode=debug_mode)
-        self.port = port
+        # self.debug_mode = debug_mode
+        self.service_state = ServiceStatus(handler=handler)  #, debug_mode=configuration.settings.debug)
+        # self.port = port
         self.root = Root()         # web UI
-        self.dbpath = dbpath
+        self.dbpath = os.path.join(configuration.settings.db_dir, configuration.settings.db_name)
         self.root.api = APIroot(self.service_state, self.dbpath)  # API
 
         if workdir:
@@ -774,21 +776,38 @@ class FIOWebService(object):
     def ready(self):
 
         # command missing
+        logger.debug("calling handlers can_run method")
         if not self.handler._can_run:
+            logger.error("handler's can_run method returned False")
             return False
+
+        logger.debug("handler's can_run passed")
 
         # no external connection
+        logger.debug("calling has_connection")
         if not self.handler.has_connection:
+            logger.error("handler's has_connection method returned False")
             return False
+
+        logger.debug("handler's has_connection passed")
 
         # no profiles in the db
+        logger.debug("checking job profiles are available")
         if not db.fetch_all('profiles', ['name']):
+            logger.error("handler reporting no profiles")
             return False
 
+        logger.debug("profiles are available")
+
         # use the handler to determine the number of workers
-        rc = self.handler.num_workers()
-        if self.handler.workers == 0 or rc != 0:
+        # rc = self.handler.num_workers()
+        logger.debug("checking handler sees worker pods")
+        if self.handler.workers == 0:  # or rc != 0:
+            logger.error("handler not seeing any workers")
             return False
+        logger.debug("handler has discovered worker pods")
+
+        logger.info("All checks passed, ready to start the fioservice")
 
         return True
 
@@ -796,13 +815,21 @@ class FIOWebService(object):
 
         self.service_state.workers = self.handler.workers
 
-        daemon = plugins.Daemonizer(
-            cherrypy.engine,
-            stdout=os.path.join(self.workdir, 'fioservice.access.log'),
-            stderr=os.path.join(self.workdir, 'fioservice.log'),
-            )
+        if configuration.settings.mode == 'dev':
+            daemon = plugins.Daemonizer(
+                cherrypy.engine,
+                stdout=os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
+                stderr=os.path.join(configuration.settings.log_dir, 'fioservice.log'),
+                )
 
-        daemon.subscribe()
+            daemon.subscribe()
+        else:
+            cherrypy.config.update({
+                'log.screen': True,
+                'log.access_file': os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
+                'log.error_file': os.path.join(configuration.settings.log_dir, 'fioservice.log'),
+            })
+
         cherrypy.log.error_log.propagate = False
         cherrypy.log.access_log.propagate = False
         cherrypy.server.socket_host = configuration.settings.ip_address
@@ -816,7 +843,7 @@ class FIOWebService(object):
             'cors.expose.on': True,
         })
 
-        plugins.PIDFile(cherrypy.engine, get_pid_file(self.workdir)).subscribe()
+        plugins.PIDFile(cherrypy.engine, get_pid_file(configuration.settings.pid_dir)).subscribe()
         plugins.SignalHandler(cherrypy.engine).subscribe()  # handle SIGTERM, SIGHUP etc
 
         self.worker = plugins.BackgroundTask(
@@ -825,7 +852,7 @@ class FIOWebService(object):
             args=[self.dbpath,
                   self.handler,
                   self.service_state,
-                  self.debug_mode]
+            ]
         )
         cherrypy.engine.subscribe('stop', self.cleanup)
 

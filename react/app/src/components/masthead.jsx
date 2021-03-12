@@ -34,9 +34,13 @@ export class MastHead extends React.Component {
               })
           .then((status) => {
               /* Happy path */
-              state = status.data;
+              let state = status.data;
               state['apiAvailable'] = true;
             //   console.debug("state returned " + JSON.stringify(state));
+              if (state.workers != this.state.workers) {
+                console.debug('worker count changed telling parent :', state.workers, this.state.workers);
+                this.props.workersCallback(state.workers);
+              }
               this.setState(state);
             //   console.debug("masthead status returned worker count of " + state.workers);
             //   this.props.workerCB(this.state.workers);
@@ -68,11 +72,11 @@ export class MastHead extends React.Component {
         return (
             <div id="masthead">
                 <div>
-                    <div className="page-heading">LoadGen</div>
+                    <div className="page-heading">FIOLoadGen</div>
                     <ServiceState state={this.state}/>
                 </div>
                 <div style={{clear: 'both'}}/>
-            </div>    
+            </div>
         );
     }
 }

@@ -44,14 +44,14 @@ margin: 0 0 0 0;}
   overflow:auto;
 }
 .job_table thead tr {
-  display: block; 
+  display: block;
  border-bottom: 2px solid black;}
 .job_table tr {
   border-bottom: 1px solid lightgray;
 }
 .job_table tfoot tr{
   display: block;
-  font-style: italic; 
+  font-style: italic;
   border-bottom: none;
 }
 /* masthead menu items */
@@ -131,7 +131,7 @@ ul {
 }
 .active {
   z-index: 1;
-  background-color: white; 
+  background-color: white;
 width:100%;
 height:100%;}
 
@@ -145,10 +145,18 @@ height:100%;}
   text-align: center;
 }
  .job_id {
-  min-width:320px;
+  min-width:80px;
 }
 .job_title {
-  min-width:540px;
+  min-width:560px;
+}
+.job_clients {
+  min-width: 80px;
+  text-align: center;
+}
+.job_profile {
+  min-width:110px;
+  text-align: left;
 }
 .job_provider {
   min-width: 100px;
@@ -209,12 +217,12 @@ height:100%;}
 }
 .profile-reload {
   position:relative;
-  top: 310px; 
+  top: 310px;
 }
 .profile-run {
     position: relative;
     left: 648px;
-    top: 10px; 
+    top: 10px;
 }
 .profile-container {
   padding-left:10px;
@@ -249,7 +257,7 @@ padding: 10px;
 .modal-title-bar {
   width: 100%;
   background-color: whitesmoke;
-  height: 3em; 
+  height: 3em;
   margin-bottom: 20px;}
 .modal-title {
   font-size: 1.3em;
@@ -267,14 +275,14 @@ padding: 10px;
     color: #1C2833;;
   margin-right:10px;
   font-size:1.8em;
-  
+
     }
    .close-symbol:hover:after {
      cursor:pointer;
      color:black;
    }
 input[type=range].workers-slider {
-    width: 200px; 
+    width: 200px;
   display: inline-block;}
 
 
@@ -288,7 +296,7 @@ input[type=range].workers-slider {
   .notSelectedRow {
     background-color: transparent;
   }
-  input[type=checkbox] { 
+  input[type=checkbox] {
     cursor: pointer;
   }
   #jobsContainer {
@@ -305,9 +313,9 @@ input[type=range].workers-slider {
     margin-left: 20px;
     border-left: 1px solid #e8e8e8;
     padding-left: 15px; }
-  
+
   .align-top {
-  
+
     vertical-align: top;
   }
   .job-summary {
@@ -315,7 +323,7 @@ input[type=range].workers-slider {
   }
   .state-failed {
     color: red;
-  }  
+  }
   .state-ok {
     color: #33cc33;
   }
@@ -338,15 +346,15 @@ input[type=range].workers-slider {
   }
   .lat-table-op {
     width: 120px; }
-  
+
   .lat-table-head {
     width: 60px;
     text-align: right; }
-  
+
   .lat-table td {
     text-align: right;
     padding: 0px 5px 0px 0px; }
-  
+
   .lat-table tr:last-of-type {
     border-bottom: 1px solid lightgray; }
   .lat-table thead tr:first-of-type th {
@@ -368,7 +376,7 @@ input[type=range].workers-slider {
     border-bottom: 1px solid lightgray;
   }
 .dropdown-menu-tbl-right {
-    margin-left:-40px;
+    margin-left:-60px;
     top:16px;
     min-width:60px;
 }

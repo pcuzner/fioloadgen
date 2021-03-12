@@ -58,3 +58,14 @@ export function copyToClipboard(text) {
     document.execCommand('copy');
     textField.remove();
 }
+
+export function formatTimestamp(timestamp) {
+    let t = new Date(timestamp * 1000);
+    // let t_str = t.toLocaleString()
+    return t.getFullYear() + '/' +
+            (t.getMonth() + 1).toString().padStart(2, '0') + '/' +
+            t.getDate().toString().padStart(2, '0') + ' ' +
+            t.getHours().toString().padStart(2, '0') + ':' +
+            t.getMinutes().toString().padStart(2, '0') + ':' +
+            t.getSeconds().toString().padStart(2, '0');
+}

@@ -4,44 +4,56 @@ from .base import BaseHandler
 
 # import shutil
 import os
+import shutil
 import subprocess
 
+from fiotools import configuration
 
-class OpenshiftHandler(BaseHandler):
+
+class OpenshiftCMDHandler(BaseHandler):
 
     _target = "Openshift"
     _cmd = 'oc'
     _connection_test = 'oc status'
 
-    def __init__(self, ns='fio', mgr='fiomgr'):
-        self.ns = ns
+    def __init__(self, mgr='fiomgr'):
+        self.ns = configuration.settings.namespace
         self.mgr = mgr
-        self.workers = 10
 
-    # @property
-    # def _can_run(self):
-    #     return shutil.which(self._cmd) is not None
+    @property
+    def usable(self):
+        return True
 
-    # @property
-    # def has_connection(self):
-    #     if self._can_run:
-    #         r = subprocess.run(self._connection_test.split(' '), capture_output=True)
-    #         return r.returncode == 0
-    #     else:
-    #         return False
+    @property
+    def workers(self):
+        return self._get_workers()
 
-    def num_workers(self):
-        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen'])
-        # TODO: insert code to count the response
-        self.workers = 10
-        return o.returncode
+    @property
+    def _can_run(self):
+        return shutil.which(self._cmd) is not None
+
+    @property
+    def has_connection(self):
+        if self._can_run:
+            r = subprocess.run(self._connection_test.split(' '), capture_output=True)
+            return r.returncode == 0
+        else:
+            return False
+
+    def _get_workers(self):
+        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
+                           capture_output=True)
+        if o.returncode == 0:
+            return len(o.stdout.decode('utf-8').strip().split('\n'))
+        else:
+            return 0
 
     def startfio(self, profile, workers, output):
         cmd = 'startfio'
         args = '-p {} -o {} -w {}'.format(profile, output, workers)
-        o = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
+        oc_command = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
-        return o.returncode
+        return oc_command
 
     def fetch_report(self, output):
         source_file = os.path.join('/reports/', output)
@@ -57,8 +69,12 @@ class OpenshiftHandler(BaseHandler):
     def runcommand(self, command):
         pass
 
+    def scale_workers(self, replica_count):
+        o = subprocess.run(['oc', '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
+        return o.returncode
 
-class KubernetesHandler(OpenshiftHandler):
+
+class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
     _cmd = 'kubectl'
     _connection_test = 'kubectl status'
