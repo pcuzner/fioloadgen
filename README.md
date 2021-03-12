@@ -18,7 +18,7 @@ These components provide the following features;
 ## What does the workflow look like?
 Here's a demo against an openshift cluster. It shows the creation of the mgr pod and workers, and illustrates the use of the CLI to run and query jobs.
 
-![demo gif](media/fioloadgen-demo.gif)
+![demo](media/fioloadgen_1.2_2.gif)
 
 
 ## Requirements
