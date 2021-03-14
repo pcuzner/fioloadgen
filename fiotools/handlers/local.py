@@ -63,7 +63,8 @@ class NativeFIOHandler(BaseHandler):
             t.write(fiojob)
 
         result = subprocess.run(['fio', '--parse-only', tf.name])
-        return result.returncode
+        # TODO if the rc is bad, log the problem to the logstream
+        return True if result.returncode == 0 else False
 
     def _list_namespaced_pod(self):
         try:
