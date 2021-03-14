@@ -53,14 +53,15 @@ def valid_fio_profile(profile_spec):
     return True
 
 
+def message(msg_string, output='console'):
+    if output == 'console':
+        print(msg_string)
+    else:
+        logger.info(msg_string)
+
+
 # def load_db_profiles(jobdir, dbpath, out='console'):
 def load_db_profiles(out='console'):
-
-    def message(msg_string, output=out):
-        if output == 'console':
-            print(msg_string)
-        else:
-            logger.info(msg_string)
 
     changes = {
         "processed": [],
@@ -173,7 +174,8 @@ def fetch_row(table, key=None, content=None):
 
 def delete_row(table=None, query=dict()):
     dbpath = configuration.settings.dbpath
-    err = ''
+    err = 0
+    msg = ''
 
     if not query or len(query) > 1:
         logger.info("delete_row called with empty query, or too many parameters - ignoring")
@@ -187,13 +189,15 @@ def delete_row(table=None, query=dict()):
         try:
             csr.execute(sql, (query[k],))
         except sqlite3.Error as e:
-            err = 'delete_row failed: {}'.format(e)
+            err = 1
+            msg = f"delete_row failed: {str(e)}"
         else:
             if c.total_changes == 0:
-                err = "row not found"
+                err = 1
+                msg = "row not found"
             c.commit()
 
-    return err
+    return err, msg
 
 def update_job_status(job_uuid, status):
     dbpath = configuration.settings.dbpath
@@ -280,3 +284,30 @@ def run_script(sql_script):
             err = ''
 
     return err
+
+def add_profile(name, spec):
+
+    err = 0
+    msg = ''
+
+    dbpath = os.path.join(configuration.settings.db_dir, 'fioservice.db')
+    message(f"Adding/updating job profile: {name}", 'log')
+
+    with sqlite3.connect(dbpath) as c:
+        c.row_factory = sqlite3.Row
+        cursor = c.cursor()
+        now = int(datetime.datetime.now().strftime("%s"))
+        try:
+            cursor.execute("INSERT INTO profiles VALUES (?,?,?,?);",
+                            (name, spec, now, now))  #
+            message("upload of the profile successful")
+        except sqlite3.IntegrityError:
+            err = 1
+            msg = "profile already exists, ignored"
+            message(msg)
+
+    return err, msg
+
+
+def delete_profile(profile_name):
+    return delete_row(table='profiles', query={"name": profile_name})
