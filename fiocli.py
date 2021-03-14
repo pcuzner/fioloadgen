@@ -7,7 +7,6 @@ import datetime
 import json
 import time
 
-
 from fiotools import __version__
 from fiotools import configuration
 from fiotools.utils import rfile
@@ -56,6 +55,32 @@ def cmd_parser():
         '--refresh',
         action='store_true',
         help="apply fio profiles in data/fio/jobs to the local database and the remote fiomgr pod",
+    )
+    parser_profile_add = subparsers.add_parser(
+        'profile-add',
+        help='Add a profile to the fioservice database')
+    parser_profile_add.set_defaults(func=command_profile_add)
+    parser_profile_add.add_argument(
+        '--name',
+        type=str,
+        metavar='<profile name>',
+        help="description name for the fio job profile"
+    )
+    parser_profile_add.add_argument(
+        '--file',
+        type=str,
+        metavar='<filename>',
+        help="local filename containing the fio job to upload"
+    )
+    parser_profile_rm = subparsers.add_parser(
+        'profile-rm',
+        help='Remove a profile from the fioservice database')
+    parser_profile_rm.set_defaults(func=command_profile_rm)
+    parser_profile_rm.add_argument(
+        '--name',
+        type=str,
+        metavar='<profile name>',
+        help="description name for the fio job profile"
     )
 
     parser_run = subparsers.add_parser(
@@ -220,12 +245,12 @@ def cmd_parser():
 
 def _build_qry_string(qs):
     try:
-        k, v = args.row.split('=')
+        args.row.split('=')
     except ValueError:
         # trigger if >1 '=' sign or no '=' sign at all
         return ''
     else:
-        return '?{}'.format(qs)
+        return f'?{qs}'
 
 
 def _extract_API_error(response):
@@ -359,6 +384,41 @@ def command_profile():
                 print(" - {:<11s}: {:>2}".format(k, len(summary[k])))
         else:
             print("Profile refresh failed: {}".format(r.status_code))
+
+
+def command_profile_add():
+    # file given must exist
+    if not os.path.exists(args.file):
+        print("File not found")
+        exit(1)
+    try:
+        with open(args.file) as f:
+            data = f.read()
+    except IOError:
+        print("Unable to read the file..permissions issue?")
+        exit(1)
+
+    payload ={
+        "data": data,
+    }
+    r = requests.put(f"{url}/profile/{args.name}",
+                     data=json.dumps(payload),
+                     headers={
+                         "Content-Type": "application/json"
+                     })
+    if r.status_code == 200:
+        print("profile upload successful")
+    else:
+        print(r.json().get('message', 'Unexpected error'))
+
+
+def command_profile_rm():
+    r = requests.delete(f"{url}/profile/{args.name}")
+    if r.status_code == 200:
+        print("profile deleted")
+    else:
+        print(r.json().get('message', 'Unexpected error'))
+
 
 
 def show_summary(api_response):

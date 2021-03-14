@@ -549,12 +549,12 @@ class Job(object):
 
         # delete the job from the database
 
-        err = db.delete_row('jobs', {"id": uuid})
+        err, msg = db.delete_row('jobs', {"id": uuid})
         if err:
-            cherrypy.log("delete request for job '{}' failed: {}".format(uuid, err))
-            raise cherrypy.HTTPError(400, err)
+            cherrypy.log(f"delete request for job '{uuid}' failed: {msg}")
+            raise cherrypy.HTTPError(400, msg)
         else:
-            cherrypy.log("delete request for job '{}' successful".format(uuid))
+            cherrypy.log(f"delete request for job '{uuid}' successful")
             return {"data": {"msg": "job deleted from database"}}
 
 
@@ -588,15 +588,28 @@ class Profile(object):
         else:
             return {"data": db.fetch_row('profiles', 'name', profile)['spec']}
 
-    # def PUT(self):
-    #     summary = load_db_profiles(dbpath=self.dbpath, out='cherrypy')
+    @cherrypy.tools.json_in()
+    def PUT(self, profile_name):
+        rqst_json = cherrypy.request.json
+        spec = rqst_json.get('data', None)
+        if not spec:
+            raise cherrypy.HTTPError(400, "Profile request must be json, and contain a 'data' attribute containing the fio job")
+        logger.info("received a valid upload request")
+        if self.service_state._handler.fio_valid(spec):
+            logger.info("job spec syntax check passed")
+            err, msg = db.add_profile(profile_name, spec)
+            if err:
+                raise cherrypy.HTTPError(400, msg)
+            else:logger.info("job spec syntax check passed")
+        else:
+            logger.info("job spec syntax check failed")
+            raise cherrypy.HTTPError(400, 'Invalid fio file - syntax check failed')
 
-    #     if summary['new'] or summary['changed']:
-    #         # TODO: need to sync the fiomgr pod with these changes
-    #         # by submitting a background job
-    #         pass
-
-    #     return {"data": {"summary": summary}}
+    def DELETE(self, profile_name):
+        err, msg = db.delete_profile(profile_name)
+        if err:
+            logger.info(f"delete for profile '{profile_name}' failed: {msg}")
+            raise cherrypy.HTTPError(400, f"failed to delete profile '{profile_name}': {msg}")
 
 
 class DB(object):
@@ -637,9 +650,9 @@ class DB(object):
             raise cherrypy.HTTPError(400, "invalid key used for jobs table, must be id=")
 
         cherrypy.log("delete request for {}/{}".format(table, qstring))
-        err = db.delete_row(table, qs)
+        err, msg = db.delete_row(table, qs)
         if err:
-            cherrypy.log("delete request failed: {}".format(err))
+            cherrypy.log(f"delete request failed: {msg}")
             raise cherrypy.HTTPError(400, err)
         else:
             cherrypy.log("delete successful")
