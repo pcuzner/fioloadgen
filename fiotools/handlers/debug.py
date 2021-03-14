@@ -14,3 +14,6 @@ class DebugHandler(BaseHandler):
     @property
     def has_connection(self):
         return True
+
+    def fio_valid(self, fio_job):
+        return True
