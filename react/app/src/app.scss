@@ -396,8 +396,7 @@ input[type=range].workers-slider {
   font-family: FontAwesome;
   /* using fontawesome 4 */
   content: "\f106";
-  padding-left: 5px;
-  vertical-align: 10%;
+  position:relative; top:-40%; left:15%;
 }
 .zoom-in:hover {
   cursor: pointer;
@@ -418,8 +417,7 @@ input[type=range].workers-slider {
   font-family: FontAwesome;
   /* using fontawesome 4 */
   content: "\f107";
-  padding-left: 5px;
-  vertical-align: 10%;
+  position:relative; top:-40%; left:15%;
 }
 .zoom-out:hover {
   cursor: pointer; color: white;
