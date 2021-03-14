@@ -186,11 +186,27 @@ Example output:
 ```
 > ./fiocli.py profile --show <profile-name>
 ```
-4. Run an fio job using a given profile
+4. Add a fio job profile to the fioservice database
+```
+> ./fiocli.py profile-add --name <profile-name> --file=<local_file>
+
+Example output:
+./fiocli.py profile-add --name new.job --file=/home/test/fioloadgen/newread.job
+profile upload successful
+```
+5. Remove an fio job profile from the fioservice database
+```
+> ./fiocli.py profile-rm --name <profile-name>
+
+Example output:
+./fiocli.py profile-rm --name new.job
+profile deleted
+```
+6. Run an fio job using a given profile
 ```
 > ./fiocli.py run --profile <profile-name> --workers <int> --title <text>
 ```
-5. List jobs stored in the database
+7. List jobs stored in the database
 ```
 > ./fiocli.py job --ls
 
@@ -201,7 +217,7 @@ Job ID                                 Status            End Time        Job Tit
 Jobs:   1
 
 ```
-6. Show summarized outut from a run
+8. Show summarized outut from a run
 ```
 > ./fiocli.py job --show <run id>
 
@@ -221,7 +237,7 @@ Summary  :
   Write Ms Min/Avg/Max: 0.00/0.00/0.00
 
 ```
-7. show full json output from a run
+9. show full json output from a run
 ```
 > ./fiocli.py job --show <id> --raw
 
