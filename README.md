@@ -15,6 +15,7 @@ These components provide the following features;
    - web front end supporting fio profile view/refresh, job submission and visualisation of fio results (using chartjs)
 - supported backend - openshift only at the moment, but adding kubernetes should be a no brainer!
 
+
 ## What does the workflow look like?
 Here's a demo against an openshift cluster. It shows the creation of the mgr pod and workers, and illustrates the use of the CLI to run and query jobs.
 
@@ -22,7 +23,18 @@ Here's a demo against an openshift cluster. It shows the creation of the mgr pod
 
 [full video (no sound)](https://youtu.be/YzakBle2afU)
 
-## Requirements
+
+## Installation
+The fioloadgen tool currently runs from your local directory, so you just need to download the repo and follow the steps in the "Deploying the FIOLoadgen.." section.
+However, the tool provides an API and web interface nd for that there are two options;
+either local or remote.
+
+Choosing 'local' means that the fioservice daemon will try and run on your machine, so
+you'll need to satisfy the python dependencies. If this sounds like a hassle, just
+choose the 'remote' option to deploy the service in the target kubernetes cluster,
+along with the FIO worker pods.
+
+### Python Requirements
 - python3
 - python3-cherrypy
 - python3-requests
@@ -40,11 +52,12 @@ Cherrypy can be a pain to install, depending on your distro. Here's a quick tabl
 
 If all else fails you have two options
 - install pip3, and install with ```pip3 install cherrypy```
-- use remote mode for the fioservice daemon which runs the API/web interface in the Openshift cluster
+- use **remote** mode for the fioservice daemon which runs the API/web interface in the Openshift cluster (no local dependencies!)
+
 
 ## Deploying the FIOLOADGEN environment
 Before you deploy, you **must** have a working connection to openshift and the required CLI tool (oc) must be in your path.
-Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup and tear down test environments
+Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup (```-s```) **and** tear down (```-d```) test environments
 ```
 $ ./fiodeploy.sh -h
 Usage: fiodeploy.sh [-dsh]
@@ -55,7 +68,7 @@ Usage: fiodeploy.sh [-dsh]
 e.g.
 > ./fiodeploy.sh -s
 ```
-Here's an example of the deployment, using the remote fioservice option.
+Here's an example of a deployment, using the remote fioservice option.
 ```
 [paul@rhp1gen3 fioloadgen]$ ./fiodeploy.sh -s
 Checking kubernetes CLI is available
@@ -116,27 +129,48 @@ To drop the test environment, use the fiodeploy.sh -d <namespace> command
 ```
 
 The pods deployed to the 'fio' namespace vary slightly depending upon
-whether you run the fioservice on your local machine, or run it within the Openshift
+whether you run the fioservice on your local machine, or run it within the target
 cluster itself (remote mode).
 
 In *'local'* mode, you will see an fiomgr pod. This pod provides the focal point for fio job management. The local fioservice daemon will interact with this pod using the 'oc'
-command to start test runs.
+command to start test runs. You could 'exec' into the fiomgr pod directly to run fio
+jobs, which may provide the most hands-on experience for some users. However, using the
+fiomgr directly will not load results into the fioservice database or provide the
+analysis charts.
 
-With *'remote'* mode, fiodeploy will create a deployment in the target environment where the fioservice will run, and establishes a port-forward from you local machine to this pod. FIO jobs are all managed directly within this pod, and all interactions between the
-fioservice and the platform is performed using the kubernetes API.
+With *'remote'* mode, fiodeploy will create a deployment in the target environment where the fioservice will run, and establishes a **port-forward** from you local machine to this pod. FIO jobs are managed by this pod, and all interactions between the fioservice and the kubernetes platform is performed using the kubernetes API.
 
 In either deployment model, the workers that perform the I/O tests are deployed using a
-statefulset, where the pods are called 'fioworker-N'. Each fioworker pod uses a PVC from the requested storageclass defined during setup.
+statefulset. The pods created are called 'fioworker-N', with each fioworker pod using a
+PVC from the requested storageclass defined during setup.
+
+## Using the UI
+The fioservice daemon provides an API which supports the web interface and the fiocli
+command. The UI is split into 3 main areas
+- Page banner/heading
+- FIO profiles
+- Job Summary
+
+### Page Banner
+![banner](media/fioloadgen_banner.png)
 
 
-local mode After deployment, you'll have the following configuration in Openshift
-- fiomgr : pod that acts as the test controller - sending work requests to the worker pods
-- fioworkerN: pods that run the fio tool in server mode, waiting to receive job requests from the controller pod (fiomgr)
+### FIO Profiles
+![banner](media/fioloadgen_profiles.png)
 
-At this point you can rsh into the fiomgr pod and run fio workloads directly, or opt for the fio web service.
+
+### Job Summary
+![banner](media/fioloadgen_jobs.png)
+
+Each row in the job table has a menu icon that provides options for managing the job
+based on it's state. For example, queued jobs may be deleted and complete jobs rerun.
 
 
 ## Manually starting a local FIO Service (API/UI)
+Normally the fioservice is started by the fiodeploy.sh script. But if you need to manage
+things for yourself, this info may help.
+
+### Starting the fioservice daemon
 ```
 > ./fioservice.py --mode=dev start
 ```
@@ -144,10 +178,11 @@ At this point you can rsh into the fiomgr pod and run fio workloads directly, or
 2. Expects to be run from the root of the project folder (at start up it will attempt
    to refresh profiles from the local project folder.)
 
-## Stopping the FIO service
+### Stopping the fioservice daemon
 ```
 > ./fioservice.py stop
 ```
+
 
 ## Removing the FIOLoadgen environment
 The fiodeploy command provides a **-d** switch to handle the remove of the fio namespace
@@ -282,6 +317,7 @@ Summary  :
 <snip>
 ```
 
+
 ## The FIOLoadgen Database
 The fioservice maintains a sqlite database containing 2 tables - profiles and jobs, which
 can be managed using the fiocli command.
@@ -313,6 +349,7 @@ Runtime files and a the database are placed in the users home directory
 | ```fioservice.log``` | web service | cherrypy log file - error and generic log messages
 | ```fioservice.access.log``` | web service | cherrypy access log messages
 | ```fiodeploy.lock``` | deploy script | used as a lock file to prevent multiple deploys running
+
 
 ## TODO List
 - [x] implement a wait parameter in the CLI when running an fio job
