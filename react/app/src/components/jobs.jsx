@@ -31,6 +31,7 @@ export class Jobs extends React.Component {
             modalOpen: false,
             visibility: props.visibility,
             refreshData: false,
+            jobTableVisible: true,
         };
         this.jobDetails = (<div />);
     };
@@ -78,6 +79,19 @@ export class Jobs extends React.Component {
             });
         }
 
+    }
+
+    showHideJobTable() {
+        console.debug("clicked divider")
+        let newState;
+        if (this.state.jobTableVisible) {
+            newState = false;
+        } else {
+            newState = true;
+        }
+        this.setState({
+            jobTableVisible: newState
+        });
     }
 
     fetchJobSummaryData() {
@@ -307,7 +321,15 @@ export class Jobs extends React.Component {
         } else {
             jobDetails = (<div />);
         }
-
+        let jobTableClasses;
+        let zoomBtn;
+        if (this.state.jobTableVisible) {
+            jobTableClasses = "inline-block align-right";
+            zoomBtn = "zoom-in"
+        } else {
+            jobTableClasses = "hidden"
+            zoomBtn = "zoom-out"
+        }
         return (
             <div id="jobs" className={this.props.visibility}>
                 <a className="hidden" ref={this.downloadLink} />
@@ -317,7 +339,7 @@ export class Jobs extends React.Component {
                     content={jobDetails}
                     closeHandler={this.closeModal} />
                 <br />
-                <div className="inline-block align-right" style={{marginLeft: "50px"}}>
+                <div id="jobTableArea" className={jobTableClasses} style={{marginLeft: "50px"}}>
                     <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
                     <table className="job_table">
                         <thead>
@@ -345,7 +367,9 @@ export class Jobs extends React.Component {
                         </tfoot>
                     </table>
                 </div>
-                <div className="divider"></div>
+                <div className="divider" >
+                    <div className={zoomBtn} onClick={()=>{ this.showHideJobTable()}} />
+                </div>
                 <div id="jobsContainer">
                     <JobAnalysis data={this.state.jobInfo} />
                 </div>
