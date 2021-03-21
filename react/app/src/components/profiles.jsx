@@ -38,9 +38,9 @@ export class Profiles extends React.Component {
         });
     }
 
-    fetchAllProfiles(refresh = false) {
-        let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
-        fetch(api_url + endpoint)
+    fetchAllProfiles() {  //refresh = false) {
+        // let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
+        fetch(api_url + '/api/profile')
             .then((response) => {
                 console.debug("Profile fetch : ", response.status);
                 if (response.status == 200) {
@@ -52,10 +52,10 @@ export class Profiles extends React.Component {
                 /* Happy path */
                 let profileNames = [];
                 profiles.data.forEach(profile => {
-                profileNames.push(profile.name);
+                    profileNames.push(profile.name);
                 });
                 this.setState({
-                profiles: profileNames
+                    profiles: profileNames,
                 });
                 console.log(profiles);
             })
@@ -152,11 +152,11 @@ export class Profiles extends React.Component {
 
     refreshProfiles() {
         console.debug("in refresh profiles");
-        this.fetchAllProfiles(true);
+        this.fetchAllProfiles();  // true);
         // clear content in the profile textarea
-        this.setState({
-            profileContent: ''
-        });
+        // this.setState({
+        //     profileContent: ''
+        // });
     }
 
     render() {
@@ -166,7 +166,6 @@ export class Profiles extends React.Component {
                 <div />
             );
         }
-
 
         let profileSelector;
         // console.debug("client limit is " + this.props.clientLimit);

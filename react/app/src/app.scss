@@ -8,21 +8,28 @@ h1 {
   padding-top:10px;
 margin: 0 0 0 0;}
 .profile-select select {
-  border: 1px solid gray;
-  border-radius: 10px;
-  background-color: #E8E8E8;
+  border: 1px solid transparent;
+  scrollbar-width: none; /*For Firefox*/;
+  -ms-overflow-style: none;  /*For Internet Explorer 10+*/;
   width: 220px;
   padding: 10px 0px 5px 0px; }
-
+.profile-select select::-webkit-scrollbar { /* for webkit browsers */
+  width: 0 ;
+  height: 0;
+}
+.profile-select select:focus {
+  outline: 0; /* remove the normal select box outline */
+}
 .profile-select option {
   padding: 5px;
-  border-bottom: 1px solid white; }
+  border-bottom: 1px solid lightgray; }
 
 .profile-select option:hover {
   background-color: lightblue; }
 
 .profile-select option:checked {
-  background: linear-gradient(#a0a0a0, #B8B8B8); }
+  background: #0088ce; // linear-gradient(#a0a0a0, #B8B8B8); }
+}
 .italic {
   font-style:italic;
 }
@@ -128,6 +135,7 @@ ul {
 }
 #profiles {
   position:absolute;
+  max-height: 290px ;
 }
 .active {
   z-index: 1;
