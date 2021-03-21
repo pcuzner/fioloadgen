@@ -328,6 +328,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             return
 
         service_state.task_active = True
+        service_state.active_job_id = job.uuid
         service_state.tasks_queued = work_queue.qsize()
 
         if job.type == 'startfio':
@@ -436,6 +437,7 @@ class Status(object):
                 "run_time": run_time,
                 "workers": self.service_state._handler.workers,
                 "debug_mode": self.service_state.debug_mode,
+                "active_job_id": self.service_state.active_job_id,
             }
         }
 
@@ -728,6 +730,7 @@ class ServiceStatus(object):
         self.task_active = False
         self.tasks_queued = 0
         self.active_job_type = None
+        self.active_job_id = ''
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
@@ -735,6 +738,7 @@ class ServiceStatus(object):
 
     def reset(self):
         self.task_active = False
+        self.active_job_id = ''
         self.active_job_type = 'N/A'
 
 
