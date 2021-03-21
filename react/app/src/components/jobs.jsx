@@ -4,7 +4,7 @@ import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -532,7 +532,10 @@ class FIOJobAnalysis extends React.Component {
                         {/* <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div> */}
                         <div className="align-center bold" style={{marginBottom: "10px"}}>{this.state.jobData.title}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>ID</span>: {this.state.jobData.id.split('-')[0]}</div>
-                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Completed</span>: {formatTimestamp(this.state.jobData.ended)}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Completed</span>
+                            : {formatTimestamp(this.state.jobData.ended)}
+                            &nbsp;({getElapsed(this.state.jobData.started, this.state.jobData.ended)})
+                        </div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
