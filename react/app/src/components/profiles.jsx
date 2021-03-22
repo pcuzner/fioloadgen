@@ -171,7 +171,7 @@ export class Profiles extends React.Component {
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
             let profileList = this.state.profiles.map((profile, i) => {
-                return (<option key={i} value={profile}>{profile}</option>)
+                return (<option key={i} value={profile} selected={this.state.activeProfile == profile}>{profile}</option>)
             });
             profileSelector = (
                 <div className="profile-select">
