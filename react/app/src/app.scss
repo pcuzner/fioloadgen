@@ -216,20 +216,23 @@ height:100%;}
 .float-none {
   float: none;
 }
+pre {
+  border: 0px; background: transparent;
+}
 .profile-select {
   width: 220px;
 }
 .profile-info {
   border: 1px solid lightgray;
-  padding-left:10px;
-  width: 500px;
-  height: 500px;
+  width: 470px;
+  height: 510px;
   display:block; /*flex: 1; */
   margin-top: 8px;
 }
 .profile-msg {
   padding-top:40px;
   text-align: center;
+  font-size: 1.4em;
 }
 .profile-msg::before {
   font-family: FontAwesome;
