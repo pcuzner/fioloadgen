@@ -1,8 +1,8 @@
 
 ## DEV Notes
 
-Getting your environment ready
-TODO
+Getting your environment ready...TODO
+
 
 ### Testing the UI
 To test the front end, first ensure your webservice is running (this will sit on port 8080), then run the code under the dev server (normally on 8081)
@@ -12,7 +12,7 @@ To test the front end, first ensure your webservice is running (this will sit on
 ```
 This will run the service in the foreground running on port 8080, so you can follow any debug messages emitted.
 
-``
+```
 cd react/app
 npm start
 ```
@@ -38,4 +38,7 @@ cp react/app/dist/css/style.css www/css/
 Stop the fioservice, and restart.
 
 
+## Niggles
+When using npm start, if you see "X-Content-Type-Options: nosniff" errors against the patternfly file, check that
+it is in the dist folder. If not, copy it there and refresh your browser.
 
