@@ -215,14 +215,22 @@ class ProfileContent extends React.Component {
         super(props);
         this.state = {
             readonly: true,
-            profileContent: ''
+            profileContent: '',
         };
     }
 
     render () {
+        let content;
+        if (this.props.profileContent == '') {
+            content = (<div className="profile-msg">&nbsp;Choose a profile to view the FIO specification</div>);
+        } else {
+            content = (<pre>{this.props.profileContent}</pre>);
+        }
+
         return (
             <div className="profile-info">
-                <textarea style={{resize: "none"}} rows="30" cols="60" readOnly={this.state.readonly} value={this.props.profileContent} />
+                {content}
+                {/* <textarea style={{resize: "none"}} rows="30" cols="60" readOnly={this.state.readonly} value={content} /> */}
             </div>
         );
     }

@@ -220,8 +220,22 @@ height:100%;}
   width: 220px;
 }
 .profile-info {
-  flex: 1;
-  font-family: mono;
+  border: 1px solid lightgray;
+  padding-left:10px;
+  width: 500px;
+  height: 500px;
+  display:block; /*flex: 1; */
+  margin-top: 8px;
+}
+.profile-msg {
+  padding-top:40px;
+  text-align: center;
+}
+.profile-msg::before {
+  font-family: FontAwesome;
+  /* using fontawesome 4 */
+  content: "\f0d9";
+  position:relative;
 }
 .profile-reload {
   position:relative;
