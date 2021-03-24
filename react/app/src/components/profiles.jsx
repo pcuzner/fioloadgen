@@ -11,7 +11,7 @@ export class Profiles extends React.Component {
         super(props);
         this.state = {
             profiles: [],
-            activeProfile: null,
+            activeProfile: undefined,
             profileContent: '',
             modalOpen: false,
             workers: 1,
