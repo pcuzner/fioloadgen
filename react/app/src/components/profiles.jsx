@@ -11,7 +11,7 @@ export class Profiles extends React.Component {
         super(props);
         this.state = {
             profiles: [],
-            activeProfile: '',
+            activeProfile: null,
             profileContent: '',
             modalOpen: false,
             workers: 1,
@@ -89,6 +89,7 @@ export class Profiles extends React.Component {
     }
 
     selectProfile(event) {
+        this.setState({activeProfile: event.target.value});
         this.fetchProfile(event.target.value);
     }
 
@@ -105,7 +106,6 @@ export class Profiles extends React.Component {
           .then((profile) => {
               /* Happy path */
               this.setState({
-                  activeProfile: profileName,
                   profileContent: profile.data
               });
           })
@@ -171,12 +171,12 @@ export class Profiles extends React.Component {
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
             let profileList = this.state.profiles.map((profile, i) => {
-                return (<option key={i} value={profile} selected={this.state.activeProfile == profile}>{profile}</option>)
+                return (<option key={i} value={profile} >{profile}</option>)
             });
             profileSelector = (
                 <div className="profile-select">
                     {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
-                    <select id="profiles" size="10" onChange={()=>{this.selectProfile(event);}}>
+                    <select id="profiles" value={this.state.activeProfile} size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
                     <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Reload</button><br />
