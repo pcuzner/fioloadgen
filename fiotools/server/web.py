@@ -336,6 +336,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             tf = tempfile.NamedTemporaryFile(delete=False)
             cherrypy.log("job {} fio job spec file created - {}".format(job.uuid, tf.name))
             job.status = 'prepare'
+            service_state.active_job_id = f"{job.uuid}-{job.status}"
             db.update_job_status(job.uuid, job.status)
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
@@ -345,6 +346,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
 
                 cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
+                service_state.active_job_id = f"{job.uuid}-{job.status}"
                 db.update_job_status(job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
@@ -353,6 +355,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             cherrypy.log("job {} file copy succcessful".format(job.uuid))
             # job spec transferred, so OK to continue
             job.status = 'started'
+            service_state.active_job_id = f"{job.uuid}-{job.status}"
             service_state.active_job_type = 'FIO'
             db.update_job_status(job.uuid, job.status)
 
