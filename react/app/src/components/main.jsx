@@ -13,7 +13,7 @@ export class App extends React.Component {
             jobs: 'inactive',
             current: 'profiles',
             workers: 0,
-            activeJobId: '',
+            activeJobId: undefined,
         };
         // this.workers = 2;
     };
@@ -64,7 +64,7 @@ export class App extends React.Component {
                 </ul>
                 <div id="container">
                     <Profiles visibility={this.state.profiles} workers={this.state.workers}/>
-                    <Jobs visibility={this.state.jobs}/>
+                    <Jobs visibility={this.state.jobs} activeJobId={this.state.activeJobId}/>
                 </div>
 
             </div>

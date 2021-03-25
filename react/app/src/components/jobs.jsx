@@ -32,6 +32,7 @@ export class Jobs extends React.Component {
             visibility: props.visibility,
             refreshData: false,
             jobTableVisible: true,
+            activeJobId: undefined,
         };
         this.jobDetails = (<div />);
     };
@@ -57,21 +58,34 @@ export class Jobs extends React.Component {
 
     // }
     static getDerivedStateFromProps(props, state) {
+        console.log("DEBUG from props: ", props.activeJobId)
+        console.log("DEBUG from state: ", state.activeJobId)
         if (props.visibility != state.visibility) {
             let data = (props.visibility == 'active') ? true : false;
             return {
                 visibility: props.visibility,
-                refreshData: data
+                refreshData: data,
             };
         } else {
-            return {
-                refreshData: false,
-            };
+            // we're already looking at the jobs table so check for a change in
+            // actiejobid
+            if (props.activeJobId != state.activeJobId) {
+                return {
+                    activeJobId: props.activeJobId,
+                    refreshData: true
+                };
+            } else {
+                return {
+                    refreshData: false
+                };
+            }
         }
     }
 
     componentDidUpdate(props, state) {
-        console.log('DEBUG refresh state ' + this.state.refreshData);
+        console.log('DEBUG state.refreshData is set to :' + state.refreshData);
+        console.log('DEBUG props.activeJobId is set to :' + props.activeJobId);
+        console.log('DEBUG state.activeJobId is set to :' + state.activeJobId);
         if (this.state.refreshData) {
             this.fetchJobSummaryData();
             this.setState({
