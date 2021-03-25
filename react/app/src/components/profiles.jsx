@@ -176,7 +176,7 @@ export class Profiles extends React.Component {
             profileSelector = (
                 <div className="profile-select">
                     {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
-                    <select id="profiles" value={this.state.activeProfile} size="10" onChange={()=>{this.selectProfile(event);}}>
+                    <select id="profiles" autoFocus value={this.state.activeProfile} size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
                     <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Reload</button><br />
