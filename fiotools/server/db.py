@@ -22,6 +22,7 @@ def setup_db():
                         id text PRIMARY KEY,
                         title text NOT NULL,
                         profile text NOT NULL,
+                        profile_spec text,
                         workers integer NOT NULL,
                         status text NOT NULL,
                         started integer,
@@ -43,6 +44,21 @@ def setup_db():
             c.execute(jobs_table)
     else:
         print("Using existing database @ {}".format(dbpath))
+        check_migration(dbpath)
+
+def check_migration(dbpath):
+    def profile_spec(con):
+        # with sqlite3.connect(dbpath) as con:
+        cursor = con.cursor()
+        jobs_table = cursor.execute('select * from jobs')
+        fields = [desc[0] for desc in jobs_table.description]
+        if 'profile_spec' not in fields:
+            print("- updating the database: Adding profile_spec to jobs table")
+            add_column = "ALTER TABLE jobs ADD COLUMN profile_spec text"
+            cursor.execute(add_column)
+
+    with sqlite3.connect(dbpath) as con:
+        profile_spec(con)
 
 
 def valid_fio_profile(profile_spec):
