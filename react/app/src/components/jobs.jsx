@@ -35,6 +35,7 @@ export class Jobs extends React.Component {
             activeJobId: undefined,
         };
         this.jobDetails = (<div />);
+        this.modalTitle = '';
     };
     // shouldComponentUpdate(nextProps, PrevProps) {
     //     if (nextProps.visibility == "active"){
@@ -203,6 +204,23 @@ export class Jobs extends React.Component {
             });
     }
 
+    // FIXME job fetch is generic across two features!
+    showJobSpec = (jobID) => {
+        console.debug("Show fio job spec")
+        fetch(api_url + "/api/job/" + jobID)
+        .then(handleAPIErrors)
+        .then((json) => {
+            /* Happy path */
+            let j = JSON.parse(json.data);
+            this.jobDetails = j.profile_spec;
+            this.modalTitle = "FIO Job Specification"
+            this.openModal()
+        })
+        .catch((error) => {
+            console.error("Show job spec failed: ", error);
+        });
+    }
+
     showJob = (jobID) => {
         console.log('show job' + jobID);
         // let jobData = Object.keys(this.state.jobs);
@@ -213,6 +231,7 @@ export class Jobs extends React.Component {
                 let j = JSON.parse(json.data);
                 let raw = JSON.parse(j.raw_json);
                 this.jobDetails = JSON.stringify(raw, null, 2);
+                this.modalTitle = "FIO Job Output"
                 this.openModal()
             })
             .catch((error) => {
@@ -323,7 +342,8 @@ export class Jobs extends React.Component {
                         deleteJob={this.deleteJob}
                         exportJob={this.exportJob}
                         rerunJob={this.rerunJob}
-                        showJob={this.showJob}/>
+                        showJob={this.showJob}
+                        showJobSpec={this.showJobSpec}/>
                 );
             });
         } else {
@@ -349,7 +369,7 @@ export class Jobs extends React.Component {
                 <a className="hidden" ref={this.downloadLink} />
                 <GenericModal
                     show={this.state.modalOpen}
-                    title={"FIO Job Output"}
+                    title={this.modalTitle}
                     content={jobDetails}
                     closeHandler={this.closeModal} />
                 <br />
@@ -799,6 +819,10 @@ class JobDataRow extends React.Component {
                         callback: this.props.exportJob,
                     },
                     {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
+                    {
                         action: 'show output',
                         callback: this.props.showJob,
                     },
@@ -815,6 +839,10 @@ class JobDataRow extends React.Component {
                         callback: this.props.rerunJob,
                     },
                     {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
+                    {
                         action: 'show output',
                         callback: this.props.showJob,
                     },
@@ -829,6 +857,10 @@ class JobDataRow extends React.Component {
                     {
                         action: 'delete',
                         callback: this.props.deleteJob,
+                    },
+                    {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
                     },
                 ];
                 break;

@@ -514,11 +514,12 @@ class Job(object):
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
 
-            csr.execute(""" INSERT into jobs (id, title, profile, workers, status, type, provider, platform)
-                              VALUES(?,?,?,?,?,?,?,?);""",
+            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, workers, status, type, provider, platform)
+                              VALUES(?,?,?,?,?,?,?,?,?);""",
                         (job.uuid,
                          job.title,
                          profile,
+                         job.spec,
                          job.workers,
                          job.status,
                          'fio',
