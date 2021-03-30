@@ -13,6 +13,7 @@ export class MastHead extends React.Component {
         this.interval = 0;
         this.state = {
             task_active: false,
+            active_job_id: '',
             tasks_queued: 0,
             task_type: 'N/A',
             target: '',
@@ -40,6 +41,10 @@ export class MastHead extends React.Component {
               if (state.workers != this.state.workers) {
                 console.debug('worker count changed telling parent :', state.workers, this.state.workers);
                 this.props.workersCallback(state.workers);
+              }
+              if (state.active_job_id != this.state.active_job_id) {
+                  console.debug("job change");
+                  this.props.jobChangeCallback(state.active_job_id);
               }
               this.setState(state);
             //   console.debug("masthead status returned worker count of " + state.workers);

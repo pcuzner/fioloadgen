@@ -4,7 +4,7 @@ import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 
 /* Masthead will contain a couple of items from the webservice status api
@@ -32,8 +32,10 @@ export class Jobs extends React.Component {
             visibility: props.visibility,
             refreshData: false,
             jobTableVisible: true,
+            activeJobId: undefined,
         };
         this.jobDetails = (<div />);
+        this.modalTitle = '';
     };
     // shouldComponentUpdate(nextProps, PrevProps) {
     //     if (nextProps.visibility == "active"){
@@ -57,21 +59,34 @@ export class Jobs extends React.Component {
 
     // }
     static getDerivedStateFromProps(props, state) {
+        console.log("DEBUG from props: ", props.activeJobId)
+        console.log("DEBUG from state: ", state.activeJobId)
         if (props.visibility != state.visibility) {
             let data = (props.visibility == 'active') ? true : false;
             return {
                 visibility: props.visibility,
-                refreshData: data
+                refreshData: data,
             };
         } else {
-            return {
-                refreshData: false,
-            };
+            // we're already looking at the jobs table so check for a change in
+            // actiejobid
+            if (props.activeJobId != state.activeJobId) {
+                return {
+                    activeJobId: props.activeJobId,
+                    refreshData: true
+                };
+            } else {
+                return {
+                    refreshData: false
+                };
+            }
         }
     }
 
     componentDidUpdate(props, state) {
-        console.log('DEBUG refresh state ' + this.state.refreshData);
+        console.log('DEBUG state.refreshData is set to :' + state.refreshData);
+        console.log('DEBUG props.activeJobId is set to :' + props.activeJobId);
+        console.log('DEBUG state.activeJobId is set to :' + state.activeJobId);
         if (this.state.refreshData) {
             this.fetchJobSummaryData();
             this.setState({
@@ -189,6 +204,23 @@ export class Jobs extends React.Component {
             });
     }
 
+    // FIXME job fetch is generic across two features!
+    showJobSpec = (jobID) => {
+        console.debug("Show fio job spec")
+        fetch(api_url + "/api/job/" + jobID)
+        .then(handleAPIErrors)
+        .then((json) => {
+            /* Happy path */
+            let j = JSON.parse(json.data);
+            this.jobDetails = j.profile_spec;
+            this.modalTitle = "FIO Job Specification"
+            this.openModal()
+        })
+        .catch((error) => {
+            console.error("Show job spec failed: ", error);
+        });
+    }
+
     showJob = (jobID) => {
         console.log('show job' + jobID);
         // let jobData = Object.keys(this.state.jobs);
@@ -199,6 +231,7 @@ export class Jobs extends React.Component {
                 let j = JSON.parse(json.data);
                 let raw = JSON.parse(j.raw_json);
                 this.jobDetails = JSON.stringify(raw, null, 2);
+                this.modalTitle = "FIO Job Output"
                 this.openModal()
             })
             .catch((error) => {
@@ -309,7 +342,8 @@ export class Jobs extends React.Component {
                         deleteJob={this.deleteJob}
                         exportJob={this.exportJob}
                         rerunJob={this.rerunJob}
-                        showJob={this.showJob}/>
+                        showJob={this.showJob}
+                        showJobSpec={this.showJobSpec}/>
                 );
             });
         } else {
@@ -335,7 +369,7 @@ export class Jobs extends React.Component {
                 <a className="hidden" ref={this.downloadLink} />
                 <GenericModal
                     show={this.state.modalOpen}
-                    title={"FIO Job Output"}
+                    title={this.modalTitle}
                     content={jobDetails}
                     closeHandler={this.closeModal} />
                 <br />
@@ -532,7 +566,10 @@ class FIOJobAnalysis extends React.Component {
                         {/* <div className="inline-block" style={{width: "85%"}}>{this.state.jobData.title}</div> */}
                         <div className="align-center bold" style={{marginBottom: "10px"}}>{this.state.jobData.title}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>ID</span>: {this.state.jobData.id.split('-')[0]}</div>
-                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Completed</span>: {formatTimestamp(this.state.jobData.ended)}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Completed</span>
+                            : {formatTimestamp(this.state.jobData.ended)}
+                            &nbsp;({getElapsed(this.state.jobData.started, this.state.jobData.ended)})
+                        </div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
@@ -782,6 +819,10 @@ class JobDataRow extends React.Component {
                         callback: this.props.exportJob,
                     },
                     {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
+                    {
                         action: 'show output',
                         callback: this.props.showJob,
                     },
@@ -796,6 +837,10 @@ class JobDataRow extends React.Component {
                     {
                         action: 'rerun',
                         callback: this.props.rerunJob,
+                    },
+                    {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
                     },
                     {
                         action: 'show output',
@@ -813,11 +858,20 @@ class JobDataRow extends React.Component {
                         action: 'delete',
                         callback: this.props.deleteJob,
                     },
+                    {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
                 ];
                 break;
             default:
                 /* started, prepare states */
-                actions = [];
+                actions = [
+                    {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
+                ];
                 break;
         }
 

@@ -13,6 +13,7 @@ export class App extends React.Component {
             jobs: 'inactive',
             current: 'profiles',
             workers: 0,
+            activeJobId: undefined,
         };
         // this.workers = 2;
     };
@@ -45,18 +46,25 @@ export class App extends React.Component {
         });
     }
 
+    jobStateChange = (jobID) => {
+        console.debug("job state has changed ", jobID);
+        this.setState({
+            activeJobId: jobID,
+        });
+    }
+
     render() {
         console.log("render main. env vars: " + JSON.stringify(process.env));
         return (
             <div>
-                <MastHead workersCallback={this.updateWorkers}/>
+                <MastHead workersCallback={this.updateWorkers} jobChangeCallback={this.jobStateChange}/>
                 <ul id="menu">
                     <li className={"menu menu_" + this.state.profiles} onClick={() => {this.menuSelect('profiles');}}>FIO Profiles</li>
                     <li className={"menu menu_" + this.state.jobs} onClick={()=>{this.menuSelect('jobs');}}>Job Summary</li>
                 </ul>
                 <div id="container">
                     <Profiles visibility={this.state.profiles} workers={this.state.workers}/>
-                    <Jobs visibility={this.state.jobs}/>
+                    <Jobs visibility={this.state.jobs} activeJobId={this.state.activeJobId}/>
                 </div>
 
             </div>

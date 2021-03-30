@@ -328,6 +328,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             return
 
         service_state.task_active = True
+        service_state.active_job_id = job.uuid
         service_state.tasks_queued = work_queue.qsize()
 
         if job.type == 'startfio':
@@ -335,6 +336,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             tf = tempfile.NamedTemporaryFile(delete=False)
             cherrypy.log("job {} fio job spec file created - {}".format(job.uuid, tf.name))
             job.status = 'prepare'
+            service_state.active_job_id = f"{job.uuid}-{job.status}"
             db.update_job_status(job.uuid, job.status)
             with open(tf.name, 'w') as f:
                 f.write('{}\n'.format(job.spec))
@@ -344,6 +346,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
 
                 cherrypy.log("job {} file copy failed : {}".format(job.uuid, rc))
                 job.status = 'failed'
+                service_state.active_job_id = f"{job.uuid}-{job.status}"
                 db.update_job_status(job.uuid, job.status)
                 remove_tracker(job.uuid)
                 service_state.reset()
@@ -352,6 +355,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             cherrypy.log("job {} file copy succcessful".format(job.uuid))
             # job spec transferred, so OK to continue
             job.status = 'started'
+            service_state.active_job_id = f"{job.uuid}-{job.status}"
             service_state.active_job_type = 'FIO'
             db.update_job_status(job.uuid, job.status)
 
@@ -436,6 +440,7 @@ class Status(object):
                 "run_time": run_time,
                 "workers": self.service_state._handler.workers,
                 "debug_mode": self.service_state.debug_mode,
+                "active_job_id": self.service_state.active_job_id,
             }
         }
 
@@ -509,11 +514,12 @@ class Job(object):
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
 
-            csr.execute(""" INSERT into jobs (id, title, profile, workers, status, type, provider, platform)
-                              VALUES(?,?,?,?,?,?,?,?);""",
+            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, workers, status, type, provider, platform)
+                              VALUES(?,?,?,?,?,?,?,?,?);""",
                         (job.uuid,
                          job.title,
                          profile,
+                         job.spec,
                          job.workers,
                          job.status,
                          'fio',
@@ -728,6 +734,7 @@ class ServiceStatus(object):
         self.task_active = False
         self.tasks_queued = 0
         self.active_job_type = None
+        self.active_job_id = ''
         self.job_count = 0
         self.profile_count = 0
         self.start_time = time.time()
@@ -735,6 +742,7 @@ class ServiceStatus(object):
 
     def reset(self):
         self.task_active = False
+        self.active_job_id = ''
         self.active_job_type = 'N/A'
 
 

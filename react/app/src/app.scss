@@ -8,21 +8,28 @@ h1 {
   padding-top:10px;
 margin: 0 0 0 0;}
 .profile-select select {
-  border: 1px solid gray;
-  border-radius: 10px;
-  background-color: #E8E8E8;
+  border: 1px solid transparent;
+  scrollbar-width: none; /*For Firefox*/;
+  -ms-overflow-style: none;  /*For Internet Explorer 10+*/;
   width: 220px;
   padding: 10px 0px 5px 0px; }
-
+.profile-select select::-webkit-scrollbar { /* for webkit browsers */
+  width: 0 ;
+  height: 0;
+}
+.profile-select select:focus {
+  outline: 0; /* remove the normal select box outline */
+}
 .profile-select option {
   padding: 5px;
-  border-bottom: 1px solid white; }
+  border-bottom: 1px solid lightgray; }
 
 .profile-select option:hover {
-  background-color: lightblue; }
-
+  background-color: #ebf8ff; }
 .profile-select option:checked {
-  background: linear-gradient(#a0a0a0, #B8B8B8); }
+  background:#006998 !important; // linear-gradient(#a0a0a0, #B8B8B8); }
+}
+
 .italic {
   font-style:italic;
 }
@@ -128,6 +135,7 @@ ul {
 }
 #profiles {
   position:absolute;
+  max-height: 290px ;
 }
 .active {
   z-index: 1;
@@ -208,12 +216,29 @@ height:100%;}
 .float-none {
   float: none;
 }
+pre {
+  border: 0px; background: transparent;
+}
 .profile-select {
   width: 220px;
 }
 .profile-info {
-  flex: 1;
-  font-family: mono;
+  border: 1px solid lightgray;
+  width: 470px;
+  height: 510px;
+  display:block; /*flex: 1; */
+  margin-top: 8px;
+}
+.profile-msg {
+  padding-top:40px;
+  text-align: center;
+  font-size: 1.4em;
+}
+.profile-msg::before {
+  font-family: FontAwesome;
+  /* using fontawesome 4 */
+  content: "\f0d9";
+  position:relative;
 }
 .profile-reload {
   position:relative;

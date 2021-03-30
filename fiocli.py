@@ -348,7 +348,7 @@ def command_status():
     if r.status_code == 200:
         js = r.json()['data']
 
-        job_running = 'Yes' if js['task_active'] else 'No'
+        job_running = f"Yes ({js['active_job_id']})" if js['task_active'] else 'No'
         debug = 'Yes' if js['debug_mode'] else 'No'
         print("Target      : {}".format(js['target']))
         print("Workers     : {}".format(js['workers']))

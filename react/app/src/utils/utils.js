@@ -69,3 +69,9 @@ export function formatTimestamp(timestamp) {
             t.getMinutes().toString().padStart(2, '0') + ':' +
             t.getSeconds().toString().padStart(2, '0');
 }
+
+export function getElapsed(start, end) {
+    let elapsedDate = (end - start);
+    let t = new Date(elapsedDate * 1000);
+    return t.getMinutes().toString() + 'm ' + t.getSeconds().toString() + 's';
+}

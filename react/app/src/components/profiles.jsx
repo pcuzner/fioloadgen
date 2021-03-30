@@ -11,7 +11,7 @@ export class Profiles extends React.Component {
         super(props);
         this.state = {
             profiles: [],
-            activeProfile: '',
+            activeProfile: undefined,
             profileContent: '',
             modalOpen: false,
             workers: 1,
@@ -38,9 +38,9 @@ export class Profiles extends React.Component {
         });
     }
 
-    fetchAllProfiles(refresh = false) {
-        let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
-        fetch(api_url + endpoint)
+    fetchAllProfiles() {  //refresh = false) {
+        // let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
+        fetch(api_url + '/api/profile')
             .then((response) => {
                 console.debug("Profile fetch : ", response.status);
                 if (response.status == 200) {
@@ -52,10 +52,10 @@ export class Profiles extends React.Component {
                 /* Happy path */
                 let profileNames = [];
                 profiles.data.forEach(profile => {
-                profileNames.push(profile.name);
+                    profileNames.push(profile.name);
                 });
                 this.setState({
-                profiles: profileNames
+                    profiles: profileNames,
                 });
                 console.log(profiles);
             })
@@ -89,6 +89,7 @@ export class Profiles extends React.Component {
     }
 
     selectProfile(event) {
+        this.setState({activeProfile: event.target.value});
         this.fetchProfile(event.target.value);
     }
 
@@ -105,7 +106,6 @@ export class Profiles extends React.Component {
           .then((profile) => {
               /* Happy path */
               this.setState({
-                  activeProfile: profileName,
                   profileContent: profile.data
               });
           })
@@ -152,11 +152,11 @@ export class Profiles extends React.Component {
 
     refreshProfiles() {
         console.debug("in refresh profiles");
-        this.fetchAllProfiles(true);
+        this.fetchAllProfiles();  // true);
         // clear content in the profile textarea
-        this.setState({
-            profileContent: ''
-        });
+        // this.setState({
+        //     profileContent: ''
+        // });
     }
 
     render() {
@@ -167,17 +167,16 @@ export class Profiles extends React.Component {
             );
         }
 
-
         let profileSelector;
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
             let profileList = this.state.profiles.map((profile, i) => {
-                return (<option key={i} value={profile}>{profile}</option>)
+                return (<option key={i} value={profile} >{profile}</option>)
             });
             profileSelector = (
                 <div className="profile-select">
                     {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
-                    <select id="profiles" size="10" onChange={()=>{this.selectProfile(event);}}>
+                    <select id="profiles" autoFocus value={this.state.activeProfile} size="10" onChange={()=>{this.selectProfile(event);}}>
                         {profileList}
                     </select>
                     <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Reload</button><br />
@@ -216,14 +215,22 @@ class ProfileContent extends React.Component {
         super(props);
         this.state = {
             readonly: true,
-            profileContent: ''
+            profileContent: '',
         };
     }
 
     render () {
+        let content;
+        if (this.props.profileContent == '') {
+            content = (<div className="profile-msg">&nbsp;Choose a profile to view the FIO specification</div>);
+        } else {
+            content = (<pre>{this.props.profileContent}</pre>);
+        }
+
         return (
             <div className="profile-info">
-                <textarea style={{resize: "none"}} rows="30" cols="60" readOnly={this.state.readonly} value={this.props.profileContent} />
+                {content}
+                {/* <textarea style={{resize: "none"}} rows="30" cols="60" readOnly={this.state.readonly} value={content} /> */}
             </div>
         );
     }
