@@ -866,7 +866,12 @@ class JobDataRow extends React.Component {
                 break;
             default:
                 /* started, prepare states */
-                actions = [];
+                actions = [
+                    {
+                        action: 'show job spec',
+                        callback: this.props.showJobSpec,
+                    },
+                ];
                 break;
         }
 
