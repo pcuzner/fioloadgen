@@ -10,14 +10,14 @@ class BaseHandler(object):
     _connection_test = 'missing'
 
     @property
-    def _can_run(self):
+    def _can_run(self) -> bool:
         return shutil.which(self._cmd) is not None
 
     @property
-    def has_connection(self):
+    def has_connection(self) -> bool:
         return False
 
-    def check(self):
+    def check(self) -> bool:
         """check the stored config against the target environment"""
         # can we pick up where we left off?
         return True
@@ -65,7 +65,7 @@ class BaseHandler(object):
     def startfio(self, profile, workers, output):
         return None
 
-    def fetch_report(self, output):
+    def fetch_report(self, output) -> int:
         return 0
 
     def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
