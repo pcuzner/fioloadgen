@@ -8,6 +8,9 @@ import { Tooltip } from '../common/tooltip.jsx';
 import { RatioSlider } from '../common/ratioslider.jsx';
 
 var api_url = setAPIURL();
+const ioDepthTip="Changing the IO depth, varies the number of OS queues the FIO tool uses to drive I/O"
+const ioTypeTip="Databases typical exhibit random I/O, whereas logging is sequential"
+const runTimeTip="Required run time for the test (in minutes)"
 
 export class Profiles extends React.Component {
     constructor(props) {
@@ -250,6 +253,7 @@ export class Profiles extends React.Component {
         );
     }
 }
+
 class CustomProfile extends React.Component {
     constructor(props) {
         super(props);
@@ -268,7 +272,7 @@ class CustomProfile extends React.Component {
             options: ["Random", "Sequential"],
             name: "ioType",
             info: "", // Disk I/O can be issued in a sequential or random manner",
-            tooltip: "Databases typical exhibit random I/O, whereas logging is sequential",
+            tooltip: ioTypeTip,
             horizontal: true
         };
 
@@ -430,7 +434,10 @@ class CustomProfile extends React.Component {
                             <option value="128KB">128KB</option>
                             <option value="1MB">1MB</option>
                         </select>
-                        <label className="option-title" forhtml="runTime">IO Depth:</label>
+                        <label className="option-title" forhtml="io-depth">
+                            IO Depth:
+                            <span><Tooltip text={ioDepthTip}/></span>
+                        </label>
                         <input
                             type="number"
                             id="io-depth"
@@ -442,7 +449,10 @@ class CustomProfile extends React.Component {
                             onChange={this.ioDepthHandler}/>
                     </div>
                     <div>
-                        <label className="option-title" forhtml="runTime">Run Time:</label>
+                        <label className="option-title" forhtml="run-time">
+                            Run Time:
+                            <span><Tooltip text={runTimeTip}/></span>
+                        </label>
                         <input
                             type="number"
                             id="run-time"
