@@ -19,7 +19,7 @@ buildah run $container apk add sysstat
 buildah run $container apk add iperf
 buildah run $container apk add rsync
 buildah run $container apk add python3
-buildah run $container apk add py3-pip --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/
+buildah run $container apk add --update py3-pip
 
 buildah run $container apk add py3-cherrypy --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
 buildah run $container apk add py3-more-itertools
