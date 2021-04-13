@@ -285,7 +285,7 @@ setup() {
     console "\nDeploying the FIO workers statefulset"
     statefulset=$(cat yaml/fioworker_statefulset_template.yaml | \
         sed "s/!WORKERS!/${WORKERS}/" | \
-        sed "s/!STORAGECLASS!/${STORAGECLASS}/" | \
+        sed "s/!STORAGECLASS!/${STORAGECLASS}/g" | \
         $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
     # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
     if [ $? -ne 0 ]; then
