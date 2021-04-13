@@ -12,6 +12,7 @@ spec:
     metadata:
       labels:
         app: fioloadgen # has to match .spec.selector.matchLabels
+        storageclass: !STORAGECLASS!
     spec:
       terminationGracePeriodSeconds: 10
       containers:
