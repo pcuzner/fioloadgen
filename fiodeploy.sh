@@ -505,10 +505,10 @@ destroy() {
     pod_names=$($CLUSTER_CMD -n $NAMESPACE get pod -o jsonpath='{.items[*].metadata.name}')
     pod_array=( $pod_names )
     for pod_name in "${pod_array[@]}"; do
-        if [[ $pod_name == fioservice* || $pod_name == fioworker* ]]; then
+        if [[ $pod_name == fioservice* || $pod_name == fioworker* || $pod_name == fiomgr* ]]; then
             continue
         else
-            console ${ERROR} "Namespace contains non fio pods, unable to cleanup${NC}"
+            console ${ERROR} "Namespace contains non fioloadgen pods (${pod_name}), unable to cleanup${NC}"
             exit 1
         fi
     done
