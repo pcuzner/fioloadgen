@@ -380,7 +380,7 @@ setup() {
             exit
         fi
         console "\nStarting a local instance of the FIOservice daemon (API and UI)\n"
-        python3 ./fioservice.py --mode=dev start
+        python3 ./fioservice.py --mode=dev start --namespace ${NAMESPACE}
         if [ $? -ne 0 ]; then
             console ${ERROR} "${CROSS} failed to start the local fioservice daemon"
             exit
