@@ -21,26 +21,26 @@ class OpenshiftCMDHandler(BaseHandler):
         self.mgr = mgr
 
     @property
-    def usable(self):
+    def usable(self) -> bool:
         return True
 
     @property
-    def workers(self):
+    def workers(self) -> int:
         return self._get_workers()
 
     @property
-    def _can_run(self):
+    def _can_run(self) -> bool:
         return shutil.which(self._cmd) is not None
 
     @property
-    def has_connection(self):
+    def has_connection(self) -> bool:
         if self._can_run:
             r = subprocess.run(self._connection_test.split(' '), capture_output=True)
             return r.returncode == 0
         else:
             return False
 
-    def _get_workers(self):
+    def _get_workers(self) -> int:
         o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
                            capture_output=True)
         if o.returncode == 0:
@@ -55,21 +55,21 @@ class OpenshiftCMDHandler(BaseHandler):
 
         return oc_command
 
-    def fetch_report(self, output):
+    def fetch_report(self, output) -> int:
         source_file = os.path.join('/reports/', output)
         target_file = os.path.join('/tmp/', output)
         o = subprocess.run(['oc', 'cp', '{}/{}:{}'.format(self.ns, self.mgr, source_file), target_file])
         # o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp/.'])
         return o.returncode
 
-    def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr'):
+    def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr') -> int:
         o = subprocess.run(['oc', 'cp', local_file, '{}/{}:{}'.format(self.ns, self.mgr, remote_file)])
         return o.returncode
 
-    def runcommand(self, command):
+    def runcommand(self, command) -> None:
         pass
 
-    def scale_workers(self, replica_count):
+    def scale_workers(self, replica_count) -> int:
         o = subprocess.run(['oc', '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
         return o.returncode
 

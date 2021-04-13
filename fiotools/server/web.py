@@ -17,10 +17,12 @@ import time
 import tempfile
 import logging
 
-from ..utils import get_pid_file, rfile
+from ..utils import get_pid_file, rfile, generate_fio_profile
 from ..reports import latency_summary
 from . import db
 from fiotools import configuration
+
+from typing import Optional, Dict, Any
 
 DEFAULT_DBPATH = os.path.join(os.path.expanduser('~'), 'fioservice.db')
 # JOB_DIR = "./data/fio/jobs"
@@ -228,14 +230,14 @@ class AsyncJob(object):
 #         c.commit()
 
 
-def add_tracker(job):
+def add_tracker(job) -> None:
     cherrypy.log("job {} added to the tracker".format(job.uuid))
     job_tracker_lock.acquire()
     job_tracker[job.uuid] = job
     job_tracker_lock.release()
 
 
-def remove_tracker(job_uuid):
+def remove_tracker(job_uuid) -> None:
     cherrypy.log("job {} removed from the tracker".format(job_uuid))
     job_tracker_lock.acquire()
     del job_tracker[job_uuid]
@@ -316,20 +318,25 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
     # delay (secs) between a job end and the fetch function being executed
     # fetch_delay = 2
 
-    if not work_queue.empty():
 
-        if configuration.settings.mode == 'debug':
+    if not work_queue.empty():
+        # not in debug mode, so we act on the content of the queue
+        cherrypy.log(f"Queue size = {work_queue.qsize()} - fetching job from the queue")
+        job = work_queue.get()
+
+        if job.stale:
+            logger.info(f"removing job {job.uuid} from the tracker")
+            remove_tracker(job.uuid)
             return
 
-        # not in debug mode, so we act on the content of the queue
-        job = work_queue.get()
-        if job.stale:
-            remove_tracker(job.uuid)
+        if configuration.settings.mode == 'debug':
+            # put the item back in the queue - since we can't process it
+            cherrypy.log(f"DEBUG mode, skipping the job {job.uuid} and placing back in the queue")
+            work_queue.put(job)
             return
 
         service_state.task_active = True
         service_state.active_job_id = job.uuid
-        service_state.tasks_queued = work_queue.qsize()
 
         if job.type == 'startfio':
             cherrypy.log("job {} started processing".format(job.uuid))
@@ -489,13 +496,19 @@ class Job(object):
             raise cherrypy.HTTPError(400, "missing fields in request")
 
         available_profiles = [p['name'] for p in db.fetch_all('profiles', list(['name']))]
+        available_profiles.append('custom')
         if profile not in available_profiles:
-            # raise APIError(status=404, message="FIO workload profile '{}' not found in ./data/fio/jobs".format(profile))
             raise cherrypy.HTTPError(404, "profile not found")
 
         # if we have a jobspec passed to us, use that, otherwise read the spec from the profile in the db
         profile_spec = parms.get('spec', None)
-        if not profile_spec:
+        if profile_spec:
+            if profile == 'custom':
+                assert isinstance(profile_spec, dict)
+                cherrypy.log(f"DEBUG: custom profile requested: {json.dumps(profile_spec)}")
+                profile_spec = generate_fio_profile(profile_spec)
+        else:
+            cherrypy.log("DEBUG: using spec from the database")
             profile_spec = db.fetch_row('profiles', 'name', profile)['spec']
 
         job = AsyncJob()
@@ -529,10 +542,10 @@ class Job(object):
 
         # post request using a valid profile, place on the queue and in the tracker dict
         work_queue.put(job)
+        cherrypy.log(f"work queue is {work_queue.qsize()}")
         add_tracker(job)
         cherrypy.log("job {} queued, for profile {}".format(job.uuid, profile))
 
-        self.service_state.tasks_queued = work_queue.qsize()
         cherrypy.response.status = 202  # 202 = Accepted
         return {'data': {"message": "run requested, current work queue size {}".format(work_queue.qsize()),
                          "uuid": job.uuid}}
@@ -595,18 +608,26 @@ class Profile(object):
             return {"data": db.fetch_row('profiles', 'name', profile)['spec']}
 
     @cherrypy.tools.json_in()
-    def PUT(self, profile_name):
-        rqst_json = cherrypy.request.json
-        spec = rqst_json.get('data', None)
+    def PUT(self, profile_name: str):
+        rqst_json: Dict[str, Any] = cherrypy.request.json
+        cherrypy.log("request : " + json.dumps(rqst_json))
+        spec: Optional[str] = None
+        if 'data' in rqst_json:
+            spec = rqst_json.get('data', None)
+        elif 'spec' in rqst_json:
+            spec = generate_fio_profile(rqst_json.get('spec'))
+
         if not spec:
-            raise cherrypy.HTTPError(400, "Profile request must be json, and contain a 'data' attribute containing the fio job")
+            raise cherrypy.HTTPError(400, "Profile request must be json, and contain a 'data' or 'spec' attribute")
+
         logger.info("received a valid upload request")
         if self.service_state._handler.fio_valid(spec):
             logger.info("job spec syntax check passed")
             err, msg = db.add_profile(profile_name, spec)
             if err:
                 raise cherrypy.HTTPError(400, msg)
-            else:logger.info("job spec syntax check passed")
+            else:
+                logger.info(f"job spec '{profile_name}' stored")
         else:
             logger.info("job spec syntax check failed")
             raise cherrypy.HTTPError(400, 'Invalid fio file - syntax check failed')
@@ -695,14 +716,14 @@ def cors_handler():
 
     # Always set response headers necessary for 'simple' CORS.
     resp_head['Access-Control-Allow-Origin'] = req_head.get('Origin', '*')
-    resp_head['Access-Control-Expose-Headers'] = 'GET, POST, DELETE'
+    resp_head['Access-Control-Expose-Headers'] = 'GET, POST, DELETE, PUT'
     resp_head['Access-Control-Allow-Credentials'] = 'true'
 
     # Non-simple CORS preflight request; short-circuit the normal handler.
     if cherrypy.request.method == 'OPTIONS':
         ac_method = req_head.get('Access-Control-Request-Method', None)
 
-        allowed_methods = ['GET', 'POST', 'DELETE']
+        allowed_methods = ['GET', 'POST', 'DELETE', 'PUT']
         allowed_headers = [
                'Content-Type',
                'X-Auth-Token',
@@ -732,7 +753,6 @@ class ServiceStatus(object):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
-        self.tasks_queued = 0
         self.active_job_type = None
         self.active_job_id = ''
         self.job_count = 0
@@ -740,11 +760,14 @@ class ServiceStatus(object):
         self.start_time = time.time()
         self.debug_mode = True if configuration.settings.mode == 'debug' else False
 
-    def reset(self):
+    def reset(self) -> None:
         self.task_active = False
         self.active_job_id = ''
         self.active_job_type = 'N/A'
 
+    @property
+    def tasks_queued(self) -> int:
+        return work_queue.qsize()
 
 class FIOWebService(object):
 
@@ -785,7 +808,7 @@ class FIOWebService(object):
 
         db.load_db_profiles()  # (JOB_DIR, dbpath=self.dbpath)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         # cancel the worker background thread based on current interval
         self.worker.cancel()
 

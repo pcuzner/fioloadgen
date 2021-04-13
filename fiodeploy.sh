@@ -24,6 +24,7 @@ ITERATION_LIMIT=60 # 5 min pod running timeout
 ITERATION_DELAY=5
 LOCKFILE='./fiodeploy.lock'
 POD_READY_LIMIT=120
+DELETE_TIMEOUT=60
 
 NC='\033[0m'     # No Color
 INFO='\033[0;32m' # green
@@ -247,6 +248,10 @@ wait_for_pod() {
     overwrite "${OK}${TICK} pod ${pod_name} is ready${NC}"
 }
 
+get_port_fwd_pid() {
+    echo $(ps -ef | awk '/[p]ort-forward fioservice/ { print $2;}')
+}
+
 setup() {
     # TODO - show a summary of the options chosen
     console "\nTest Environment Summary"
@@ -280,7 +285,7 @@ setup() {
     console "\nDeploying the FIO workers statefulset"
     statefulset=$(cat yaml/fioworker_statefulset_template.yaml | \
         sed "s/!WORKERS!/${WORKERS}/" | \
-        sed "s/!STORAGECLASS!/${STORAGECLASS}/" | \
+        sed "s/!STORAGECLASS!/${STORAGECLASS}/g" | \
         $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
     # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
     if [ $? -ne 0 ]; then
@@ -375,7 +380,7 @@ setup() {
             exit
         fi
         console "\nStarting a local instance of the FIOservice daemon (API and UI)\n"
-        python3 ./fioservice.py --mode=dev start
+        python3 ./fioservice.py --mode=dev start --namespace ${NAMESPACE}
         if [ $? -ne 0 ]; then
             console ${ERROR} "${CROSS} failed to start the local fioservice daemon"
             exit
@@ -425,7 +430,7 @@ setup() {
             exit
         else
             # get pid of port-forward
-            pid=$(ps -ef | awk '/[f]ioservice/ { print $2;}')
+            pid=$(get_port_fwd_pid)
             console ${OK} "${TICK} port-forward successful (pid=${pid})${NC}"
         fi
 
@@ -482,15 +487,52 @@ destroy() {
             exit
     esac
 
+    console "\nChecking for any port-forward PID to remove"
+    pid=$(get_port_fwd_pid)
+    if [ ! -z "$pid" ]; then
+        kill -9 $pid
+        if [ $? -gt 0 ]; then
+            console ${ERROR} "Failed to remove the port-forward (pid=${pid})${NC}"
+            exit 1
+        else
+            console ${OK} "${TICK} removed the port-forward process${NC}"
+        fi
+    else
+        console ${OK} "${TICK} port-forward not present${NC}"
+    fi
+
+    console "\nChecking pods running in $NAMESPACE are only fioloadgen pods"
+    pod_names=$($CLUSTER_CMD -n $NAMESPACE get pod -o jsonpath='{.items[*].metadata.name}')
+    pod_array=( $pod_names )
+    for pod_name in "${pod_array[@]}"; do
+        if [[ $pod_name == fioservice* || $pod_name == fioworker* || $pod_name == fiomgr* ]]; then
+            continue
+        else
+            console ${ERROR} "Namespace contains non fioloadgen pods (${pod_name}), unable to cleanup${NC}"
+            exit 1
+        fi
+    done
+    if [ ${#pod_array[@]} -eq 0 ]; then
+        console ${OK} "${TICK} namespace is empty${NC}"
+    else
+        console ${OK} "${TICK} only fio loadgen related pods present${NC}"
+    fi
+
     acquire_lock
 
-    console ${OK} "- please wait while the '${NAMESPACE}' namespace is deleted"
-    cmd=$($CLUSTER_CMD delete namespace ${NAMESPACE})
-    if [ $? == 0 ]; then
-        overwrite "${OK}${TICK} namespace successfully deleted${NC}"
-    else
-        overwrite "${ERROR}${CROSS} namespace delete failed for '${NAMESPACE}'${NC}"
-    fi
+    console "\nPlease wait while the '${NAMESPACE}' namespace is deleted (timeout @ ${DELETE_TIMEOUT}s)"
+    cmd=$(timeout --foreground --kill-after $DELETE_TIMEOUT $DELETE_TIMEOUT $CLUSTER_CMD delete namespace ${NAMESPACE})
+    case "$?" in
+        0)
+            console "${OK}${TICK} namespace successfully deleted${NC}"
+            ;;
+      124)
+            console "${ERROR}${CROSS} namespace delete request timed out${NC}"
+            ;;
+        *)
+            console "${ERROR}${CROSS} namespace delete failed for '${NAMESPACE}' rc=$?${NC}"
+            ;;
+    esac
 
     release_lock
 }

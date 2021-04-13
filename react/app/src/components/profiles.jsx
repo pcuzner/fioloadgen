@@ -2,9 +2,15 @@ import React from 'react';
 
 import {GenericModal} from '../common/modal.jsx';
 import '../app.scss';
-import { setAPIURL } from '../utils/utils.js';
+import { handleAPIErrors, setAPIURL } from '../utils/utils.js';
+import { RadioSet} from '../common/radioset.jsx';
+import { Tooltip } from '../common/tooltip.jsx';
+import { RatioSlider } from '../common/ratioslider.jsx';
 
 var api_url = setAPIURL();
+const ioDepthTip="Changing the IO depth, varies the number of OS queues the FIO tool uses to drive I/O"
+const ioTypeTip="Databases typical exhibit random I/O, whereas logging is sequential"
+const runTimeTip="Required run time for the test (in minutes)"
 
 export class Profiles extends React.Component {
     constructor(props) {
@@ -15,6 +21,14 @@ export class Profiles extends React.Component {
             profileContent: '',
             modalOpen: false,
             workers: 1,
+        };
+        this.spec = {
+            runTime: 1,
+            ioType: "Random",
+            ioBlockSize: "4KB",
+            ioPattern: 50,
+            ioDepth: 4,
+            profileName: '',
         };
     };
 
@@ -38,6 +52,10 @@ export class Profiles extends React.Component {
         });
     }
 
+    checkProfile = (profileName) => {
+        return this.state.profiles.includes(profileName);
+    }
+
     fetchAllProfiles() {  //refresh = false) {
         // let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
         fetch(api_url + '/api/profile')
@@ -54,6 +72,7 @@ export class Profiles extends React.Component {
                 profiles.data.forEach(profile => {
                     profileNames.push(profile.name);
                 });
+                profileNames.push('custom');
                 this.setState({
                     profiles: profileNames,
                 });
@@ -89,8 +108,16 @@ export class Profiles extends React.Component {
     }
 
     selectProfile(event) {
-        this.setState({activeProfile: event.target.value});
-        this.fetchProfile(event.target.value);
+        this.setState({
+            activeProfile: event.target.value
+        });
+
+        if (event.target.value == "custom") {
+            console.log("selected the custom profile type")
+        } else {
+            this.fetchProfile(event.target.value);
+        }
+
     }
 
     fetchProfile(profileName) {
@@ -113,11 +140,17 @@ export class Profiles extends React.Component {
               console.error("Profile fetch error:", error);
           });
     }
-    runJob(parms) {
-        console.debug("run the job - issue a put request to the API");
+    runJob = (parms) => {
+        console.debug("run the job - issue a POST request to the API");
         // remove specific attributes from parms object
         delete parms.titleBorder;
-        parms['spec'] = this.state.profileContent;
+        console.debug(JSON.stringify(this.spec))
+        if (this.state.activeProfile == 'custom') {
+            parms['spec'] = this.spec
+        } else {
+            parms['spec'] = this.state.profileContent;
+        }
+        // parms['spec'] = this.state.profileContent;
         console.debug("in runJob handler " + JSON.stringify(parms));
         console.debug("profile is " + this.state.activeProfile);
 
@@ -130,7 +163,11 @@ export class Profiles extends React.Component {
             body: JSON.stringify(parms)
         })
             .then((e) => {
-                console.log("request submitted")
+                if (e.status == 202) {
+                    console.debug("request accepted (" + e.status + ")")
+                } else {
+                    console.error("POST request to submit job failed with http status " + e.status);
+                }
             })
             .catch((e) => {
                 console.log(JSON.stringify(e));
@@ -150,13 +187,17 @@ export class Profiles extends React.Component {
         this.runJob(parms)
     }
 
-    refreshProfiles() {
+    refreshProfiles= () => {
         console.debug("in refresh profiles");
         this.fetchAllProfiles();  // true);
         // clear content in the profile textarea
         // this.setState({
         //     profileContent: ''
         // });
+    }
+    updateSpec = (kv) => {
+        console.log("updating spec ", JSON.stringify(kv))
+        Object.assign(this.spec, kv);
     }
 
     render() {
@@ -201,7 +242,10 @@ export class Profiles extends React.Component {
                 <div className="profile-container">
                     <div style={{ display: "flex"}}>
                         {profileSelector}
-                        <ProfileContent profileContent={this.state.profileContent} />
+                        <div id="profile-content-container">
+                            <CustomProfile visible={this.state.activeProfile == "custom"} callback={this.updateSpec} checkProfileCallback={this.checkProfile} refreshCallback={this.refreshProfiles}/>
+                            <ProfileContent visible={this.state.activeProfile != "custom"} profileContent={this.state.profileContent} />
+                        </div>
                     </div>
                     <button className="btn btn-primary profile-run" onClick={() => {this.getJobDetails();}}>Run</button><br />
                 </div>
@@ -210,6 +254,225 @@ export class Profiles extends React.Component {
     }
 }
 
+class CustomProfile extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            ioType: "Random",
+            ioPattern: 50,
+            ioBlockSize: "4KB",
+            runTime: 1,
+            ioDepth: 4,
+            profileName: '',
+            profileStyle: {},
+        };
+        this.defaults = Object.assign({}, this.state);
+        this.ioType = {
+            description: "I/O Type:",
+            options: ["Random", "Sequential"],
+            name: "ioType",
+            info: "", // Disk I/O can be issued in a sequential or random manner",
+            tooltip: ioTypeTip,
+            horizontal: true
+        };
+
+    }
+
+    resetButtonHandler = () => {
+        // event.preventDefault();
+        console.log("defaults are " + JSON.stringify(this.defaults));
+        this.setState({
+            profileName: '',
+            ioPattern: this.defaults.ioPattern,
+            ioType: this.defaults.ioType,
+            ioBlockSize: this.defaults.ioBlockSize,
+            ioDepth: this.defaults.ioDepth,
+            runTime: this.defaults.runTime,
+            profileStyle:{},
+        });
+
+    }
+    radioButtonHandler = (event) => {
+        // if name is not set this is a select widget
+        console.log("in option handler " + event.target.name + " / " + event.target.value);
+        this.setState({ioType: event.target.value})
+        this.props.callback({ioType: event.target.value});
+
+    }
+    sliderHandler = (event) => {
+        console.log("in slider handler " + event.target.value);
+        this.setState({ioPattern: event.target.value});
+        this.props.callback({ioPattern: event.target.value});
+    }
+    selectHandler = (event) => {
+        console.log("in select handler with " + event.target.value);
+        this.setState({ioBlockSize: event.target.value});
+        this.props.callback({ioBlockSize: event.target.value})
+    }
+    runtimeHandler = (event) => {
+        console.log("in runtime handler " + event.target.name + " / " + event.target.value);
+        this.setState({runTime: event.target.value})
+        this.props.callback({runTime: event.target.value})
+    }
+    ioDepthHandler = (event) => {
+        console.log("in iodepth handler " + event.target.name + " / " + event.target.value);
+        this.setState({ioDepth: event.target.value})
+        this.props.callback({ioDepth: event.target.value})
+    }
+    profileNameUpdater = (event) => {
+        let newState = {};
+        newState.profileName = event.target.value;
+
+        if (this.props.checkProfileCallback(event.target.value)) {
+            console.error("profile exists!")
+            newState.profileStyle = {borderColor: "red"};
+        } else {
+            if (Object.keys(this.state.profileStyle).length > 0) {
+                newState.profileStyle = {}
+            }
+        }
+        this.setState(newState);
+    }
+    profileNameHandler = (event) => {
+
+        if (event.target.value) {
+            if (event.target.value != this.state.profileName) {
+                console.debug("Profile name updated to " + event.target.value);
+                //
+                // TODO check that the name doesn't conflict with an existing name
+                //
+                this.setState({
+                    profileName: event.target.value,
+                    profileStyle: {},
+                });
+                this.props.callback({profileName: event.target.value});
+            }
+
+        } else {
+            if (Object.keys(this.state.profileStyle).length > 0) {
+                this.setState({profileStyle: {}});
+            }
+
+        }
+    }
+    saveProfile() {
+        console.log("save me " + JSON.stringify(this.state))
+        if (this.state.profileName == '') {
+            console.debug("profile save requested but no name given")
+            this.setState({profileStyle: {
+                borderColor: "red"}
+                // borderRadius: "5px"}
+            });
+            return
+        }
+
+        if (Object.keys(this.state.profileStyle).length > 0) {
+            console.error("Can't save a profile which has been flagged as an error");
+            return
+        }
+
+        fetch(api_url + "/api/profile/" + this.state.profileName, {
+            method: 'put',
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({spec: this.state})
+        })
+            .then((e) => {
+                if (e.status == 200) {
+                    console.debug("request accepted (" + e.status + ")")
+                    this.props.refreshCallback()
+                } else {
+                    console.error("PUT request to store profile failed with http status " + e.status);
+                }
+            })
+            .catch((e) => {
+                console.error("PUT to /api/profile failed :" + e.message);
+            });
+
+    }
+
+    render () {
+        if (!this.props.visible) {
+            return (
+                <div className="hidden"></div>
+            )
+        }
+
+        return (
+            <div className="custom-profile-box">
+                <h2>Custom Profile</h2>
+                <p>In addition to the IO profiles listed on the left, the custom option allows
+                    you to create and then execute one-off I/O profiles.</p>
+                <p>Use the options below to define a profile.</p>
+                <div className="custom-profile-options-container">
+                    <div>
+                        <label className="option-title" forhtml="custom-name">Profile Name:</label>
+                        <input
+                            style={this.state.profileStyle}
+                            type="text"
+                            autoFocus
+                            placeholder="Optional"
+                            //defaultValue={this.state.profileName}
+                            value={this.state.profileName}
+                            onChange={this.profileNameUpdater}
+                            onBlur={this.profileNameHandler}
+                            title="alphanumeric chars only">
+                        </input>
+                    </div>
+                    <RadioSet config={this.ioType} default={this.state.ioType} callback={this.radioButtonHandler} />
+                    <RatioSlider title="IO Pattern:" prefix="Read" suffix="Write" value={this.state.ioPattern} callback={this.sliderHandler}/>
+                    <div>
+                        <label className="option-title" forhtml="ioSize">I/O Block Size:</label>
+                        <select id="ioSize" value={this.state.ioBlockSize} onChange={this.selectHandler}>
+                            <option value="4KB">4KB</option>
+                            <option value="8KB">8KB</option>
+                            <option value="16KB">16KB</option>
+                            <option value="32KB">32KB</option>
+                            <option value="64KB">64KB</option>
+                            <option value="128KB">128KB</option>
+                            <option value="1MB">1MB</option>
+                        </select>
+                        <label className="option-title" forhtml="io-depth">
+                            IO Depth:
+                            <span><Tooltip text={ioDepthTip}/></span>
+                        </label>
+                        <input
+                            type="number"
+                            id="io-depth"
+                            name="io-depth"
+                            min="1"
+                            max="128"
+                            size="3"
+                            value={this.state.ioDepth}
+                            onChange={this.ioDepthHandler}/>
+                    </div>
+                    <div>
+                        <label className="option-title" forhtml="run-time">
+                            Run Time:
+                            <span><Tooltip text={runTimeTip}/></span>
+                        </label>
+                        <input
+                            type="number"
+                            id="run-time"
+                            name="run-time"
+                            min="1"
+                            max="10"
+                            size="4"
+                            value={this.state.runTime}
+                            onChange={this.runtimeHandler}/>
+
+                    </div>
+                    <div>
+                        <button className="btn btn-default" onClick={() => {this.resetButtonHandler();}}>Reset</button>
+                        <button className="btn btn-default" style={{marginLeft: "10px"}} onClick={() => {this.saveProfile();}}>Save</button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+}
 class ProfileContent extends React.Component {
     constructor(props) {
         super(props);
@@ -220,6 +483,12 @@ class ProfileContent extends React.Component {
     }
 
     render () {
+        if (!this.props.visible) {
+            return (
+                <div className="hidden" />
+            );
+        }
+
         let content;
         if (this.props.profileContent == '') {
             content = (<div className="profile-msg">&nbsp;Choose a profile to view the FIO specification</div>);
@@ -309,6 +578,7 @@ class JobParameters extends React.Component {
                         id="title"
                         size="80"
                         name="title"
+                        autoFocus
                         placeholder="Enter a title that uniquely describes the test run"
                         onChange={() => {this.updateState(event);}}/>
                     <p />
