@@ -2,11 +2,12 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: fioworker
+  name: fioworker-!STORAGECLASS!
 spec:
   selector:
     matchLabels:
       app: fioloadgen # has to match .spec.template.metadata.labels
+  serviceName: "fioworker"
   replicas: !WORKERS! # by default is 1
   template:
     metadata:
