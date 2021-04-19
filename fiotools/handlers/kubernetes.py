@@ -41,16 +41,16 @@ class OpenshiftCMDHandler(BaseHandler):
             return False
 
     def _get_workers(self) -> int:
-        o = subprocess.run(['oc', '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
+        o = subprocess.run([self._cmd, '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
                            capture_output=True)
         if o.returncode == 0:
             return len(o.stdout.decode('utf-8').strip().split('\n'))
         else:
             return 0
 
-    def startfio(self, profile, workers, output):
+    def startfio(self, profile, storageclass, workers, output):
         cmd = 'startfio'
-        args = '-p {} -o {} -w {}'.format(profile, output, workers)
+        args = f"-p {profile} -s {storageclass} -o {output} -w {workers}"
         oc_command = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
 
         return oc_command
@@ -58,23 +58,23 @@ class OpenshiftCMDHandler(BaseHandler):
     def fetch_report(self, output) -> int:
         source_file = os.path.join('/reports/', output)
         target_file = os.path.join('/tmp/', output)
-        o = subprocess.run(['oc', 'cp', '{}/{}:{}'.format(self.ns, self.mgr, source_file), target_file])
+        o = subprocess.run([self._cmd, 'cp', '{}/{}:{}'.format(self.ns, self.mgr, source_file), target_file])
         # o = subprocess.run(['oc', '-n', self.ns, 'rsync', '{}:/reports/{}'.format(self.mgr, output), '/tmp/.'])
         return o.returncode
 
     def copy_file(self, local_file, remote_file, namespace='fio', pod_name='fiomgr') -> int:
-        o = subprocess.run(['oc', 'cp', local_file, '{}/{}:{}'.format(self.ns, self.mgr, remote_file)])
+        o = subprocess.run([self._cmd, 'cp', local_file, '{}/{}:{}'.format(self.ns, self.mgr, remote_file)])
         return o.returncode
 
     def runcommand(self, command) -> None:
         pass
 
     def scale_workers(self, replica_count) -> int:
-        o = subprocess.run(['oc', '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
+        o = subprocess.run([self._cmd, '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
         return o.returncode
 
 
 class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
     _cmd = 'kubectl'
-    _connection_test = 'kubectl status'
+    _connection_test = 'kubectl get ns'

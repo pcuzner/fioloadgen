@@ -1,5 +1,7 @@
 import os
 import sys
+import shutil
+from typing import Optional
 
 from configparser import ConfigParser, ParsingError
 
@@ -27,6 +29,14 @@ def convert_value(value):
         value = bool_types[value.upper()]
 
     return value
+
+def cmd_handler() -> Optional[str]:
+    if shutil.which('oc'):
+        return 'oc'
+    elif shutil.which('kubectl'):
+        return 'kubectl'
+    else:
+        return None
 
 
 class Config(object):
@@ -73,7 +83,7 @@ class Config(object):
             "debug": False,
             "runtime": "package",
             "namespace": "fio",
-            "type": "oc",
+            "type": cmd_handler(),
         }
     }
 
@@ -128,7 +138,7 @@ class Config(object):
             if hasattr(self, k):
                 v = getattr(args, k)
                 if v is not None:
-                    print("applying runtime override for {} of {}".format(k, v))
+                    print("applying runtime override : {} = {}".format(k, v))
                     setattr(self, k, v)
 
     def _apply_env_vars(self):
