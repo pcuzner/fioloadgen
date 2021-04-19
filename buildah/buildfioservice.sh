@@ -38,7 +38,7 @@ buildah run $container mkdir -p /var/log/fioloadgen
 buildah run $container mkdir -p /var/run/fioloadgen
 
 buildah copy $container ../data/fio/jobs/ /var/lib/fioloadgen/jobs
-buildah copy $container ../fioservice.py /fioservice.py
+buildah copy $container ../fioservice /fioservice
 buildah copy $container ../fiotools /fiotools
 buildah copy $container ../www /www
 
@@ -55,7 +55,7 @@ buildah run $container chmod g+w -R /var/run/fioloadgen
 
 
 # entrypoint
-buildah config --entrypoint "./fioservice.py start" $container
+buildah config --entrypoint "./fioservice start" $container
 
 # finalize
 buildah config --label maintainer="Paul Cuzner <pcuzner@redhat.com>" $container
