@@ -8,7 +8,10 @@ import shutil
 import subprocess
 
 from fiotools import configuration
+from typing import Dict
 
+import logging
+logger = logging.getLogger(__name__)
 
 class OpenshiftCMDHandler(BaseHandler):
 
@@ -25,7 +28,7 @@ class OpenshiftCMDHandler(BaseHandler):
         return True
 
     @property
-    def workers(self) -> int:
+    def workers(self) -> Dict[str, int]:
         return self._get_workers()
 
     @property
@@ -40,20 +43,30 @@ class OpenshiftCMDHandler(BaseHandler):
         else:
             return False
 
-    def _get_workers(self) -> int:
-        o = subprocess.run([self._cmd, '-n', self.ns, 'get', 'pods', '--selector=app=fioloadgen', '--no-headers'],
-                           capture_output=True)
+    def _get_workers(self) -> Dict[str, int]:
+        lookup = {}
+
+        o = subprocess.run([
+                self._cmd,'-n','fio','get','pods','--selector=app=fioloadgen',
+                '-o=jsonpath="{range .items[*]}{.metadata.name}{\' \'}{.metadata.labels.storageclass}{\'\\n\'}{end}"'],
+                capture_output=True)
+
         if o.returncode == 0:
-            return len(o.stdout.decode('utf-8').strip().split('\n'))
-        else:
-            return 0
+            workers = o.stdout.decode('utf-8').strip('"').split('\n')
+            for worker in workers:
+                if worker:
+                    pod_name, storageclass = worker.split()
+                    if storageclass in lookup:
+                        lookup[storageclass] += 1
+                    else:
+                        lookup[storageclass] = 1
+        return lookup
 
     def startfio(self, profile, storageclass, workers, output):
         cmd = 'startfio'
         args = f"-p {profile} -s {storageclass} -o {output} -w {workers}"
-        oc_command = subprocess.run(['oc', '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
-
-        return oc_command
+        cmd_result = subprocess.run([self._cmd, '-n', self.ns, 'exec', self.mgr, '--', cmd, args])
+        return cmd_result
 
     def fetch_report(self, output) -> int:
         source_file = os.path.join('/reports/', output)

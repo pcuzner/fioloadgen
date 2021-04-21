@@ -367,7 +367,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             db.update_job_status(job.uuid, job.status)
 
             cherrypy.log("job {} starting".format(job.uuid))
-            run_job = handler.startfio('fioloadgen.job', job.workers, job.outfile)
+            run_job = handler.startfio('fioloadgen.job', job.storageclass, job.workers, job.outfile)
             if run_job.returncode == 0:
                 # on some systems, the time between job end and the fetch can return empty files
                 # the delay makes the fetch more
@@ -484,7 +484,7 @@ class Job(object):
     @cherrypy.tools.json_out()
     def POST(self, profile, **params):
         # required payload
-        required = ['title', 'provider', 'platform']
+        required = ['title', 'provider', 'storageclass', 'platform']
 
         js_in = cherrypy.request.json
         qs_in = parse_query_string(cherrypy.request.query_string)
@@ -519,7 +519,8 @@ class Job(object):
         job.profile = profile
         job.spec = profile_spec
         job.outfile = '{}.{}'.format(job.uuid, profile)
-        job.workers = parms.get('workers', 9999)  # FIX ME
+        job.storageclass = parms.get('storageclass', 'standard')  # FIXME
+        job.workers = parms.get('workers', 9999)  # FIXME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
         job.title = parms.get('title', '{} on {}'.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
