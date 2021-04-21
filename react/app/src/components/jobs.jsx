@@ -465,7 +465,12 @@ class FIOJobAnalysis extends React.Component {
 
         });
         values.sort();
-        let idx = Math.ceil(0.5 * dataset.length);
+        let idx;
+        if (values.length > 1) {
+            idx = Math.ceil(0.5 * dataset.length);
+        } else {
+            idx = 0;
+        }
         return values[idx];
     }
     render() {
@@ -484,10 +489,18 @@ class FIOJobAnalysis extends React.Component {
             let writeMedian95 = 0;
 
             if (this.state.jobData.summary) {
-
                 rawJSON = JSON.parse(this.state.jobData.raw_json);
-                lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
-                clientSummary = rawJSON.client_stats[lastItem];
+                let numClients = Object.keys(rawJSON.client_stats).length;
+                // To account for a test run with a single client, we need to adjust the
+                // slice offsets into the client_stats array
+                if (numClients > 1) {
+                    lastItem = numClients - 1;
+                    clientSummary = rawJSON.client_stats[lastItem];
+                } else {
+                    lastItem = numClients;
+                    clientSummary = rawJSON.client_stats[0];
+                }
+
                 readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
                 writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
                 bandwidthData.push(decPlaces(clientSummary.read.bw_bytes / Math.pow(1024,2)));
