@@ -305,6 +305,13 @@ class APIroot(object):
         self.profile = Profile(service_state, dbpath)  # handler)
         self.status = Status(service_state)  # Web service metadata info
         self.db = DB(dbpath)  # db export/import handler
+        self.ping = Ping()
+
+class Ping:
+    exposed = True
+    def GET(self):
+        # just returns a 200 to indicate the API is listening and available
+        pass
 
 
 def jsonify_error(status, message, traceback, version):
@@ -528,12 +535,13 @@ class Job(object):
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
 
-            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, workers, status, type, provider, platform)
-                              VALUES(?,?,?,?,?,?,?,?,?);""",
+            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, storageclass, workers, status, type, provider, platform)
+                              VALUES(?,?,?,?,?,?,?,?,?,?);""",
                         (job.uuid,
                          job.title,
                          profile,
                          job.spec,
+                         job.storageclass,
                          job.workers,
                          job.status,
                          'fio',
@@ -847,7 +855,7 @@ class FIOWebService(object):
         # use the handler to determine the number of workers
         # rc = self.handler.num_workers()
         logger.debug("checking handler sees worker pods")
-        if self.handler.workers == 0:  # or rc != 0:
+        if not self.handler.workers:
             logger.error("handler not seeing any workers")
             return False
         logger.debug("handler has discovered worker pods")
