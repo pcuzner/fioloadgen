@@ -382,6 +382,7 @@ export class Jobs extends React.Component {
 
                                 <th className="job_title">Job Title</th>
                                 <th className="job_id">Job ID</th>
+                                <th className="job_storageclass">Storageclass</th>
                                 <th className="job_clients"># Clients</th>
                                 <th className="job_profile">Profile</th>
                                 <th className="job_provider">Provider</th>
@@ -584,6 +585,7 @@ class FIOJobAnalysis extends React.Component {
                             &nbsp;({getElapsed(this.state.jobData.started, this.state.jobData.ended)})
                         </div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Storageclass</span>: {this.state.jobData.storageclass}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
                         <table className="lat-table">
@@ -808,6 +810,9 @@ class JobDataRow extends React.Component {
             checkboxEnabled=false
         }
         let actions = [];
+
+        // FIXME - truncate the storageclass name
+
         switch (this.props.job.status) {
             case "incomplete":
                 actions = [
@@ -896,6 +901,7 @@ class JobDataRow extends React.Component {
 
                 <td className="job_title">{this.props.job.title}</td>
                 <td className="job_id">{this.props.job.id.split('-')[0]}</td>
+                <td className="job_storageclass" title={this.props.job.storageclass}>{this.props.job.storageclass}</td>
                 <td className="job_clients">{this.props.job.workers}</td>
                 <td className="job_profile">{this.props.job.profile}</td>
                 <td className="job_provider" >{this.props.job.provider}</td>

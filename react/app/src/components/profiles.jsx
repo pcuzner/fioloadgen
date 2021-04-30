@@ -20,10 +20,10 @@ export class Profiles extends React.Component {
             activeProfile: undefined,
             profileContent: '',
             modalOpen: false,
-            workers: 1,
+            workers: {},
         };
         this.spec = {
-            runTime: 1,
+            runTime: 60,
             ioType: "Random",
             ioBlockSize: "4KB",
             ioPattern: 50,
@@ -102,7 +102,7 @@ export class Profiles extends React.Component {
           .catch((error) => {
               console.error("initial status call failure, unable to fetch worker info, using default of 0");
               this.setState({
-                  workers: 0,
+                  workers: {},
               });
           })
     }
@@ -207,7 +207,7 @@ export class Profiles extends React.Component {
                 <div />
             );
         }
-
+        console.log("workers is set to :" + JSON.stringify(this.props.workers))
         let profileSelector;
         // console.debug("client limit is " + this.props.clientLimit);
         if (this.state.profiles.length > 0) {
@@ -226,7 +226,7 @@ export class Profiles extends React.Component {
         }
         let jobDefinition;
         if (this.state.modalOpen) {
-            jobDefinition = (<JobParameters submitHandler={this.submitHandler} clientLimit={this.props.workers} closeHandler={this.closeModal}/>);
+            jobDefinition = (<JobParameters submitHandler={this.submitHandler} workerInfo={this.props.workers} closeHandler={this.closeModal}/>);
         } else {
             jobDefinition = (<div />);
         }
@@ -312,7 +312,9 @@ class CustomProfile extends React.Component {
     runtimeHandler = (event) => {
         console.log("in runtime handler " + event.target.name + " / " + event.target.value);
         this.setState({runTime: event.target.value})
-        this.props.callback({runTime: event.target.value})
+        let mins = event.target.value * 60;
+        console.log("runtime handler sending runtime of ", mins, "to parent");
+        this.props.callback({runTime: mins})
     }
     ioDepthHandler = (event) => {
         console.log("in iodepth handler " + event.target.name + " / " + event.target.value);
@@ -356,7 +358,7 @@ class CustomProfile extends React.Component {
         }
     }
     saveProfile() {
-        console.log("save me " + JSON.stringify(this.state))
+        let localState = JSON.parse(JSON.stringify(this.state))
         if (this.state.profileName == '') {
             console.debug("profile save requested but no name given")
             this.setState({profileStyle: {
@@ -371,13 +373,16 @@ class CustomProfile extends React.Component {
             return
         }
 
+        delete localState.profileStyle;
+        localState.runTime = localState.runTime * 60;
+        console.log("save me " + JSON.stringify(localState))
         fetch(api_url + "/api/profile/" + this.state.profileName, {
             method: 'put',
             headers: {
                 "Accept": "application/json",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({spec: this.state})
+            body: JSON.stringify({spec: localState})
         })
             .then((e) => {
                 if (e.status == 200) {
@@ -512,12 +517,41 @@ class JobParameters extends React.Component {
         super(props);
         this.state = {
             example: true,
-            workers: props.clientLimit,
+            workers: 1,
             title: '',
             platform: 'openshift',
+            storageclass: '',
             provider: 'aws',
             titleBorder: {},
+            workerInfo: {},
         };
+    }
+
+    static getDerivedStateFromProps(props, state) {
+        let newState = {};
+        if (state.storageclass == '' && props.workerInfo) {
+            // console.debug("Job Parameters: storageclass is empty but we have something to default to")
+            newState.storageclass = Object.keys(props.workerInfo)[0];
+
+        }
+
+        if (JSON.stringify(props.workerInfo) != JSON.stringify(state.workerInfo)) {
+            // console.debug("job parameters: setting workerinfo to new props value")
+            newState.workerInfo = props.workerInfo;
+        }
+
+        return newState;
+    }
+
+    shouldComponentUpdate(nextProps) {
+        // console.log("job parameters: should I update")
+        if (JSON.stringify(nextProps.workerInfo) !== JSON.stringify(this.props.workerInfo)) {
+            // console.debug("job parameters:YES")
+            return true;
+        } else {
+            // console.debug("job parameters:NO")
+            return false;
+        }
     }
 
     updateState(event) {
@@ -525,6 +559,11 @@ class JobParameters extends React.Component {
         this.setState({
             [event.target.id]: event.target.value
         });
+        if (event.target.id == "storageclass") {
+            console.log("adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
+            this.maxWorkers = this.props.workerInfo[event.target.value];
+        }
+
         if (event.target.id == 'title') {
             if (event.target.value == "") {
                 this.setState({
@@ -540,6 +579,7 @@ class JobParameters extends React.Component {
         }
     }
 
+
     callbackHandler = () => {
         if (!this.state.title) {
             this.setState({
@@ -553,20 +593,41 @@ class JobParameters extends React.Component {
     }
 
     render() {
+        let sc_options;
+
+        if (this.props.workerInfo) {
+            sc_options=Object.keys(this.props.workerInfo).map((sc_name, i) => {
+                return (<option key={i} value={sc_name} >{sc_name}</option>)
+            });
+        } else {
+            return (<div />);
+        }
+
+        let workerMax = this.props.workerInfo[this.state.storageclass];
+        console.debug("Job Parameters: max workers set to ", workerMax, " for storageclass ", this.state.storageclass);
+        console.log("worker information :" +JSON.stringify(this.props.workerInfo))
         return (
             <div>
                 <div>
-                    <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers/clients&nbsp;</b></div>
+                    <label className="storageclass" forhtml="storageclass">Storageclass&nbsp; </label>
+                    <select id="storageclass" onChange={() => {this.updateState(event);}}>
+                        { sc_options }
+                    </select>
+                    <p />
+                </div>
+                <div>
+                    {/* <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers&nbsp;</b></div> */}
                     <div className="inline-block">
+                        <label forhtml="workers"># workers&nbsp;</label>
                         <input id="workers"
                             className="workers-slider"
                             type="range"
                             min="1"
-                            max={this.props.clientLimit}
+                            max={workerMax}
                             value={this.state.workers}
                             onChange={() => {this.updateState(event);}}>
                         </input>
-                        <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{this.state.workers}</div>
+                        <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{workerMax}</div>
                     </div>
                 </div>
                 <div>

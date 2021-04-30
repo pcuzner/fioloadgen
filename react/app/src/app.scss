@@ -168,6 +168,10 @@ height:100%;}
   min-width: 80px;
   text-align: center;
 }
+.job_storageclass {
+  width:100px;
+  text-align:left;
+}
 .job_profile {
   min-width:110px;
   text-align: left;
@@ -185,7 +189,7 @@ height:100%;}
   min-width:100px;
 }
 .job-actions {
-  min-width:30px;
+  min-width:40px;
 }
 .job-content pre {
     height:400px;
@@ -338,6 +342,7 @@ input[type=range].workers-slider {
   }
   #jobTableArea {
     background-color: white;
+    min-width: 1500px;
   }
   .job-details-container {
     margin-bottom:10px;
@@ -455,10 +460,9 @@ input[type=range].workers-slider {
   cursor: pointer; color: white;
 }
 .dropdown-menu-tbl-right {
-    margin-left:-60px;
-    top:16px;
-    min-width:60px;
-}
+  margin-left: -80px;
+  top: 16px;
+  min-width: 70px; }
 ul.dropdown-menu-tbl-right::before {
     content:none !important;
 }
@@ -593,4 +597,24 @@ ul.dropdown-menu-tbl-right::after {
 
 ::placeholder {
   font-style: italic;
+}
+
+
+label:after {
+  padding-right: 10px; }
+
+label {
+  width:120px;
+}
+
+#masthead-container {
+  z-index:99;
+  position: fixed;
+  top: 0;
+  width: 100%;
+   }
+
+#container {
+ position: relative;
+  top:80px;
 }
