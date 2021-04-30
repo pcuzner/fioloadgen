@@ -45,12 +45,12 @@ check_prereq () {
     console "\nChecking oc/kubectl CLI is available"
     if exists "oc"; then
         CLUSTER_CMD='oc'
-        PLATFORM='openshift'
+        PLATFORM='Openshift'
         console ${OK} "${TICK} oc command available${NC}"
     else
         if exists "kubectl"; then
             CLUSTER_CMD='kubectl'
-            PLATFORM='kubernetes'
+            PLATFORM='Kubernetes'
             console ${OK} "${TICK} kubectl command available ${NC}"
         else
             console ${ERROR} "${CROSS} oc or kubectl commands not found. Unable to continue"
@@ -440,7 +440,13 @@ setup() {
     else
         # Use remote fioservice deployed to the target cluster
         console "\nSubmitting the deployment for the fioservice daemon"
-        deployment=$($CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml)
+        # TODO update the yaml to provide NAMESPACE and ENVIRONMENT
+        deployment=$(cat yaml/fioservice_template.yaml | \
+            sed "s/!NAMESPACE!/${NAMESPACE}/" | \
+            sed "s/!ENVIRONMENT!/${PLATFORM}/g" | \
+            $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
+
+        # deployment=$($CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml)
         if [ $? -gt 0 ]; then
             console ${ERROR} "${CROSS} deployment failed, unable to continue${NC}"
             exit
