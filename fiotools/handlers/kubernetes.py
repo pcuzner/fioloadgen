@@ -83,9 +83,13 @@ class OpenshiftCMDHandler(BaseHandler):
         pass
 
     def scale_workers(self, replica_count) -> int:
-        o = subprocess.run([self._cmd, '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
-        return o.returncode
+        raise NotImplementedError()
+        # o = subprocess.run([self._cmd, '-n', self.ns, 'statefulsets', 'fioworker', '--replicas', replica_count])
+        # return o.returncode
 
+    def fio_valid(self, fiojob) -> bool:
+        # don't check, just assume it's valid
+        return True
 
 class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
