@@ -8,12 +8,14 @@ Project that provides a structured test environment based on fio workload patter
 These components provide the following features;
 - standard repeatable deployment of an fio testing framework
 - persistent store for job results and profiles for future reference (useful for regression testing, or bake-off's)
+- support for predefined fio job profiles and custom profiles defined in the UI
+- deployment of fio workers to multiple storageclasses (allows testing against different providers)
 - ability to export job results for reuse in other systems
 - ability to dump all jobs or a specific job in sqlite format for import in another system
 - fio job management through a RESTful API supporting
    - cli tool to interact with the API to run jobs, query output, query profiles
    - web front end supporting fio profile view/refresh, job submission and visualisation of fio results (using chartjs)
-- supported backend - openshift only at the moment, but adding kubernetes should be a no brainer!
+- supported backend - openshift and kubernetes (tested with minikube)
 
 
 ## What does the workflow look like?
@@ -59,18 +61,18 @@ If all else fails you have two options
 Before you deploy, you **must** have a working connection to openshift and the required CLI tool (oc) must be in your path.
 Once you have logged in to openshift, you can run the ```fiodeploy.sh``` script. This script is used to standup (```-s```) **and** tear down (```-d```) test environments
 ```
-$ ./fiodeploy.sh -h
-Usage: fiodeploy.sh [-dsh]
+$ ./fiodeploy -h
+Usage: fiodeploy [-dsh]
         -h      ... display usage information
         -s      ... setup an fio test environment
         -d <ns> ... destroy the given namespace
         -r      ... reset - remove the lockfile
 e.g.
-> ./fiodeploy.sh -s
+> ./fiodeploy -s
 ```
 Here's an example of a deployment, using the remote fioservice option.
 ```
-[paul@rhp1gen3 fioloadgen]$ ./fiodeploy.sh -s
+[paul@rhp1gen3 fioloadgen]$ ./fiodeploy -s
 Checking kubernetes CLI is available
 ✔ oc command available
 Checking access to kubernetes
@@ -138,7 +140,7 @@ jobs, which may provide the most hands-on experience for some users. However, us
 fiomgr directly will not load results into the fioservice database or provide the
 analysis charts.
 
-With *'remote'* mode, fiodeploy will create a deployment in the target environment where the fioservice will run, and establishes a **port-forward** from you local machine to this pod. FIO jobs are managed by this pod, and all interactions between the fioservice and the kubernetes platform is performed using the kubernetes API.
+With *'remote'* mode, fiodeploy will create a deployment in the target environment where the fioservice will run, and establishes a **port-forward** from your local machine to this pod. FIO jobs are managed by this pod, and all interactions between the fioservice and the kubernetes platform is performed using the kubernetes API.
 
 In either deployment model, the workers that perform the I/O tests are deployed using a
 statefulset. The pods created are called 'fioworker-N', with each fioworker pod using a
@@ -149,7 +151,7 @@ The fioservice daemon provides an API which supports the web interface and the f
 command. The UI is split into 3 main areas
 - Page banner/heading
 - FIO profiles
-- Job Summary
+- Job Summary and Analysis
 
 ### Page Banner
 ![banner](media/fioloadgen_banner.png)
@@ -159,7 +161,7 @@ command. The UI is split into 3 main areas
 ![banner](media/fioloadgen_profiles.png)
 
 
-### Job Summary
+### Job Summary & Analysis
 ![banner](media/fioloadgen_jobs.png)
 
 Each row in the job table has a menu icon that provides options for managing the job
@@ -167,12 +169,12 @@ based on it's state. For example, queued jobs may be deleted and complete jobs r
 
 
 ## Manually starting a local FIO Service (API/UI)
-Normally the fioservice is started by the fiodeploy.sh script. But if you need to manage
+Normally the fioservice is started by the ```fiodeploy``` script. But if you need to manage
 things for yourself, this info may help.
 
 ### Starting the fioservice daemon
 ```
-> ./fioservice.py --mode=dev start
+> ./fioservice --mode=dev start
 ```
 1. Defaults to an openshift connection (--type=oc) and namespace of fio (--namespace=fio)
 2. Expects to be run from the root of the project folder (at start up it will attempt
@@ -180,7 +182,7 @@ things for yourself, this info may help.
 
 ### Stopping the fioservice daemon
 ```
-> ./fioservice.py stop
+> ./fioservice stop
 ```
 
 
@@ -193,24 +195,27 @@ and all associated resources.
 
 1. Show the current status of the fioservice
 ```
-> ./fiocli.py status
+> ./fiocli status
 
 Example output:
 
-Target      : Openshift
-Workers     : 2
+Target      : Kubernetes
 Debug Mode  : No
+Workers
+  my-storageclass : 1
+  standard        : 1
 Job running : No
 Jobs queued : 0
-Uptime      : 4:47:29
+Uptime      : 2 days, 1:58:07
+
 ```
 
 2. List available IO profiles you can test with
 ```
-> ./fiocli.py profile --ls
+> ./fiocli profile --ls
 
 Example output:
-./fiocli.py profile --ls
+./fiocli profile --ls
 - randr.job
 - randrlimited.job
 - randrw7030.job
@@ -219,34 +224,34 @@ Example output:
 ```
 3. Show the parameters within a profile
 ```
-> ./fiocli.py profile --show <profile-name>
+> ./fiocli profile --show <profile-name>
 ```
 4. Add a fio job profile to the fioservice database
 ```
-> ./fiocli.py profile-add --name <profile-name> --file=<local_file>
+> ./fiocli profile-add --name <profile-name> --file=<local_file>
 
 Example output:
-./fiocli.py profile-add --name new.job --file=/home/test/fioloadgen/newread.job
+./fiocli profile-add --name new.job --file=/home/test/fioloadgen/newread.job
 profile upload successful
 ```
 5. Remove an fio job profile from the fioservice database
 ```
-> ./fiocli.py profile-rm --name <profile-name>
+> ./fiocli profile-rm --name <profile-name>
 
 Example output:
-./fiocli.py profile-rm --name new.job
+./fiocli profile-rm --name new.job
 profile deleted
 ```
 6. Run an fio job using a given profile
 ```
-> ./fiocli.py run --profile <profile-name> --workers <int> --title <text>
+> ./fiocli run --profile <profile-name> --workers <int> --title <text>
 ```
 7. List jobs stored in the database
 ```
-> ./fiocli.py job --ls
+> ./fiocli job --ls
 
 Example output:
-./fiocli.py job --ls
+./fiocli job --ls
 Job ID                                 Status            End Time        Job Title
 91a2c232-1d36-4685-a94d-19ea6a253ae6   complete     2021-03-12 11:38:05  test run - sc=thin
 Jobs:   1
@@ -324,18 +329,18 @@ can be managed using the fiocli command.
 
 1. Dump the jobs table to a backup file
 ```
-./fiocli.py db-dump [-h] [--table {jobs,profiles}] [--out OUT]
+./fiocli db-dump [-h] [--table {jobs,profiles}] [--out OUT]
 
 Example output:
-./fiocli.py db-dump --table jobs --out myjobs.backup
+./fiocli db-dump --table jobs --out myjobs.backup
 database dump of table 'jobs' written to myjobs.backup
 ```
 2. Export a specific job from the database
 ```
-fiocli.py db-export [-h] [--table {jobs,profiles}] --row ROW [--out OUT]
+fiocli db-export [-h] [--table {jobs,profiles}] --row ROW [--out OUT]
 
 Example output:
-./fiocli.py db-export --table jobs --row id=91a2c232-1d36-4685-a94d-19ea6a253ae6
+./fiocli db-export --table jobs --row id=91a2c232-1d36-4685-a94d-19ea6a253ae6
 database table row from 'jobs' written to /home/paul/fioservice-db-jobs-row.sql
 ```
 
@@ -363,7 +368,7 @@ Runtime files and a the database are placed in the users home directory
 - [X] provide an fioservice container that can be run on the target infrastructure, instead of locally
 - [ ] react optimization
 - [ ] formalise the code as an installable python package(why not add an rpm too?)
-- [ ] replace raw information of a profile with widgets to make it more accessible
-- [ ] use presets and custom
-- [ ] store the fio parameters used the jobs database record
+- [X] replace raw information of a profile with widgets to make it more accessible
+- [X] use presets and custom
+- [X] store the fio parameters used the jobs database record
 
