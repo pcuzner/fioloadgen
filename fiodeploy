@@ -33,6 +33,8 @@ WARNING='\033[1;33m' # yellow
 TICK='\xE2\x9C\x94' # tickmark
 CROSS='x'
 
+trap cleanup INT
+
 exists () {
     which $1 > /dev/null 2>&1
 }
@@ -40,6 +42,20 @@ exists () {
 console () {
     echo -e "${1}${2}${NC}"
 }
+
+
+console_reset() {
+    tput_bin=$(whereis tput)
+    if exists "tput"; then
+        tput init
+    fi
+}
+
+cleanup() {
+    # just reset the terminal for now, to avoid any color issues
+    console_reset
+}
+
 
 check_prereq () {
     console "\nChecking oc/kubectl CLI is available"
