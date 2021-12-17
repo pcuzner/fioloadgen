@@ -557,16 +557,16 @@ class JobParameters extends React.Component {
     
     updateState = (event) => {
         /* Could add additional logic here to validate content? */
-        console.debug("JobParameters: UpdateState : event target is " + event.target.id + " value is " + event.target.value);
+        console.debug("JobParameters:updateState: event target is " + event.target.id + " value is " + event.target.value);
         if (event.target.id == "workers") {
-            console.debug("JobParameters: UpdateState: setting worker count to " + event.target.value);
+            console.debug("JobParameters:updateState: setting worker count to " + event.target.value);
             this.setState({
                 [event.target.id]: event.target.value
             });
         }
 
         if (event.target.id == "storageclass") {
-            console.log("adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
+            console.log("JobParameters:updateState: adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
             this.maxWorkers = this.props.workerInfo[event.target.value];
         }
 
@@ -575,12 +575,12 @@ class JobParameters extends React.Component {
                 this.setState({
                     titleBorder: { borderColor: "red", borderRadius: "5px"}
                 });
-                console.log("title is empty - make it red");
+                console.log("JobParameters:updateState: Error - title is empty - make it red");
             } else {
                 this.setState({
                     titleBorder: {}
                 });
-                console.log("title has content - make it normal");
+                console.log("JobParameters:updateState: OK - title has content - make it normal");
             }
         }
     }
@@ -591,7 +591,7 @@ class JobParameters extends React.Component {
             this.setState({
                 titleBorder: { borderColor: "red", borderRadius: "5px"}
             });
-            console.log("need a title to proceed");
+            console.log("JobParameters:callbackHandler: Error - need a title to proceed");
         } else {
             /* call the submitHandler */
             this.props.submitHandler(this.state);
