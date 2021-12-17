@@ -543,22 +543,28 @@ class JobParameters extends React.Component {
         return newState;
     }
 
-    shouldComponentUpdate(nextProps) {
+    shouldComponentUpdate(nextProps, nextState) {
         // console.log("job parameters: should I update")
         if (JSON.stringify(nextProps.workerInfo) !== JSON.stringify(this.props.workerInfo)) {
             // console.debug("job parameters:YES")
             return true;
-        } else {
-            // console.debug("job parameters:NO")
-            return false;
         }
+        if (this.state.workers !== nextState.workers) {
+            return true;
+        }
+        return false;
     }
-
-    updateState(event) {
+    
+    updateState = (event) => {
         /* Could add additional logic here to validate content? */
-        this.setState({
-            [event.target.id]: event.target.value
-        });
+        console.debug("JobParameters: UpdateState : event target is " + event.target.id + " value is " + event.target.value);
+        if (event.target.id == "workers") {
+            console.debug("JobParameters: UpdateState: setting worker count to " + event.target.value);
+            this.setState({
+                [event.target.id]: event.target.value
+            });
+        }
+
         if (event.target.id == "storageclass") {
             console.log("adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
             this.maxWorkers = this.props.workerInfo[event.target.value];
@@ -604,8 +610,9 @@ class JobParameters extends React.Component {
         }
 
         let workerMax = this.props.workerInfo[this.state.storageclass];
-        console.debug("Job Parameters: max workers set to ", workerMax, " for storageclass ", this.state.storageclass);
-        console.log("worker information :" +JSON.stringify(this.props.workerInfo))
+        console.debug("JobParameters:render: Job Parameters: max workers set to ", workerMax, " for storageclass ", this.state.storageclass);
+        console.log("JobParameters:render: workers = " + this.state.workers);
+        console.log("JobParameters:render:worker information :" +JSON.stringify(this.props.workerInfo));
         return (
             <div>
                 <div>
@@ -618,18 +625,21 @@ class JobParameters extends React.Component {
                 <div>
                     {/* <div className="inline-block" style={{paddingRight: "10px"}}><b># of workers&nbsp;</b></div> */}
                     <div className="inline-block">
-                        <label forhtml="workers"># workers&nbsp;</label>
+                        <label forhtml="workers"># workers&nbsp; </label>
                         <input id="workers"
                             className="workers-slider"
                             type="range"
                             min="1"
                             max={workerMax}
-                            value={this.state.workers}
-                            onChange={() => {this.updateState(event);}}>
-                        </input>
-                        <div className="inline-block" style={{ color: "red", paddingLeft: "20px"}}>{workerMax}</div>
+                            defaultValue={this.state.workers}
+                            onChange={this.updateState}
+                            step="1"/>
+                        {/* {this.state.workers} */}
+                        <div className="inline-block" style={{ color: "black", fontWeight: "bold", paddingLeft: "20px"}}>{this.state.workers}</div>
                     </div>
+
                 </div>
+                <div></div>
                 <div>
                     <p />
                     <label forhtml="title">Job Title<span style={{color: "red", verticalAlign: "super", fontSize: ".8em"}}>*</span>&nbsp;</label>
