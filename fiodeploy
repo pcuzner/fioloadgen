@@ -554,7 +554,7 @@ destroy() {
         console ${OK} "${TICK} port-forward not present${NC}"
     fi
 
-    console "\nChecking pods running in $NAMESPACE are only fioloadgen pods"
+    console "\nChecking pods running in '$NAMESPACE' namespace are only fioloadgen pods"
     pod_names=$($CLUSTER_CMD -n $NAMESPACE get pod -o jsonpath='{.items[*].metadata.name}')
     pod_array=( $pod_names )
     for pod_name in "${pod_array[@]}"; do
