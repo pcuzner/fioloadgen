@@ -9,7 +9,7 @@ fi
 
 echo "Build image with the tag: $TAG"
 
-IMAGE="alpine:edge"
+IMAGE="alpine:3.15"
 
 container=$(buildah from $IMAGE)
 #mountpoint=$(buildah mount $container)
@@ -21,13 +21,13 @@ buildah run $container apk add rsync
 buildah run $container apk add python3
 buildah run $container apk add --update py3-pip
 
-buildah run $container pip3 install --upgrade pip
+# buildah run $container pip3 install --upgrade pip3
 buildah run $container pip3 install jaraco.collections
 buildah run $container pip3 install zc.lockfile
 buildah run $container pip3 install cheroot
 buildah run $container pip3 install portend
 buildah run $container pip3 install kubernetes
-buildah run $container apk add py3-cherrypy  --repository http://dl-cdn.alpinelinux.org/alpine/edge/testing/
+buildah run $container apk add py3-cherrypy  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/
 buildah run $container apk add py3-more-itertools
 
 # buildah run $container apk add py3-wheel --repository http://dl-cdn.alpinelinux.org/alpine/edge/main/
