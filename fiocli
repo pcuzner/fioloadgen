@@ -514,7 +514,7 @@ def command_run():
             else:
                 print("- Request failed with status code {}".format(completion.status_code))
     else:
-        print(f'- Job request failed ({r.status_code}): {r.json().get("message", "unknown error")}')
+        print(f'- Job request failed ({r.status_code}). {r.json().get("message", "unknown error")}')
 
 
 def command_job():
