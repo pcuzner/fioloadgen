@@ -499,8 +499,15 @@ class Job(object):
 
         parms = {**js_in, **qs_in}
 
-        if not all([k in parms.keys() for k in required]):
-            raise cherrypy.HTTPError(400, "missing fields in request")
+        for k in parms.keys():
+            try:
+                required.remove(k)
+            except ValueError:
+                # just means we have an optional parameter
+                continue
+    
+        if required:
+            raise cherrypy.HTTPError(400, f'Missing fields: {",".join(required)}')
 
         available_profiles = [p['name'] for p in db.fetch_all('profiles', list(['name']))]
         available_profiles.append('custom')
