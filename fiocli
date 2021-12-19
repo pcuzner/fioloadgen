@@ -179,6 +179,12 @@ def cmd_parser():
         action='store_true',
         help="show raw json from a completed job",
     )
+    parser_job.add_argument(
+        '--with-spec',
+        action='store_true',
+        default=False,
+        help="show job specification information",
+    )    
 
     parser_db_dump = subparsers.add_parser(
         'db-dump',
@@ -460,7 +466,27 @@ def command_profile_rm():
     else:
         print(r.json().get('message', 'Unexpected error'))
 
-
+def show_spec(api_response):
+    data = json.loads(api_response.json()['data'])
+    if data.get('status', None) == 'complete':
+        # print the spec
+        js = json.loads(data.get('raw_json'))
+        fio_version = js.get('fio version', 'unknown')
+        global_options = js.get('global options', '')
+        stats = js.get('client_stats')
+        print(f'FIO version : {fio_version}')
+        print("Job Specification")
+        print('[global]')
+        for k in global_options:
+            print(f'{k}={global_options[k]}')
+        if stats:
+            for job in stats:
+                if job.get('jobname') == 'All clients':
+                    continue
+                print(f'[{job.get("jobname")}]')
+                job_options = job.get('job options')
+                for parm in job_options:
+                    print(f'{parm}={job_options.get(parm)}')
 
 def show_summary(api_response):
     keys_to_show = ['id', 'title', 'started', 'profile', 'workers', 'status']  # NOQA
@@ -479,7 +505,7 @@ def show_summary(api_response):
         for k in js.keys():
             print("  {}: {}".format(k.title(), js[k]))
     else:
-        print("Summary  : Unavailable (missing)")
+        print("Summary  : Unavailable (missing)") 
 
 
 def job_wait(job_uuid):
@@ -557,6 +583,9 @@ def command_job():
         r = requests.get("{}/job/{}".format(url, args.show))
         if r.status_code == 200:
             show_summary(r)
+            if args.with_spec:
+                show_spec(r)
+            
             if args.raw:
                 jstr = json.loads(r.json()['data'])['raw_json']
                 js = json.loads(jstr)
