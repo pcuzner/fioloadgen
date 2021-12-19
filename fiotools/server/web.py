@@ -482,7 +482,7 @@ class Job(object):
         else:
             data = db.fetch_row('jobs', 'id', uuid)
             if data:
-                return {"data": json.dumps(db.fetch_row('jobs', 'id', uuid))}
+                return {"data": json.dumps(data)}
             else:
                 raise cherrypy.HTTPError(404, "Invalid job id")
 
