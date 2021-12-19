@@ -508,7 +508,7 @@ setup() {
         console ${INFO} "\nTo remove the port-forward, use kill -9 ${pid}\n"
     fi
 
-    console ${INFO} "To drop the test environment, use the './fiodeploy.sh -d <namespace>' command"
+    console ${INFO} "To drop the test environment, use the './fiodeploy -d <namespace>' command"
 
     # # seed the test files
     # console ${INFO} "Seeding the test files on the workers (mode=$SEED_METHOD), please wait"
