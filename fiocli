@@ -140,6 +140,13 @@ def cmd_parser():
         action='store_true',
         help="wait for the run to complete - NOT IMPLEMENTED YET",
     )
+    parser_run.add_argument(
+        '--storageclass',
+        type=str,
+        metavar="<name>",
+        required=True,
+        help="storageclass to use for the test run",
+    )    
 
     parser_job = subparsers.add_parser(
         'job',
@@ -350,8 +357,7 @@ def command_db_dump():
         print("database dump API request failed: {}".format(r.status_code))
 
 
-def command_status():
-
+def _fetch_status():
     try:
         logger.debug(f"Issuing call to {url}/status")
         r = requests.get("{}/status".format(url))
@@ -359,6 +365,11 @@ def command_status():
         print("Please start the fioservice, before using the cli")
         sys.exit(1)
 
+    return r
+
+def command_status():
+
+    r = _fetch_status()
     if r.status_code == 200:
         logger.debug("/status call successful")
         js = r.json()['data']
@@ -499,7 +510,8 @@ def command_run():
                           "workers": args.workers,
                           "title": args.title,
                           "provider": args.provider,
-                          "platform": args.platform
+                          "platform": args.platform,
+                          "storageclass": args.storageclass,
                       },
                       headers=headers)
 
