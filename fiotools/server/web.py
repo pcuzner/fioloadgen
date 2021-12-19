@@ -509,6 +509,13 @@ class Job(object):
         if required:
             raise cherrypy.HTTPError(400, f'Missing fields: {",".join(required)}')
 
+        workers = self.service_state._handler.workers
+        if not workers:
+            raise cherrypy.HTTPError(503, 'No worker pods are active')
+        
+        if parms.get('storageclass') not in workers:
+            raise cherrypy.HTTPError(400, f'Storageclass "{parms.get("storageclass")}" has no fioloadgen worker pods, or does not exist')
+
         available_profiles = [p['name'] for p in db.fetch_all('profiles', list(['name']))]
         available_profiles.append('custom')
         if profile not in available_profiles:
@@ -533,7 +540,7 @@ class Job(object):
         job.profile = profile
         job.spec = profile_spec
         job.outfile = '{}.{}'.format(job.uuid, profile)
-        job.storageclass = parms.get('storageclass', 'standard')  # FIXME
+        job.storageclass = parms.get('storageclass')
         job.workers = parms.get('workers', 9999)  # FIXME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
