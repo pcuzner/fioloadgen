@@ -438,6 +438,8 @@ class CustomProfile extends React.Component {
                             <option value="64KB">64KB</option>
                             <option value="128KB">128KB</option>
                             <option value="1MB">1MB</option>
+                            <option value="2MB">2MB</option>
+                            <option value="4MB">4MB</option>
                         </select>
                         <label className="option-title" forhtml="io-depth">
                             IO Depth:
