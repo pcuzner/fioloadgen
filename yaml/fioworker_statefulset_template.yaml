@@ -7,6 +7,7 @@ spec:
   selector:
     matchLabels:
       app: fioloadgen # has to match .spec.template.metadata.labels
+      storageclass: !STORAGECLASS!
   serviceName: "fioworker"
   replicas: !WORKERS! # by default is 1
   template:
@@ -15,10 +16,22 @@ spec:
         app: fioloadgen # has to match .spec.selector.matchLabels
         storageclass: !STORAGECLASS!
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - fioloadgen
+              topologyKey: kubernetes.io/hostname
       terminationGracePeriodSeconds: 10
       containers:
       - name: fioclient
-        image: pcuzner/fiotester
+        image: pcuzner/fiotester:1.5a
         env:
           - name: FIOMODE
             value: server
