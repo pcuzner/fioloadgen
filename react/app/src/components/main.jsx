@@ -18,7 +18,7 @@ export class App extends React.Component {
         // this.workers = 2;
     };
 
-    menuSelect(item) {
+    menuSelect = (item) => {
         if (item != this.state.current) {
             let newState = {
                 current: item,
@@ -65,7 +65,7 @@ export class App extends React.Component {
                     </ul>
                 </div>
                 <div id="container">
-                    <Profiles visibility={this.state.profiles} workers={this.state.workers}/>
+                    <Profiles visibility={this.state.profiles} workers={this.state.workers} changeMenuCallback={this.menuSelect}/>
                     <Jobs visibility={this.state.jobs} activeJobId={this.state.activeJobId}/>
                 </div>
 
