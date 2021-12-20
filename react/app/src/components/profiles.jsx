@@ -165,6 +165,7 @@ export class Profiles extends React.Component {
             .then((e) => {
                 if (e.status == 202) {
                     console.debug("request accepted (" + e.status + ")")
+                    this.props.changeMenuCallback('jobs');
                 } else {
                     console.error("POST request to submit job failed with http status " + e.status);
                 }
