@@ -551,21 +551,21 @@ class JobParameters extends React.Component {
             // console.debug("job parameters:YES")
             return true;
         }
+
         if (this.state.workers !== nextState.workers) {
+            return true;
+        }
+        if (this.state.titleBorder !== nextState.titleBorder) {
             return true;
         }
         return false;
     }
     
     updateState = (event) => {
-        /* Could add additional logic here to validate content? */
         console.debug("JobParameters:updateState: event target is " + event.target.id + " value is " + event.target.value);
-        if (event.target.id == "workers") {
-            console.debug("JobParameters:updateState: setting worker count to " + event.target.value);
-            this.setState({
-                [event.target.id]: event.target.value
-            });
-        }
+        this.setState({
+            [event.target.id]: event.target.value
+        });
 
         if (event.target.id == "storageclass") {
             console.log("JobParameters:updateState: adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
