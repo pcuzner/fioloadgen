@@ -111,7 +111,7 @@ export class Jobs extends React.Component {
 
     fetchJobSummaryData() {
         console.log("DEBUG refresh the job data");
-        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers")
+        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers,storageclass")
           .then(handleAPIErrors)
           .then((json) => {
               /* Happy path */
