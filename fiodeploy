@@ -45,7 +45,6 @@ console () {
 
 
 console_reset() {
-    tput_bin=$(whereis tput)
     if exists "tput"; then
         tput init
     fi
@@ -53,7 +52,9 @@ console_reset() {
 
 cleanup() {
     # just reset the terminal for now, to avoid any color issues
+    echo -e "\nBreak..."
     console_reset
+    exit 1
 }
 
 
