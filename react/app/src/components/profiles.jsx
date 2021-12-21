@@ -564,9 +564,15 @@ class JobParameters extends React.Component {
     
     updateState = (event) => {
         console.debug("JobParameters:updateState: event target is " + event.target.id + " value is " + event.target.value);
-        this.setState({
-            [event.target.id]: event.target.value
-        });
+        if (event.target.id == "workers") {
+            this.setState({
+                workers: parseInt(event.target.value)
+            });
+        } else {
+            this.setState({
+                [event.target.id]: event.target.value
+            });
+        }
 
         if (event.target.id == "storageclass") {
             console.log("JobParameters:updateState: adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
