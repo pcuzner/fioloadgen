@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 # use buildah to create a container holding fio
 TAG=$1
-IMAGE="alpine:latest"
+IMAGE="alpine:edge"
 
 if [ -z "${TAG}" ]; then
   TAG="latest"
