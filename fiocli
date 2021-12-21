@@ -503,7 +503,13 @@ def show_summary(api_response):
         print("Summary  :")
         js = json.loads(data['summary'])
         for k in js.keys():
-            print("  {}: {}".format(k.title(), js[k]))
+            if k == 'total_iops':
+                name = "Total IOPS"
+                v = f'{int(js[k]):,}'
+            else:
+                name = k.title()
+                v = js[k]
+            print(f'  {name}: {v}')
     else:
         print("Summary  : Unavailable (missing)") 
 
