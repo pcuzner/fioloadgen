@@ -307,8 +307,10 @@ class APIroot(object):
         self.db = DB(dbpath)  # db export/import handler
         self.ping = Ping()
 
+
 class Ping:
     exposed = True
+
     def GET(self):
         # just returns a 200 to indicate the API is listening and available
         pass
@@ -320,11 +322,10 @@ def jsonify_error(status, message, traceback, version):
     return json.dumps({'status': status, 'message': message})
 
 
-def run_job(dbpath, handler, service_state):  #, debug_mode):
+def run_job(dbpath, handler, service_state):
 
     # delay (secs) between a job end and the fetch function being executed
     # fetch_delay = 2
-
 
     if not work_queue.empty():
         # not in debug mode, so we act on the content of the queue
@@ -505,14 +506,14 @@ class Job(object):
             except ValueError:
                 # just means we have an optional parameter
                 continue
-    
+
         if required:
             raise cherrypy.HTTPError(400, f'Missing fields: {",".join(required)}')
 
         workers = self.service_state._handler.workers
         if not workers:
             raise cherrypy.HTTPError(503, 'No worker pods are active')
-        
+
         if parms.get('storageclass') not in workers:
             raise cherrypy.HTTPError(400, f'Storageclass "{parms.get("storageclass")}" has no fioloadgen worker pods, or does not exist')
 
@@ -748,9 +749,9 @@ def cors_handler():
 
         allowed_methods = ['GET', 'POST', 'DELETE', 'PUT']
         allowed_headers = [
-               'Content-Type',
-               'X-Auth-Token',
-               'X-Requested-With',
+            'Content-Type',
+            'X-Auth-Token',
+            'X-Requested-With',
         ]
 
         if ac_method and ac_method in allowed_methods:
@@ -772,7 +773,7 @@ def cors_handler():
 
 
 class ServiceStatus(object):
-    def __init__(self, handler):  #, debug_mode):
+    def __init__(self, handler):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
@@ -792,12 +793,13 @@ class ServiceStatus(object):
     def tasks_queued(self) -> int:
         return work_queue.qsize()
 
+
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None):  #, debug_mode=False):
+    def __init__(self, handler=None, workdir=None):
         self.handler = handler
         # self.debug_mode = debug_mode
-        self.service_state = ServiceStatus(handler=handler)  #, debug_mode=configuration.settings.debug)
+        self.service_state = ServiceStatus(handler=handler)
         # self.port = port
         self.root = Root()         # web UI
         self.dbpath = os.path.join(configuration.settings.db_dir, configuration.settings.db_name)
@@ -887,7 +889,7 @@ class FIOWebService(object):
                 cherrypy.engine,
                 stdout=os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
                 stderr=os.path.join(configuration.settings.log_dir, 'fioservice.log'),
-                )
+            )
 
             daemon.subscribe()
         else:
@@ -916,9 +918,10 @@ class FIOWebService(object):
         self.worker = plugins.BackgroundTask(
             interval=1,
             function=run_job,
-            args=[self.dbpath,
-                  self.handler,
-                  self.service_state,
+            args=[
+                self.dbpath,
+                self.handler,
+                self.service_state,
             ]
         )
         cherrypy.engine.subscribe('stop', self.cleanup)
