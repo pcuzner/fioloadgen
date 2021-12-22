@@ -368,7 +368,8 @@ def _fetch_status():
         logger.debug(f"Issuing call to {url}/status")
         r = requests.get("{}/status".format(url))
     except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-        print("Please start the fioservice, before using the cli")
+        print(f'Unable to reach the fioservice daemon at {url}/status')
+        print(f'Either start the daemon, or use "fiodeploy -p <namespace>" to reconnect to the remote daemon port')
         sys.exit(1)
 
     return r
