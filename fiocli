@@ -21,6 +21,7 @@ REQUEST_TIMEOUT = 2
 MAX_PROFILE_NAME = 24
 MAX_JOB_TITLE = 60
 
+
 def cmd_parser():
     parser = argparse.ArgumentParser(
         description='Interact with the fio web service',
@@ -149,7 +150,7 @@ def cmd_parser():
         metavar="<name>",
         required=True,
         help="storageclass to use for the test run",
-    )    
+    )
 
     parser_job = subparsers.add_parser(
         'job',
@@ -187,7 +188,7 @@ def cmd_parser():
         action='store_true',
         default=False,
         help="show job specification information",
-    )    
+    )
 
     parser_db_dump = subparsers.add_parser(
         'db-dump',
@@ -369,13 +370,14 @@ def command_db_dump():
 def _fetch_status():
     try:
         logger.debug(f"Issuing call to {url}/status")
-        r = requests.get("{}/status".format(url),timeout=REQUEST_TIMEOUT)
+        r = requests.get("{}/status".format(url), timeout=REQUEST_TIMEOUT)
     except (requests.exceptions.ConnectionError, ConnectionRefusedError, requests.exceptions.ReadTimeout):
         print(f'Unable to reach the fioservice daemon at {url}/status')
-        print(f'Either start the daemon, or use "fiodeploy -p <namespace>" to reconnect to the remote daemon port')
+        print('Either start the daemon, or use "fiodeploy -p <namespace>" to reconnect to the remote daemon port')
         sys.exit(1)
 
     return r
+
 
 def command_status():
 
@@ -453,7 +455,7 @@ def command_profile_add():
         print("Unable to read the file..permissions issue?")
         exit(1)
 
-    payload ={
+    payload = {
         "data": data,
     }
     r = requests.put(f"{url}/profile/{args.name}",
@@ -473,6 +475,7 @@ def command_profile_rm():
         print("profile deleted")
     else:
         print(r.json().get('message', 'Unexpected error'))
+
 
 def show_spec(api_response):
     data = json.loads(api_response.json()['data'])
@@ -495,6 +498,7 @@ def show_spec(api_response):
                 job_options = job.get('job options')
                 for parm in job_options:
                     print(f'{parm}={job_options.get(parm)}')
+
 
 def show_summary(api_response):
     keys_to_show = ['id', 'title', 'started', 'profile', 'workers', 'status']  # NOQA
@@ -519,7 +523,7 @@ def show_summary(api_response):
                 v = js[k]
             print(f'  {name}: {v}')
     else:
-        print("Summary  : Unavailable (missing)") 
+        print("Summary  : Unavailable (missing)")
 
 
 def job_wait(job_uuid):
@@ -549,15 +553,16 @@ def command_run():
 
     print("Run fio workload profile {}".format(args.profile))
     headers = {'Content-type': 'application/json'}
-    r = requests.post('{}/job/{}'.format(url, args.profile),
-                      json={
-                          "workers": args.workers,
-                          "title": args.title,
-                          "provider": args.provider,
-                          "platform": args.platform,
-                          "storageclass": args.storageclass,
-                      },
-                      headers=headers)
+    r = requests.post(
+        '{}/job/{}'.format(url, args.profile),
+        json={
+            "workers": args.workers,
+            "title": args.title,
+            "provider": args.provider,
+            "platform": args.platform,
+            "storageclass": args.storageclass,
+        },
+        headers=headers)
 
     if r.status_code == 202:
         response = r.json()['data']
@@ -603,7 +608,7 @@ def command_job():
             show_summary(r)
             if args.with_spec:
                 show_spec(r)
-            
+
             if args.raw:
                 jstr = json.loads(r.json()['data'])['raw_json']
                 js = json.loads(jstr)
