@@ -18,6 +18,8 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 REQUEST_TIMEOUT = 2
+MAX_PROFILE_NAME = 24
+MAX_JOB_TITLE = 60
 
 def cmd_parser():
     parser = argparse.ArgumentParser(
@@ -77,7 +79,7 @@ def cmd_parser():
         '--name',
         type=str,
         metavar='<profile name>',
-        help="description name for the fio job profile"
+        help=f'name for the fio job profile (1-{MAX_PROFILE_NAME} chars)'
     )
     parser_profile_add.add_argument(
         '--file',
@@ -134,7 +136,7 @@ def cmd_parser():
         required=True,
         type=str,
         metavar='<text>',
-        help="descriptive title of the run (used in reports and charts)",
+        help=f'Job title for the run (1-{MAX_JOB_TITLE} chars)',
     )
     parser_run.add_argument(
         '--wait',
@@ -440,6 +442,10 @@ def command_profile_add():
     if not os.path.exists(args.file):
         print("File not found")
         exit(1)
+    if len(args.name) > MAX_PROFILE_NAME:
+        print(f'Profile name length is too long (maximum allowed is {MAX_PROFILE_NAME}')
+        exit(1)
+
     try:
         with open(args.file) as f:
             data = f.read()
@@ -537,6 +543,10 @@ def job_wait(job_uuid):
 
 
 def command_run():
+    if len(args.title) > MAX_JOB_TITLE:
+        print(f'title is too long. Must be 1-{MAX_JOB_TITLE} chars in length')
+        exit(1)
+
     print("Run fio workload profile {}".format(args.profile))
     headers = {'Content-type': 'application/json'}
     r = requests.post('{}/job/{}'.format(url, args.profile),
