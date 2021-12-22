@@ -298,6 +298,24 @@ get_port_fwd_pid() {
     echo $(ps -ef | awk '/[p]ort-forward fioservice/ { print $2;}')
 }
 
+setup_port_fwd() {
+    pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
+    if [ "$1" == "wait" ]; then 
+        wait_for_pod $pod_name
+    fi
+
+    $CLUSTER_CMD -n $NAMESPACE port-forward $pod_name 8080:${FIOSERVICE_PORT} > /dev/null 2>&1 &
+    if [ $? -gt 0 ]; then
+        console ${ERROR} "${CROSS} failed to add the port-forward to pod ${pod_name}${NC}"
+        exit
+    else
+        # get pid of port-forward
+        pid=$(get_port_fwd_pid)
+        console ${OK} "${TICK} port-forward created successfully (pid=${pid})${NC}"
+    fi
+    return 0
+}
+
 setup() {
 
     console "\nDeployment Summary"
@@ -471,10 +489,10 @@ setup() {
             console ${OK} "${TICK} deployment created${NC}"
         fi
 
-        pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
+        # pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
         # status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
         # console ${INFO} "Waiting for fioservice to reach Ready state"
-        wait_for_pod $pod_name
+        # wait_for_pod $pod_name
         # t=1
         # while [ $t -lt $ITERATION_LIMIT ]; do
         #     status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
@@ -494,15 +512,7 @@ setup() {
         #     exit
         # fi
         console "\nAdding port-forward rule (port ${FIOSERVICE_PORT})"
-        $CLUSTER_CMD -n $NAMESPACE port-forward $pod_name 8080:8080 > /dev/null 2>&1 &
-        if [ $? -gt 0 ]; then
-            console ${ERROR} "${CROSS} failed to add the port-forward to pod ${pod_name}${NC}"
-            exit
-        else
-            # get pid of port-forward
-            pid=$(get_port_fwd_pid)
-            console ${OK} "${TICK} port-forward successful (pid=${pid})${NC}"
-        fi
+        setup_port_fwd "wait"
 
         console ${INFO} "\nAccess the UI at http://localhost:8080. From there you may submit jobs and view"
         console ${INFO} "job output and graphs"
@@ -613,6 +623,7 @@ usage() {
     echo -e "\t-h             ... display usage information"
     echo -e "\t-s             ... setup an FIOLoadgen test environment"
     echo -e "\t-d <namespace> ... delete the FIOLoadgen namespace"
+    echo -e "\t-p <namespace> ... check/configure port-forward to remote fioservice pod"
     echo -e "\t-r             ... reset (remove the lockfile)"
 
     echo "e.g."
@@ -622,7 +633,7 @@ usage() {
 main() {
 
     args=1
-    while getopts "hsd:r" option; do
+    while getopts "hsp:d:r" option; do
         case "${option}" in
             h)
                 usage
@@ -643,6 +654,20 @@ main() {
                 setup
                 exit
                 ;;
+            p)
+                check_prereq
+                # check_port
+                check_ready
+                NAMESPACE=${OPTARG}
+                echo -e "\nCheck/create port-forward to fioservice daemon in namespace ${NAMESPACE}"
+                pid=$(get_port_fwd_pid)
+                if [ -z "$pid" ]; then 
+                    setup_port_fwd
+                else
+                    console "${OK}${TICK} port forward already active using pid ${pid} ${NC}"
+                fi
+                exit
+                ;;                
             d)
                 check_prereq
                 check_ready
