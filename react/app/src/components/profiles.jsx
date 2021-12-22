@@ -656,8 +656,9 @@ class JobParameters extends React.Component {
                         style={this.state.titleBorder}
                         type="text"
                         id="title"
-                        size="80"
+                        size="62"
                         name="title"
+                        maxLength={60}
                         autoFocus
                         placeholder="Enter a title that uniquely describes the test run"
                         onChange={() => {this.updateState(event);}}/>
