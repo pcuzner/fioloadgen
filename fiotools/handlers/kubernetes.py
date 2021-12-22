@@ -13,6 +13,7 @@ from typing import Dict
 import logging
 logger = logging.getLogger(__name__)
 
+
 class OpenshiftCMDHandler(BaseHandler):
 
     _target = "Openshift"
@@ -47,9 +48,14 @@ class OpenshiftCMDHandler(BaseHandler):
         lookup = {}
 
         o = subprocess.run([
-                self._cmd,'-n','fio','get','pods','--selector=app=fioloadgen',
-                '-o=jsonpath="{range .items[*]}{.metadata.name}{\' \'}{.metadata.labels.storageclass}{\'\\n\'}{end}"'],
-                capture_output=True)
+            self._cmd,
+            '-n',
+            'fio',
+            'get',
+            'pods',
+            '--selector=app=fioloadgen',
+            '-o=jsonpath="{range .items[*]}{.metadata.name}{\' \'}{.metadata.labels.storageclass}{\'\\n\'}{end}"'],
+            capture_output=True)
 
         if o.returncode == 0:
             workers = o.stdout.decode('utf-8').strip('"').split('\n')
@@ -90,6 +96,7 @@ class OpenshiftCMDHandler(BaseHandler):
     def fio_valid(self, fiojob) -> bool:
         # don't check, just assume it's valid
         return True
+
 
 class KubernetesCMDHandler(OpenshiftCMDHandler):
     _target = "Kubernetes"
