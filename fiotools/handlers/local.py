@@ -128,12 +128,13 @@ class NativeFIOHandler(BaseHandler):
                 logger.info(f"Job using client : {pod.status.pod_ip}")
                 t.write("{}\n".format(pod.status.pod_ip))
 
-        fio_cmd = subprocess.run(['fio',
-                                 '--client={}'.format(tf.name),
-                                 os.path.join(self.job_dir, profile),
-                                 '--output-format=json',
-                                 '--output={}'.format(os.path.join(self.reports, output))]
-                                )
+        fio_cmd = subprocess.run([
+            'fio',
+            '--client={}'.format(tf.name),
+            os.path.join(self.job_dir, profile),
+            '--output-format=json',
+            '--output={}'.format(os.path.join(self.reports, output))]
+        )
         return fio_cmd
 
     def fetch_report(self, output):
