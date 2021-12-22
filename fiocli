@@ -17,6 +17,7 @@ handler = logging.StreamHandler()
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
+REQUEST_TIMEOUT = 2
 
 def cmd_parser():
     parser = argparse.ArgumentParser(
@@ -366,8 +367,8 @@ def command_db_dump():
 def _fetch_status():
     try:
         logger.debug(f"Issuing call to {url}/status")
-        r = requests.get("{}/status".format(url))
-    except (requests.exceptions.ConnectionError, ConnectionRefusedError):
+        r = requests.get("{}/status".format(url),timeout=REQUEST_TIMEOUT)
+    except (requests.exceptions.ConnectionError, ConnectionRefusedError, requests.exceptions.ReadTimeout):
         print(f'Unable to reach the fioservice daemon at {url}/status')
         print(f'Either start the daemon, or use "fiodeploy -p <namespace>" to reconnect to the remote daemon port')
         sys.exit(1)
@@ -649,9 +650,9 @@ if __name__ == '__main__':
         else:
             try:
                 logger.debug("Checking API access by querying /ping endpoint")
-                r = requests.get('{}/ping'.format(url))
-            except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-                print("Please start the fioservice, before using the cli")
+                r = requests.get('{}/ping'.format(url), timeout=REQUEST_TIMEOUT)
+            except (requests.exceptions.ConnectionError, ConnectionRefusedError, requests.exceptions.ReadTimeout):
+                print(f'Unable to reach the fioservice daemon @ {url}. Did you run fiodeploy?')
                 sys.exit(1)
 
             # profiles = [p['name'] for p in r.json()['data']]
