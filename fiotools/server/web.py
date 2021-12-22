@@ -926,6 +926,7 @@ class FIOWebService(object):
         try:
             cherrypy.engine.start()
         except Exception:
+            cherrypy.engine.exit()
             sys.exit(1)
         else:
             self.worker.run()
