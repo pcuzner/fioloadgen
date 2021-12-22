@@ -419,7 +419,9 @@ class CustomProfile extends React.Component {
                             style={this.state.profileStyle}
                             type="text"
                             autoFocus
+                            // size={20}
                             placeholder="Optional"
+                            maxLength={24}
                             //defaultValue={this.state.profileName}
                             value={this.state.profileName}
                             onChange={this.profileNameUpdater}
