@@ -1,10 +1,13 @@
 from .base import BaseHandler
 
+
 class DebugHandler(BaseHandler):
     _target = "N/A"
 
     def __init__(self):
-        self.workers = 1
+        self.workers = {
+            'MyStorageclass': 10
+        }
         super().__init__()
 
     @property
