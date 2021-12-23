@@ -1,7 +1,13 @@
 #!/usr/bin/bash
 # use buildah to create a container holding fio
+TAG=$1
+IMAGE="alpine:edge"
 
-IMAGE="alpine:latest"
+if [ -z "${TAG}" ]; then
+  TAG="latest"
+fi
+
+echo "Using tag ${TAG}"
 
 container=$(buildah from $IMAGE)
 #mountpoint=$(buildah mount $container)
@@ -35,5 +41,5 @@ buildah config --entrypoint "/startup.sh" $container
 buildah config --label maintainer="Paul Cuzner <pcuzner@redhat.com>" $container
 buildah config --label description="fio client/server" $container
 buildah config --label summary="fio client/server container - uses environment var MODE=server|client" $container
-buildah commit --format docker --squash $container fiotester:latest
+buildah commit --format docker --squash $container fiotester:$1
 

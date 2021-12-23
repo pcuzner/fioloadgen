@@ -23,6 +23,7 @@ def setup_db():
                         title text NOT NULL,
                         profile text NOT NULL,
                         profile_spec text,
+                        storageclass text,
                         workers integer NOT NULL,
                         status text NOT NULL,
                         started integer,
@@ -46,6 +47,7 @@ def setup_db():
         print("Using existing database @ {}".format(dbpath))
         check_migration(dbpath)
 
+
 def check_migration(dbpath):
     def profile_spec(con):
         # with sqlite3.connect(dbpath) as con:
@@ -57,8 +59,19 @@ def check_migration(dbpath):
             add_column = "ALTER TABLE jobs ADD COLUMN profile_spec text"
             cursor.execute(add_column)
 
+    def storageclass(con):
+        cursor = con.cursor()
+        jobs_table = cursor.execute('select * from jobs')
+        fields = [desc[0] for desc in jobs_table.description]
+        if 'storageclass' not in fields:
+            print("- updating the database: Adding storageclass to jobs table")
+            add_column = "ALTER TABLE jobs ADD COLUMN storageclass text"
+            cursor.execute(add_column)
+        pass
+
     with sqlite3.connect(dbpath) as con:
         profile_spec(con)
+        storageclass(con)
 
 
 def valid_fio_profile(profile_spec):
@@ -215,6 +228,7 @@ def delete_row(table=None, query=dict()):
 
     return err, msg
 
+
 def update_job_status(job_uuid, status):
     dbpath = configuration.settings.dbpath
     with sqlite3.connect(dbpath) as c:
@@ -301,6 +315,7 @@ def run_script(sql_script):
 
     return err
 
+
 def add_profile(name, spec):
 
     err = 0
@@ -315,7 +330,7 @@ def add_profile(name, spec):
         now = int(datetime.datetime.now().strftime("%s"))
         try:
             cursor.execute("INSERT INTO profiles VALUES (?,?,?,?);",
-                            (name, spec, now, now))  #
+                           (name, spec, now, now))
             message("upload of the profile successful")
         except sqlite3.IntegrityError:
             err = 1

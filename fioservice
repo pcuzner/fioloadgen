@@ -12,6 +12,7 @@ from fiotools import __version__
 from fiotools.server import FIOWebService
 from fiotools.handlers import (  # NOQA: F401
     OpenshiftCMDHandler,
+    KubernetesCMDHandler,
     SSHHandler,
     NativeFIOHandler,
     DebugHandler,
@@ -58,7 +59,7 @@ def cmd_parser():
     parser_start.add_argument(
         '--type',
         required=False,
-        choices=['oc', 'native', 'kube'],
+        choices=['oc', 'native', 'kubectl'],
         help="type of fioservice target",
     )
     parser_start.add_argument(
@@ -139,11 +140,14 @@ def command_start():
     elif configuration.settings.type == 'oc':
         logger.info("Using 'oc' command handler")
         handler = OpenshiftCMDHandler(mgr='fiomgr')
+    elif configuration.settings.type == 'kubectl':
+        logger.info("Using 'kubectl' command handler")
+        handler = KubernetesCMDHandler(mgr='fiomgr')
     elif configuration.settings.type == 'native':
         logger.info("Using 'native' fio handler")
         handler = NativeFIOHandler()  # ns=args.namespace)
     else:
-        logger.error("'{}' handler has not been implemented yet".format(configuration.settings.type))
+        logger.error(f"'{configuration.settings.type}' handler has not been implemented yet")
         sys.exit(1)
 
     if not handler.has_connection:
@@ -155,7 +159,7 @@ def command_start():
         logger.error("-> port in use, unable to continue")
         sys.exit(1)
 
-    server = FIOWebService(handler=handler)  #, debug_mode=args.debug_only)
+    server = FIOWebService(handler=handler)
     logger.info("Checking connection to {}".format(handler._target))
     if server.ready or configuration.settings.mode == 'debug':
         logger.info("Starting the fioservice daemon")

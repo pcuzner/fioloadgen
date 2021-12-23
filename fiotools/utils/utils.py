@@ -26,6 +26,7 @@ def port_in_use(port_num):
     else:
         return False
 
+
 def generate_fio_profile(spec: Dict[str, Any]) -> str:
     global_section = """
 [global]

@@ -63,9 +63,9 @@ spec:
         - containerPort: 8080
         env:
         - name: NAMESPACE
-          value: fio
+          value: !NAMESPACE!
         - name: ENVIRONMENT
-          value: kubernetes
+          value: !ENVIRONMENT!
         - name: PORT
           value: "8080"
         - name: RUNTIME

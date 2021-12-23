@@ -12,7 +12,7 @@ def cert_gen(
         organizationUnitName="Engineering",
         serialNumber=0,
         validityStartInSeconds=0,
-        validityEndInSeconds=10*365*24*60*60,
+        validityEndInSeconds=10 * 365 * 24 * 60 * 60,
         KEY_FILE=os.path.join(os.path.expanduser('~'), 'selfsigned.key'),
         CERT_FILE=os.path.join(os.path.expanduser('~'), "selfsigned.crt")):
     # can look at generated file using openssl:

@@ -2,8 +2,7 @@
 
 # TODO
 # 1. make the command interaction optional - with oc or kubectl
-# 3. switch to replicaset management
-# 4. remove the seeding of the fio files
+
 PLATFORM=''
 DEFAULT_NAMESPACE='fio'
 DEFAULT_WORKERS=2
@@ -16,7 +15,7 @@ FIOSERVICE_MODE=''
 FIOSERVICE_PORT=8080
 WORKER_YAML='fio.yaml'
 WORKERS=0
-STORAGECLASS=''
+STORAGECLASS=()  # array of storageclasses to use for workers
 NAMESPACE=""
 WORKER_LIMIT=20
 SCRIPT_NAME=$(basename $0)
@@ -24,7 +23,7 @@ ITERATION_LIMIT=60 # 5 min pod running timeout
 ITERATION_DELAY=5
 LOCKFILE='./fiodeploy.lock'
 POD_READY_LIMIT=120
-DELETE_TIMEOUT=60
+DELETE_TIMEOUT=300
 
 NC='\033[0m'     # No Color
 INFO='\033[0;32m' # green
@@ -34,6 +33,8 @@ WARNING='\033[1;33m' # yellow
 TICK='\xE2\x9C\x94' # tickmark
 CROSS='x'
 
+trap cleanup INT
+
 exists () {
     which $1 > /dev/null 2>&1
 }
@@ -42,16 +43,31 @@ console () {
     echo -e "${1}${2}${NC}"
 }
 
+
+console_reset() {
+    if exists "tput"; then
+        tput init
+    fi
+}
+
+cleanup() {
+    # just reset the terminal for now, to avoid any color issues
+    echo -e "\nBreak..."
+    console_reset
+    exit 1
+}
+
+
 check_prereq () {
     console "\nChecking oc/kubectl CLI is available"
     if exists "oc"; then
         CLUSTER_CMD='oc'
-        PLATFORM='openshift'
+        PLATFORM='Openshift'
         console ${OK} "${TICK} oc command available${NC}"
     else
         if exists "kubectl"; then
             CLUSTER_CMD='kubectl'
-            PLATFORM='kubernetes'
+            PLATFORM='Kubernetes'
             console ${OK} "${TICK} kubectl command available ${NC}"
         else
             console ${ERROR} "${CROSS} oc or kubectl commands not found. Unable to continue"
@@ -103,7 +119,7 @@ check_ready() {
             exit
         fi
     else
-        console ${WARNING} "? unable to check login state with kubernetes"
+        console ${WARNING} "? unable to check login state with kubectl"
     fi
 }
 
@@ -136,8 +152,53 @@ get_environment() {
         overwrite "${OK}${TICK} namespace '$NAMESPACE' is available${NC}\n"
     fi
 
+    console "Checking available storageclasses"
+    sc_names=$($CLUSTER_CMD get sc -o jsonpath='{.items[*].metadata.name}')
+    sc_array=( $sc_names )
+
+    for sc_name in ${sc_array[@]}; do
+        console "- ${sc_name}"
+    done
+
+    sfx=""
+    console "You may select multiple storageclasses. Press <ENTER> to end your selection."
+    while :; do
+        # read -p $(echo -e ${INFO})"What storageclass should the fio worker pods use [$DEFAULT_SC]? "$(echo -e ${NC}) STORAGECLASS
+        read -p "Storageclass name: " sc
+        if [ -z $sc ]; then
+            break
+        fi
+
+        if [[ " ${STORAGECLASS[@]} " =~ " ${sc} " ]]; then
+            console ${WARNING} "- storageclass '${sc}' already selected"
+            continue
+        fi
+
+        if [[ ! " ${sc_array[@]} " =~ " ${sc} " ]]; then
+            console ${ERROR} "${CROSS} storageclass '${sc}' does not exist."
+            continue
+        fi
+
+        STORAGECLASS+=( "${sc}" )
+        # repeat=$(prompt "Do you want to use another storageclass (y/n)" "y n")
+    done
+
+    case ${#STORAGECLASS[@]} in
+    0)
+        console ${ERROR} "${CROSS} No storagaeclass provided. Unable to continue"
+        exit
+        ;;
+    1)
+        sfx=""
+        ;;
+    *)
+        sfx="es"
+        ;;
+    esac
+
+    console ${OK} "${TICK} workers will be deployed to ${#STORAGECLASS[@]} storageclass${sfx}${NC}\n"
     # read -p $(echo -e ${INFO})"How many fio workers (1-${WORKER_LIMIT}) [${DEFAULT_WORKERS}]? "$(echo -e ${NC}) WORKERS
-    read -p "How many fio workers (1-${WORKER_LIMIT}) [${DEFAULT_WORKERS}]? " WORKERS
+    read -p "How many fio workers (1-${WORKER_LIMIT}) per storageclass [${DEFAULT_WORKERS}]? " WORKERS
     if [ -z "$WORKERS" ]; then
         WORKERS=$DEFAULT_WORKERS
     else
@@ -153,24 +214,8 @@ get_environment() {
         fi
     fi
 
-    console ${OK} "${TICK} ${WORKERS} worker pods will be deployed ${NC}"
-    console "\nChecking available storageclasses"
-    sc_names=$(oc get sc -o jsonpath='{.items[*].metadata.name}')
-    for sc in ${sc_names}; do
-        console "- ${sc}"
-    done
-    # read -p $(echo -e ${INFO})"What storageclass should the fio worker pods use [$DEFAULT_SC]? "$(echo -e ${NC}) STORAGECLASS
-    read -p "What storageclass should the fio worker pods use [$DEFAULT_SC]? " STORAGECLASS
-    if [ -z $STORAGECLASS ]; then
-        STORAGECLASS=$DEFAULT_SC
-    fi
+    console ${OK} "${TICK} ${WORKERS} worker pods will be deployed to each required storageclass${NC}"
 
-    if [[ "${sc_names}" != *"${STORAGECLASS}"* ]]; then
-        console ${ERROR} "${CROSS} storageclass '${STORAGECLASS}' does not exist."
-        exit
-    fi
-
-    console ${OK} "${TICK} storageclass '${STORAGECLASS}' will be used${NC}"
     # if [ -z "$STORAGECLASS" ]; then
     #     WORKER_YAML='fio_no_pvc.yaml'
     # else
@@ -199,6 +244,7 @@ get_environment() {
                 FIOSERVICE_MODE=''
         esac
     done
+    console ${OK} "${TICK} fioservice will run in '${FIOSERVICE_MODE}' mode"
 
     # while [ -z "$SEED_METHOD" ]; do
     #     read -p $(echo -e ${INFO})"Seed I/O test files in parallel or serial mode [$DEFAULT_SEED_METHOD] ? "$(echo -e ${NC}) SEED_METHOD
@@ -235,30 +281,51 @@ overwrite() {
 
 wait_for_pod() {
     local pod_name=$1
-    console ${INFO} "- waiting for the $pod_name pod to reach ready status"
+    console ${INFO} "- waiting for pod/$pod_name to reach ready status"
     local t=1
     while [[ $($CLUSTER_CMD get -n $NAMESPACE pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
         sleep 1
         t=$((t+1))
         if [[ $t -gt $POD_READY_LIMIT ]]; then
-            overwrite "${ERROR}x Time out waiting for the $pod_name pod to reach ready${NC}"
+            overwrite "${ERROR}x Time out waiting for the pod/$pod_name to reach ready${NC}"
             exit
         fi
     done
-    overwrite "${OK}${TICK} pod ${pod_name} is ready${NC}"
+    overwrite "${OK}${TICK} pod/${pod_name} is ready${NC}"
 }
 
 get_port_fwd_pid() {
     echo $(ps -ef | awk '/[p]ort-forward fioservice/ { print $2;}')
 }
 
+setup_port_fwd() {
+    pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
+    if [ "$1" == "wait" ]; then 
+        wait_for_pod $pod_name
+    fi
+
+    $CLUSTER_CMD -n $NAMESPACE port-forward $pod_name 8080:${FIOSERVICE_PORT} > /dev/null 2>&1 &
+    if [ $? -gt 0 ]; then
+        console ${ERROR} "${CROSS} failed to add the port-forward to pod ${pod_name}${NC}"
+        exit
+    else
+        # get pid of port-forward
+        pid=$(get_port_fwd_pid)
+        console ${OK} "${TICK} port-forward created successfully (pid=${pid})${NC}"
+    fi
+    return 0
+}
+
 setup() {
-    # TODO - show a summary of the options chosen
-    console "\nTest Environment Summary"
-    console "\n\tNamespace   : ${NAMESPACE}"
-    console "\tFIO Workers : $WORKERS"
-    console "\tStorageclass: ${STORAGECLASS}"
-    console "\tFIO service : ${FIOSERVICE_MODE}\n"
+
+    console "\nDeployment Summary"
+    console "\n\tNamespace    : ${NAMESPACE}"
+    console "\tStorageclass :"
+    for sc in ${STORAGECLASS[@]}; do
+        console "\t  - ${sc}"
+    done
+    console "\tFIO Workers  : $WORKERS"
+    console "\tFIO service  : ${FIOSERVICE_MODE}\n"
     ready=$(prompt "Ready to deploy (y/n) " "y n Y N yes no")
     case $ready in
         [nN] | no)
@@ -280,35 +347,35 @@ setup() {
         console ${OK} "${TICK} namespace created OK${NC}"
     fi
 
-    # deploy the pods
+    # deploy the worker pods across the requested Storageclass(es)
+    console "\nDeploying the FIO worker statefulset(s)"
+    total_workers=0
+    for sc_name in ${STORAGECLASS[@]}; do
+        statefulset=$(cat yaml/fioworker_statefulset_template.yaml | \
+            sed "s/!WORKERS!/${WORKERS}/" | \
+            sed "s/!STORAGECLASS!/${sc_name}/g" | \
+            $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
+        # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
+        if [ $? -ne 0 ]; then
+            console ${ERROR} "${CROSS} Failed to deploy stateful set for storageclass ${sc_name} : '${statefulset}'${NC}"
+            exit
+        else
+            total_workers=$((total_workers+WORKERS))
+            console ${OK} "${TICK} ${statefulset}${NC}"
+        fi
+    done
 
-    console "\nDeploying the FIO workers statefulset"
-    statefulset=$(cat yaml/fioworker_statefulset_template.yaml | \
-        sed "s/!WORKERS!/${WORKERS}/" | \
-        sed "s/!STORAGECLASS!/${STORAGECLASS}/g" | \
-        $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
-    # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
-    if [ $? -ne 0 ]; then
-        console ${ERROR} "${CROSS} Failed to deploy stateful set - '${statefulset}'${NC}"
-        exit
-    else
-        console ${OK} "${TICK} ${statefulset}${NC}"
-    fi
-
-    # for n in $(seq ${WORKERS}); do
-    #    cat yaml/${WORKER_YAML} | sed "s/fioclient/fioworker${n}/g" | oc create -n ${NAMESPACE} -f -;
-    # done
-
-    console "\nWaiting for pods in the statefulset to reach a running state\n"
+    console "\nWaiting for worker pods to reach ready state\n"
     t=1
     while [ $t -lt $ITERATION_LIMIT ]; do # get pod -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}'
-        status=$($CLUSTER_CMD -n ${NAMESPACE} get statefulset fioworker -o jsonpath='{..status.readyReplicas}')
-        if [ -z "$status" ]; then
-            status='0'
-        fi
-        msg="${INFO}- ${status}/${WORKERS} PODs ready ... (check ${t}/${ITERATION_LIMIT})"
+        status=$($CLUSTER_CMD -n ${NAMESPACE} get pod -l app=fioloadgen -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
+        state_list=( $status )  # convert to array
+        ready=$(grep -o True <<< ${state_list[*]} | wc -l)
+        # status=$($CLUSTER_CMD -n ${NAMESPACE} get statefulset fioworker -o jsonpath='{..status.readyReplicas}')
+
+        msg="${INFO}- ${ready}/${total_workers} PODs ready ... (check ${t}/${ITERATION_LIMIT})"
         overwrite $msg
-        if [ "$status" != "$WORKERS" ]; then
+        if [ $ready -lt $total_workers ]; then
             sleep $ITERATION_DELAY
             t=$((t+1))
         else
@@ -320,9 +387,11 @@ setup() {
         overwrite "${OK}${TICK} All worker pods ready${NC}"
     else
         console ${ERROR} "\nTimed out waiting too long for worker pods to reach ready state, unable to continue."
-        console ${ERROR} "Statefulset : fioloadgen"
-        console ${ERROR} "Storageclass: ${STORAGECLASS}"
-        console ${ERROR} "Pods Ready  : ${status}"
+        for sc in ${STORAGECLASS[@]}; do
+            console ${ERROR} "Statefulset : fioworker-${sc}"
+            console ${ERROR} "Storageclass: ${sc}\n"
+        done
+        console ${ERROR} "Pods Ready  : ${ready}/${total_workers}"
         exit
     fi
 
@@ -343,57 +412,76 @@ setup() {
         rm -fr ./data/*-ip.list
 
         console "\nFetching the IP information of the worker pods (pod and host)"
+        for sc in ${STORAGECLASS[@]}; do
 
-        pod_names=$($CLUSTER_CMD -n ${NAMESPACE} get pod -l app=fioloadgen -o jsonpath='{.items[*].metadata.name}')
-        for pod_name in ${pod_names}; do
-            podIP_set="NO"
+            pod_names=$($CLUSTER_CMD -n ${NAMESPACE} get pod -l app=fioloadgen -l storageclass=${sc} -o jsonpath='{.items[*].metadata.name}')
+            for pod_name in ${pod_names}; do
+                # podIP_set="NO"
 
-            ip_info=$($CLUSTER_CMD -n ${NAMESPACE} get pod ${pod_name} -o=jsonpath='{.status.podIP} {.status.hostIP}')
-            podIP=$(echo ${ip_info} | cut -f1 -d ' ')
-            hostIP=$(echo ${ip_info} | cut -f2 -d ' ')
-            # if [ "$podIP" != "$hostIP" ]; then
-            #     break
-            # else
-            #     console ${ERROR} "Unable to retrieve IP information for ${pod_name}"
-            #     exit
-            # fi
+                ip_info=$($CLUSTER_CMD -n ${NAMESPACE} get pod ${pod_name} -o=jsonpath='{.status.podIP} {.status.hostIP}')
+                podIP=$(echo ${ip_info} | cut -f1 -d ' ')
+                hostIP=$(echo ${ip_info} | cut -f2 -d ' ')
+                # if [ "$podIP" != "$hostIP" ]; then
+                #     break
+                # else
+                #     console ${ERROR} "Unable to retrieve IP information for ${pod_name}"
+                #     exit
+                # fi
 
-            if [ ${lookup[${hostIP}]+_}  ]; then
-                # add to the entry
-                ((lookup[${hostIP}]++)) # increment the map
-            else
-                # add to the map
-                lookup[${hostIP}]=1
-            fi
-            echo -e "$hostIP" >> ./data/host-ip.list
-            echo -e "$podIP" >> ./data/worker-ip.list
-            console ${OK} "${TICK} ${pod_name} on ${hostIP} with POD IP ${podIP}${NC}"
+                if [ ${lookup[${hostIP}]+_}  ]; then
+                    # add to the entry
+                    ((lookup[${hostIP}]++)) # increment the map
+                else
+                    # add to the map
+                    lookup[${hostIP}]=1
+                fi
+                echo -e "$hostIP" >> ./data/host-ip.list
+                echo -e "$podIP" >> ./data/${sc}_worker-ip.list
+                console ${OK} "${TICK} ${pod_name} on ${hostIP} with POD IP ${podIP}${NC}"
+            done
         done
 
         # transfer the client ip addresses and fio jobs to the mgr
         console "\nTransfering worker IP addresses (pod and host), plus fio job specs to the fiomgr pod"
-        rsync_out=$($CLUSTER_CMD -n $NAMESPACE  rsync data/ fiomgr:/)
+        for sc in ${STORAGECLASS[@]}; do
+            o=$($CLUSTER_CMD -n $NAMESPACE cp data/${sc}_worker-ip.list fiomgr:/)
+            if [ $? == 0 ]; then
+                console ${OK} "${TICK} IPs for workers in storageclass ${sc} transferred"
+            else
+                console ${ERROR} "${CROSS} transfer of IP inforation for workers using storageclass ${sc} failed"
+                exit
+            fi
+        done
+
+        jobs_out=$($CLUSTER_CMD -n $NAMESPACE cp data/fio fiomgr:/)
         if [ $? == 0 ]; then
-            console ${OK} "${TICK} transfer complete${NC}"
+            console ${OK} "${TICK} jobs transfer complete${NC}"
         else
-            console ${ERROR} "${CROSS} rsync to the fiomgr pod failed. Unable to continue${NC}"
+            console ${ERROR} "${CROSS} CP to the fiomgr pod failed. Unable to continue${NC}"
             exit
         fi
+
         console "\nStarting a local instance of the FIOservice daemon (API and UI)\n"
-        python3 ./fioservice.py --mode=dev start --namespace ${NAMESPACE}
+        python3 ./fioservice --mode=dev start --namespace ${NAMESPACE}
         if [ $? -ne 0 ]; then
             console ${ERROR} "${CROSS} failed to start the local fioservice daemon"
             exit
         fi
         console ${OK} "${TICK} fioservice started${NC}"
         console ${OK} "\nAccess the UI at http://localhost:8080. From there you may submit jobs and view"
-        console ${OK} "job output and graphs"
-        console ${OK} "Daemon logs can be found in $HOME/fioseervice.log"
-        console ${OK} "\nTo stop the daemon use 'fioservice.py stop'\n"
+        console ${OK} "job output and graphs.\n"
+        console ${OK} "Daemon logs can be found in $HOME/fioseervice.log\n"
+        console ${OK} "To stop the daemon, use the './fioservice stop' command\n"
     else
         # Use remote fioservice deployed to the target cluster
         console "\nSubmitting the deployment for the fioservice daemon"
-        deployment=$($CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml)
+        # TODO update the yaml to provide NAMESPACE and ENVIRONMENT
+        deployment=$(cat yaml/fioservice_template.yaml | \
+            sed "s/!NAMESPACE!/${NAMESPACE}/" | \
+            sed "s/!ENVIRONMENT!/${PLATFORM}/g" | \
+            $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
+
+        # deployment=$($CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml)
         if [ $? -gt 0 ]; then
             console ${ERROR} "${CROSS} deployment failed, unable to continue${NC}"
             exit
@@ -401,10 +489,10 @@ setup() {
             console ${OK} "${TICK} deployment created${NC}"
         fi
 
-        pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
+        # pod_name=$($CLUSTER_CMD -n $NAMESPACE get pod -l app=fioservice -o jsonpath='{.items[0].metadata.name}')
         # status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
         # console ${INFO} "Waiting for fioservice to reach Ready state"
-        wait_for_pod $pod_name
+        # wait_for_pod $pod_name
         # t=1
         # while [ $t -lt $ITERATION_LIMIT ]; do
         #     status=$($CLUSTER_CMD -n $NAMESPACE get pod $pod_name -o=jsonpath='{..status.conditions[?(@.type=="Ready")].status}')
@@ -424,22 +512,14 @@ setup() {
         #     exit
         # fi
         console "\nAdding port-forward rule (port ${FIOSERVICE_PORT})"
-        $CLUSTER_CMD -n $NAMESPACE port-forward $pod_name 8080:8080 > /dev/null 2>&1 &
-        if [ $? -gt 0 ]; then
-            console ${ERROR} "${CROSS} failed to add the port-forward to pod ${pod_name}${NC}"
-            exit
-        else
-            # get pid of port-forward
-            pid=$(get_port_fwd_pid)
-            console ${OK} "${TICK} port-forward successful (pid=${pid})${NC}"
-        fi
+        setup_port_fwd "wait"
 
         console ${INFO} "\nAccess the UI at http://localhost:8080. From there you may submit jobs and view"
         console ${INFO} "job output and graphs"
         console ${INFO} "\nTo remove the port-forward, use kill -9 ${pid}\n"
     fi
 
-    console ${INFO} "To drop the test environment, use the fiodeploy.sh -d <namespace> command"
+    console ${INFO} "To drop the test environment, use the './fiodeploy -d <namespace>' command"
 
     # # seed the test files
     # console ${INFO} "Seeding the test files on the workers (mode=$SEED_METHOD), please wait"
@@ -501,7 +581,7 @@ destroy() {
         console ${OK} "${TICK} port-forward not present${NC}"
     fi
 
-    console "\nChecking pods running in $NAMESPACE are only fioloadgen pods"
+    console "\nChecking pods running in '$NAMESPACE' namespace are only fioloadgen pods"
     pod_names=$($CLUSTER_CMD -n $NAMESPACE get pod -o jsonpath='{.items[*].metadata.name}')
     pod_array=( $pod_names )
     for pod_name in "${pod_array[@]}"; do
@@ -515,7 +595,7 @@ destroy() {
     if [ ${#pod_array[@]} -eq 0 ]; then
         console ${OK} "${TICK} namespace is empty${NC}"
     else
-        console ${OK} "${TICK} only fio loadgen related pods present${NC}"
+        console ${OK} "${TICK} only fioloadgen related pods present${NC}"
     fi
 
     acquire_lock
@@ -543,6 +623,7 @@ usage() {
     echo -e "\t-h             ... display usage information"
     echo -e "\t-s             ... setup an FIOLoadgen test environment"
     echo -e "\t-d <namespace> ... delete the FIOLoadgen namespace"
+    echo -e "\t-p <namespace> ... check/configure port-forward to remote fioservice pod"
     echo -e "\t-r             ... reset (remove the lockfile)"
 
     echo "e.g."
@@ -552,7 +633,7 @@ usage() {
 main() {
 
     args=1
-    while getopts "hsd:r" option; do
+    while getopts "hsp:d:r" option; do
         case "${option}" in
             h)
                 usage
@@ -573,6 +654,20 @@ main() {
                 setup
                 exit
                 ;;
+            p)
+                check_prereq
+                # check_port
+                check_ready
+                NAMESPACE=${OPTARG}
+                echo -e "\nCheck/create port-forward to fioservice daemon in namespace ${NAMESPACE}"
+                pid=$(get_port_fwd_pid)
+                if [ -z "$pid" ]; then 
+                    setup_port_fwd
+                else
+                    console "${OK}${TICK} port forward already active using pid ${pid} ${NC}"
+                fi
+                exit
+                ;;                
             d)
                 check_prereq
                 check_ready

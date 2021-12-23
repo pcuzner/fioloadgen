@@ -11,6 +11,16 @@ from fiotools import __version__
 from fiotools import configuration
 from fiotools.utils import rfile
 
+import logging
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+REQUEST_TIMEOUT = 2
+MAX_PROFILE_NAME = 24
+MAX_JOB_TITLE = 60
+
 
 def cmd_parser():
     parser = argparse.ArgumentParser(
@@ -29,6 +39,12 @@ def cmd_parser():
         choices=['debug', 'dev', 'prod'],
         default='dev',
         help="Mode of the CLI"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        default=False,
+        help="show debug messages"
     )
 
     subparsers = parser.add_subparsers(help="sub-commands")
@@ -64,7 +80,7 @@ def cmd_parser():
         '--name',
         type=str,
         metavar='<profile name>',
-        help="description name for the fio job profile"
+        help=f'name for the fio job profile (1-{MAX_PROFILE_NAME} chars)'
     )
     parser_profile_add.add_argument(
         '--file',
@@ -121,12 +137,19 @@ def cmd_parser():
         required=True,
         type=str,
         metavar='<text>',
-        help="descriptive title of the run (used in reports and charts)",
+        help=f'Job title for the run (1-{MAX_JOB_TITLE} chars)',
     )
     parser_run.add_argument(
         '--wait',
         action='store_true',
         help="wait for the run to complete - NOT IMPLEMENTED YET",
+    )
+    parser_run.add_argument(
+        '--storageclass',
+        type=str,
+        metavar="<name>",
+        required=True,
+        help="storageclass to use for the test run",
     )
 
     parser_job = subparsers.add_parser(
@@ -159,6 +182,12 @@ def cmd_parser():
         '--raw',
         action='store_true',
         help="show raw json from a completed job",
+    )
+    parser_job.add_argument(
+        '--with-spec',
+        action='store_true',
+        default=False,
+        help="show job specification information",
     )
 
     parser_db_dump = subparsers.add_parser(
@@ -298,7 +327,7 @@ def command_db_export():
 def command_db_import():
     # file must contain a single insert into "<table>" clause
     if not os.path.exists(args.file):
-        print("file not found")
+        print(f"file not found - {args.file}")
         sys.exit(1)
 
     sql_script = rfile(args.file)
@@ -338,34 +367,58 @@ def command_db_dump():
         print("database dump API request failed: {}".format(r.status_code))
 
 
-def command_status():
+def _fetch_status():
     try:
-        r = requests.get("{}/status".format(url))
-    except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-        print("Please start the fioservice, before using the cli")
+        logger.debug(f"Issuing call to {url}/status")
+        r = requests.get("{}/status".format(url), timeout=REQUEST_TIMEOUT)
+    except (requests.exceptions.ConnectionError, ConnectionRefusedError, requests.exceptions.ReadTimeout):
+        print(f'Unable to reach the fioservice daemon at {url}/status')
+        print('Either start the daemon, or use "fiodeploy -p <namespace>" to reconnect to the remote daemon port')
         sys.exit(1)
 
+    return r
+
+
+def command_status():
+
+    r = _fetch_status()
     if r.status_code == 200:
+        logger.debug("/status call successful")
         js = r.json()['data']
 
         job_running = f"Yes ({js['active_job_id']})" if js['task_active'] else 'No'
         debug = 'Yes' if js['debug_mode'] else 'No'
-        print("Target      : {}".format(js['target']))
-        print("Workers     : {}".format(js['workers']))
+        print("\nTarget      : {}".format(js['target']))
         print("Debug Mode  : {}".format(debug))
+        print("Workers")
+        workers = js.get('workers', {})
+        max_len = max([len(k) for k in workers.keys()])
+        for sc in workers.keys():
+            print(f"  {sc:<{max_len}} : {workers[sc]}")
+
         print("Job running : {}".format(job_running))
         print("Jobs queued : {}".format(js['tasks_queued']))
-        print("Uptime      : {}".format(str(datetime.timedelta(seconds=int(js['run_time'])))))
+        print("Uptime      : {}\n".format(str(datetime.timedelta(seconds=int(js['run_time'])))))
     else:
         print("Failed to retrieve web service status [{}]".format(r.status_code))
 
 
 def command_profile():
+
+    if not args.ls and not args.show and not args.refresh:
+        print("use -h to view the available profile subcommands")
+        sys.exit(1)
+
+    logger.debug("Issuing API call to /profile endpoint")
+    r = requests.get("{}/profile".format(url))
+    profiles = [p['name'] for p in r.json()['data']]
+
     if args.ls:
-        r = requests.get("{}/profile".format(url))
-        data = r.json()['data']
-        for p in data:
-            print("- {}".format(p['name']))
+        # logger.debug("Issuing API call to /profile endpoint")
+        # r = requests.get("{}/profile".format(url))
+        # data = r.json()['data']
+        for p in profiles:
+            print(f"- {p}")
     elif args.show:
         if args.show not in profiles:
             print("The server doesn't have a profile called '{}'. Available profiles are: {}".format(args.show, ', '.join(profiles)))
@@ -391,6 +444,10 @@ def command_profile_add():
     if not os.path.exists(args.file):
         print("File not found")
         exit(1)
+    if len(args.name) > MAX_PROFILE_NAME:
+        print(f'Profile name length is too long (maximum allowed is {MAX_PROFILE_NAME}')
+        exit(1)
+
     try:
         with open(args.file) as f:
             data = f.read()
@@ -398,7 +455,7 @@ def command_profile_add():
         print("Unable to read the file..permissions issue?")
         exit(1)
 
-    payload ={
+    payload = {
         "data": data,
     }
     r = requests.put(f"{url}/profile/{args.name}",
@@ -420,6 +477,28 @@ def command_profile_rm():
         print(r.json().get('message', 'Unexpected error'))
 
 
+def show_spec(api_response):
+    data = json.loads(api_response.json()['data'])
+    if data.get('status', None) == 'complete':
+        # print the spec
+        js = json.loads(data.get('raw_json'))
+        fio_version = js.get('fio version', 'unknown')
+        global_options = js.get('global options', '')
+        stats = js.get('client_stats')
+        print(f'FIO version : {fio_version}')
+        print("Job Specification")
+        print('[global]')
+        for k in global_options:
+            print(f'{k}={global_options[k]}')
+        if stats:
+            for job in stats:
+                if job.get('jobname') == 'All clients':
+                    continue
+                print(f'[{job.get("jobname")}]')
+                job_options = job.get('job options')
+                for parm in job_options:
+                    print(f'{parm}={job_options.get(parm)}')
+
 
 def show_summary(api_response):
     keys_to_show = ['id', 'title', 'started', 'profile', 'workers', 'status']  # NOQA
@@ -436,7 +515,13 @@ def show_summary(api_response):
         print("Summary  :")
         js = json.loads(data['summary'])
         for k in js.keys():
-            print("  {}: {}".format(k.title(), js[k]))
+            if k == 'total_iops':
+                name = "Total IOPS"
+                v = f'{int(js[k]):,}'
+            else:
+                name = k.title()
+                v = js[k]
+            print(f'  {name}: {v}')
     else:
         print("Summary  : Unavailable (missing)")
 
@@ -462,16 +547,22 @@ def job_wait(job_uuid):
 
 
 def command_run():
+    if len(args.title) > MAX_JOB_TITLE:
+        print(f'title is too long. Must be 1-{MAX_JOB_TITLE} chars in length')
+        exit(1)
+
     print("Run fio workload profile {}".format(args.profile))
     headers = {'Content-type': 'application/json'}
-    r = requests.post('{}/job/{}'.format(url, args.profile),
-                      json={
-                          "workers": args.workers,
-                          "title": args.title,
-                          "provider": args.provider,
-                          "platform": args.platform
-                      },
-                      headers=headers)
+    r = requests.post(
+        '{}/job/{}'.format(url, args.profile),
+        json={
+            "workers": args.workers,
+            "title": args.title,
+            "provider": args.provider,
+            "platform": args.platform,
+            "storageclass": args.storageclass,
+        },
+        headers=headers)
 
     if r.status_code == 202:
         response = r.json()['data']
@@ -484,7 +575,7 @@ def command_run():
             else:
                 print("- Request failed with status code {}".format(completion.status_code))
     else:
-        print("- Request failed")
+        print(f'- Job request failed ({r.status_code}). {r.json().get("message", "unknown error")}')
 
 
 def command_job():
@@ -515,6 +606,9 @@ def command_job():
         r = requests.get("{}/job/{}".format(url, args.show))
         if r.status_code == 200:
             show_summary(r)
+            if args.with_spec:
+                show_spec(r)
+
             if args.raw:
                 jstr = json.loads(r.json()['data'])['raw_json']
                 js = json.loads(jstr)
@@ -544,14 +638,18 @@ def handle_error(response):
 
 if __name__ == '__main__':
 
-    profiles = []
+    # profiles = []
     parser = cmd_parser()
     args = parser.parse_args()
 
     if args.version:
         print("fioloadgen version : {}".format(__version__))
+        sys.exit(0)
 
-    elif 'func' in args:
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    if 'func' in args:
         configuration.init(args)
 
         api_address = os.environ.get(
@@ -566,13 +664,15 @@ if __name__ == '__main__':
             args.func()
         else:
             try:
-                r = requests.get('{}/profile'.format(url))
-            except (requests.exceptions.ConnectionError, ConnectionRefusedError):
-                print("Please start the fioservice, before using the cli")
+                logger.debug("Checking API access by querying /ping endpoint")
+                r = requests.get('{}/ping'.format(url), timeout=REQUEST_TIMEOUT)
+            except (requests.exceptions.ConnectionError, ConnectionRefusedError, requests.exceptions.ReadTimeout):
+                print(f'Unable to reach the fioservice daemon @ {url}. Did you run fiodeploy?')
                 sys.exit(1)
 
-            profiles = [p['name'] for p in r.json()['data']]
+            # profiles = [p['name'] for p in r.json()['data']]
 
             args.func()
     else:
-        print("skipped")
+        print("Unknown request")
+        sys.exit(1)

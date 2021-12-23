@@ -111,7 +111,7 @@ export class Jobs extends React.Component {
 
     fetchJobSummaryData() {
         console.log("DEBUG refresh the job data");
-        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers")
+        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers,storageclass")
           .then(handleAPIErrors)
           .then((json) => {
               /* Happy path */
@@ -382,6 +382,7 @@ export class Jobs extends React.Component {
 
                                 <th className="job_title">Job Title</th>
                                 <th className="job_id">Job ID</th>
+                                <th className="job_storageclass">Storageclass</th>
                                 <th className="job_clients"># Clients</th>
                                 <th className="job_profile">Profile</th>
                                 <th className="job_provider">Provider</th>
@@ -465,7 +466,12 @@ class FIOJobAnalysis extends React.Component {
 
         });
         values.sort();
-        let idx = Math.ceil(0.5 * dataset.length);
+        let idx;
+        if (values.length > 1) {
+            idx = Math.ceil(0.5 * dataset.length);
+        } else {
+            idx = 0;
+        }
         return values[idx];
     }
     render() {
@@ -484,10 +490,18 @@ class FIOJobAnalysis extends React.Component {
             let writeMedian95 = 0;
 
             if (this.state.jobData.summary) {
-
                 rawJSON = JSON.parse(this.state.jobData.raw_json);
-                lastItem = Object.keys(rawJSON.client_stats).length -1; // always the all clients job summary element
-                clientSummary = rawJSON.client_stats[lastItem];
+                let numClients = Object.keys(rawJSON.client_stats).length;
+                // To account for a test run with a single client, we need to adjust the
+                // slice offsets into the client_stats array
+                if (numClients > 1) {
+                    lastItem = numClients - 1;
+                    clientSummary = rawJSON.client_stats[lastItem];
+                } else {
+                    lastItem = numClients;
+                    clientSummary = rawJSON.client_stats[0];
+                }
+
                 readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
                 writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
                 bandwidthData.push(decPlaces(clientSummary.read.bw_bytes / Math.pow(1024,2)));
@@ -571,6 +585,7 @@ class FIOJobAnalysis extends React.Component {
                             &nbsp;({getElapsed(this.state.jobData.started, this.state.jobData.ended)})
                         </div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>Storageclass</span>: {this.state.jobData.storageclass}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
                         <table className="lat-table">
@@ -795,6 +810,9 @@ class JobDataRow extends React.Component {
             checkboxEnabled=false
         }
         let actions = [];
+
+        // FIXME - truncate the storageclass name
+
         switch (this.props.job.status) {
             case "incomplete":
                 actions = [
@@ -883,6 +901,7 @@ class JobDataRow extends React.Component {
 
                 <td className="job_title">{this.props.job.title}</td>
                 <td className="job_id">{this.props.job.id.split('-')[0]}</td>
+                <td className="job_storageclass" title={this.props.job.storageclass}>{this.props.job.storageclass}</td>
                 <td className="job_clients">{this.props.job.workers}</td>
                 <td className="job_profile">{this.props.job.profile}</td>
                 <td className="job_provider" >{this.props.job.provider}</td>

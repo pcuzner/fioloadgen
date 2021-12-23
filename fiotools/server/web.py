@@ -305,6 +305,15 @@ class APIroot(object):
         self.profile = Profile(service_state, dbpath)  # handler)
         self.status = Status(service_state)  # Web service metadata info
         self.db = DB(dbpath)  # db export/import handler
+        self.ping = Ping()
+
+
+class Ping:
+    exposed = True
+
+    def GET(self):
+        # just returns a 200 to indicate the API is listening and available
+        pass
 
 
 def jsonify_error(status, message, traceback, version):
@@ -313,11 +322,10 @@ def jsonify_error(status, message, traceback, version):
     return json.dumps({'status': status, 'message': message})
 
 
-def run_job(dbpath, handler, service_state):  #, debug_mode):
+def run_job(dbpath, handler, service_state):
 
     # delay (secs) between a job end and the fetch function being executed
     # fetch_delay = 2
-
 
     if not work_queue.empty():
         # not in debug mode, so we act on the content of the queue
@@ -367,7 +375,7 @@ def run_job(dbpath, handler, service_state):  #, debug_mode):
             db.update_job_status(job.uuid, job.status)
 
             cherrypy.log("job {} starting".format(job.uuid))
-            run_job = handler.startfio('fioloadgen.job', job.workers, job.outfile)
+            run_job = handler.startfio('fioloadgen.job', job.storageclass, job.workers, job.outfile)
             if run_job.returncode == 0:
                 # on some systems, the time between job end and the fetch can return empty files
                 # the delay makes the fetch more
@@ -475,7 +483,7 @@ class Job(object):
         else:
             data = db.fetch_row('jobs', 'id', uuid)
             if data:
-                return {"data": json.dumps(db.fetch_row('jobs', 'id', uuid))}
+                return {"data": json.dumps(data)}
             else:
                 raise cherrypy.HTTPError(404, "Invalid job id")
 
@@ -484,7 +492,7 @@ class Job(object):
     @cherrypy.tools.json_out()
     def POST(self, profile, **params):
         # required payload
-        required = ['title', 'provider', 'platform']
+        required = ['title', 'provider', 'storageclass', 'platform']
 
         js_in = cherrypy.request.json
         qs_in = parse_query_string(cherrypy.request.query_string)
@@ -492,8 +500,22 @@ class Job(object):
 
         parms = {**js_in, **qs_in}
 
-        if not all([k in parms.keys() for k in required]):
-            raise cherrypy.HTTPError(400, "missing fields in request")
+        for k in parms.keys():
+            try:
+                required.remove(k)
+            except ValueError:
+                # just means we have an optional parameter
+                continue
+
+        if required:
+            raise cherrypy.HTTPError(400, f'Missing fields: {",".join(required)}')
+
+        workers = self.service_state._handler.workers
+        if not workers:
+            raise cherrypy.HTTPError(503, 'No worker pods are active')
+
+        if parms.get('storageclass') not in workers:
+            raise cherrypy.HTTPError(400, f'Storageclass "{parms.get("storageclass")}" has no fioloadgen worker pods, or does not exist')
 
         available_profiles = [p['name'] for p in db.fetch_all('profiles', list(['name']))]
         available_profiles.append('custom')
@@ -519,7 +541,8 @@ class Job(object):
         job.profile = profile
         job.spec = profile_spec
         job.outfile = '{}.{}'.format(job.uuid, profile)
-        job.workers = parms.get('workers', 9999)  # FIX ME
+        job.storageclass = parms.get('storageclass')
+        job.workers = parms.get('workers', 9999)  # FIXME
         job.provider = parms.get('provider')
         job.platform = parms.get('platform')
         job.title = parms.get('title', '{} on {}'.format(profile, datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")))
@@ -527,12 +550,13 @@ class Job(object):
         with sqlite3.connect(self.dbpath) as c:
             csr = c.cursor()
 
-            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, workers, status, type, provider, platform)
-                              VALUES(?,?,?,?,?,?,?,?,?);""",
+            csr.execute(""" INSERT into jobs (id, title, profile, profile_spec, storageclass, workers, status, type, provider, platform)
+                              VALUES(?,?,?,?,?,?,?,?,?,?);""",
                         (job.uuid,
                          job.title,
                          profile,
                          job.spec,
+                         job.storageclass,
                          job.workers,
                          job.status,
                          'fio',
@@ -725,9 +749,9 @@ def cors_handler():
 
         allowed_methods = ['GET', 'POST', 'DELETE', 'PUT']
         allowed_headers = [
-               'Content-Type',
-               'X-Auth-Token',
-               'X-Requested-With',
+            'Content-Type',
+            'X-Auth-Token',
+            'X-Requested-With',
         ]
 
         if ac_method and ac_method in allowed_methods:
@@ -749,7 +773,7 @@ def cors_handler():
 
 
 class ServiceStatus(object):
-    def __init__(self, handler):  #, debug_mode):
+    def __init__(self, handler):
         self._handler = handler
         self.target = self._handler._target
         self.task_active = False
@@ -769,12 +793,13 @@ class ServiceStatus(object):
     def tasks_queued(self) -> int:
         return work_queue.qsize()
 
+
 class FIOWebService(object):
 
-    def __init__(self, handler=None, workdir=None):  #, debug_mode=False):
+    def __init__(self, handler=None, workdir=None):
         self.handler = handler
         # self.debug_mode = debug_mode
-        self.service_state = ServiceStatus(handler=handler)  #, debug_mode=configuration.settings.debug)
+        self.service_state = ServiceStatus(handler=handler)
         # self.port = port
         self.root = Root()         # web UI
         self.dbpath = os.path.join(configuration.settings.db_dir, configuration.settings.db_name)
@@ -846,7 +871,7 @@ class FIOWebService(object):
         # use the handler to determine the number of workers
         # rc = self.handler.num_workers()
         logger.debug("checking handler sees worker pods")
-        if self.handler.workers == 0:  # or rc != 0:
+        if not self.handler.workers:
             logger.error("handler not seeing any workers")
             return False
         logger.debug("handler has discovered worker pods")
@@ -864,7 +889,7 @@ class FIOWebService(object):
                 cherrypy.engine,
                 stdout=os.path.join(configuration.settings.log_dir, 'fioservice.access.log'),
                 stderr=os.path.join(configuration.settings.log_dir, 'fioservice.log'),
-                )
+            )
 
             daemon.subscribe()
         else:
@@ -893,9 +918,10 @@ class FIOWebService(object):
         self.worker = plugins.BackgroundTask(
             interval=1,
             function=run_job,
-            args=[self.dbpath,
-                  self.handler,
-                  self.service_state,
+            args=[
+                self.dbpath,
+                self.handler,
+                self.service_state,
             ]
         )
         cherrypy.engine.subscribe('stop', self.cleanup)
@@ -903,6 +929,7 @@ class FIOWebService(object):
         try:
             cherrypy.engine.start()
         except Exception:
+            cherrypy.engine.exit()
             sys.exit(1)
         else:
             self.worker.run()

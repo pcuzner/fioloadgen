@@ -1,5 +1,7 @@
 import os
 import sys
+import shutil
+from typing import Optional
 
 from configparser import ConfigParser, ParsingError
 
@@ -7,6 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 global settings
+
+cmd_lookup = {
+    "oc": "Openshift",
+    "kubectl": "kubernetes"
+}
 
 
 def init(args=None):
@@ -27,6 +34,15 @@ def convert_value(value):
         value = bool_types[value.upper()]
 
     return value
+
+
+def cmd_handler() -> Optional[str]:
+    if shutil.which('oc'):
+        return 'oc'
+    elif shutil.which('kubectl'):
+        return 'kubectl'
+    else:
+        return None
 
 
 class Config(object):
@@ -59,6 +75,7 @@ class Config(object):
             "runtime": "package",
             "namespace": "fio",
             "type": "native",
+            "environment": ""
         },
         "dev": {
             "db_name": "fioservice.db",
@@ -73,7 +90,8 @@ class Config(object):
             "debug": False,
             "runtime": "package",
             "namespace": "fio",
-            "type": "oc",
+            "type": cmd_handler(),
+            "environment": ""
         }
     }
 
@@ -111,10 +129,13 @@ class Config(object):
         self.runtime = Config._global_defaults[mode].get('runtime')
         self.namespace = Config._global_defaults[mode].get('namespace')
         self.type = Config._global_defaults[mode].get('type')
+        self.environment = cmd_lookup.get(self.type, "Unknown")
 
         self._apply_file_overrides()
         self._apply_env_vars()
         self._apply_args(args)
+
+        logger.debug(str(self))
 
     @property
     def dbpath(self):
@@ -128,7 +149,7 @@ class Config(object):
             if hasattr(self, k):
                 v = getattr(args, k)
                 if v is not None:
-                    print("applying runtime override for {} of {}".format(k, v))
+                    logger.debug("Applying runtime override : {} = {}".format(k, v))
                     setattr(self, k, v)
 
     def _apply_env_vars(self):
@@ -137,7 +158,7 @@ class Config(object):
         for v in vars:
             env_setting = os.getenv(v)
             if env_setting:
-                logger.debug("using env setting {} = {}".format(v, convert_value(env_setting)))
+                logger.debug("Using env setting {} = {}".format(v, convert_value(env_setting)))
                 setattr(self, v.lower(), convert_value(env_setting))
 
     def _apply_file_overrides(self):
@@ -173,7 +194,7 @@ class Config(object):
                         else:
                             logger.warning("-> {} is unsupported, ignoring")
         else:
-            print("no configuration overrides from local files")
+            logger.debug("No configuration overrides from local files")
 
     def __str__(self):
         s = ''
