@@ -58,7 +58,7 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: rhp1gen3:5000/pcuzner/fioservice:1.5a
+        image: pcuzner/fioservice:1.5
         ports:
         - containerPort: 8080
         env:

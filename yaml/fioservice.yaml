@@ -20,7 +20,8 @@ rules:
     - extensions
     resources:
       - deployments
-      - deployments/scale
+      - statefulsets
+      - statefulsets/scale
     verbs:
       - get
       - list
@@ -57,10 +58,14 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: pcuzner/fioservice:latest
+        image: pcuzner/fioservice:1.5
         ports:
         - containerPort: 8080
         env:
+        - name: NAMESPACE
+          value: fio
+        - name: ENVIRONMENT
+          value: kubernetes
         - name: PORT
           value: "8080"
         - name: RUNTIME

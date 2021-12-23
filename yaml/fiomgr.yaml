@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
    - name: fiomgr
-     image: pcuzner/fiotester
+     image: pcuzner/fiotester:1.5
      env:
      - name: FIOMODE
        value: client

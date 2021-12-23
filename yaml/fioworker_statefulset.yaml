@@ -7,16 +7,19 @@ spec:
   selector:
     matchLabels:
       app: fioloadgen # has to match .spec.template.metadata.labels
+      storageclass: standard
+  serviceName: "fioworker"
   replicas: 2 # by default is 1
   template:
     metadata:
       labels:
         app: fioloadgen # has to match .spec.selector.matchLabels
+        storageclass: standard
     spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: fioclient
-        image: pcuzner/fiotester
+        image: pcuzner/fiotester:1.5
         env:
           - name: FIOMODE
             value: server
@@ -28,7 +31,7 @@ spec:
       name: testdata
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "ocs-storagecluster-ceph-rbd"
+      storageClassName: standard
       resources:
         requests:
           storage: 10Gi

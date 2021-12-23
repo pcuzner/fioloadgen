@@ -31,7 +31,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: fioclient
-        image: pcuzner/fiotester:1.5a
+        image: pcuzner/fiotester:1.5
         env:
           - name: FIOMODE
             value: server
