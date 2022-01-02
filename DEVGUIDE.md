@@ -16,6 +16,9 @@ This will run the service in the foreground running on port 8080, so you can fol
 cd react/app
 npm start
 ```
+
+**Note**: your `dist` directory will need the main `index.html` file, and the `dist/css` directory must contain the css files referenced by `index.html`.
+
 This will start the npm dev server (by default on 8080, but since we already have our api on 8080 the dev server is on 8081).
 Point your browser at http://localhost:8081
 
