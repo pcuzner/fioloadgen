@@ -5,10 +5,10 @@
 
 PLATFORM=''
 DEFAULT_NAMESPACE='fio'
-DEFAULT_WORKERS=2
+# DEFAULT_WORKERS=2
 DEFAULT_SC='ocs-storagecluster-ceph-rbd'
 DEFAULT_SEED_METHOD='parallel'
-DEFAULT_FIOSERVICE_MODE='local'
+DEFAULT_FIOSERVICE_MODE='remote'
 CLUSTER_CMD=''
 SEED_METHOD=''
 FIOSERVICE_MODE=''
@@ -17,7 +17,8 @@ WORKER_YAML='fio.yaml'
 WORKERS=0
 STORAGECLASS=()  # array of storageclasses to use for workers
 NAMESPACE=""
-WORKER_LIMIT=20
+# WORKER_LIMIT=30
+PODS_PER_NODE=5
 SCRIPT_NAME=$(basename $0)
 ITERATION_LIMIT=60 # 5 min pod running timeout
 ITERATION_DELAY=5
@@ -151,6 +152,14 @@ get_environment() {
     else
         overwrite "${OK}${TICK} namespace '$NAMESPACE' is available${NC}\n"
     fi
+    console "Checking available worker nodes"
+    workers_found=$($CLUSTER_CMD get node --selector='node-role.kubernetes.io/worker' --no-headers | wc -l)
+    if [ $workers_found -eq 0 ]; then
+        console "${ERROR}${CROSS} no nodes with a worker role detected. Unable to continue"
+        exit
+    fi
+    console ${OK} "${TICK} ${workers_found} worker nodes found\n"
+    let worker_limit=${workers_found}*${PODS_PER_NODE}
 
     console "Checking available storageclasses"
     sc_names=$($CLUSTER_CMD get sc -o jsonpath='{.items[*].metadata.name}')
@@ -198,14 +207,14 @@ get_environment() {
 
     console ${OK} "${TICK} workers will be deployed to ${#STORAGECLASS[@]} storageclass${sfx}${NC}\n"
     # read -p $(echo -e ${INFO})"How many fio workers (1-${WORKER_LIMIT}) [${DEFAULT_WORKERS}]? "$(echo -e ${NC}) WORKERS
-    read -p "How many fio workers (1-${WORKER_LIMIT}) per storageclass [${DEFAULT_WORKERS}]? " WORKERS
+    read -p "How many fio workers (1-${worker_limit}) per storageclass [${workers_found}]? " WORKERS
     if [ -z "$WORKERS" ]; then
-        WORKERS=$DEFAULT_WORKERS
+        WORKERS=$workers_found
     else
         if [ $WORKERS -eq $WORKERS 2>/dev/null ]; then
             # is numeric
-            if [[ $WORKERS -lt 1 || $WORKERS -gt $WORKER_LIMIT ]]; then
-                console ${ERROR} "Worker count must be within the range 1-${WORKER_LIMIT}"
+            if [[ $WORKERS -lt 1 || $WORKERS -gt $worker_limit ]]; then
+                console ${ERROR} "Worker count must be within the range 1-${worker_limit}"
                 exit
             fi
         else
@@ -227,7 +236,7 @@ get_environment() {
     console "deploy the management daemon to the target environment (remote)"
     while [ -z "$FIOSERVICE_MODE" ]; do
         # read -p $(echo -e ${INFO})"How do you want to manage the tests (local/remote) [local]? "$(echo -e ${NC}) FIOSERVICE_MODE
-        read -p "How do you want to manage the tests (local/remote) [local]? " FIOSERVICE_MODE
+        read -p "How do you want to manage the tests (local/remote) [remote]? " FIOSERVICE_MODE
         if [ -z "$FIOSERVICE_MODE" ]; then
             FIOSERVICE_MODE=$DEFAULT_FIOSERVICE_MODE
         fi
