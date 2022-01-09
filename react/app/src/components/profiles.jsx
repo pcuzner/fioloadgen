@@ -270,8 +270,9 @@ class CustomProfile extends React.Component {
             runTime: 1,
             ioDepth: 4,
             profileName: '',
+            profileNameMsg: '',
             profileStyle: {},
-            saveDisabled: false
+            saveDisabled: true
         };
         this.defaults = Object.assign({}, this.state);
         this.ioType = {
@@ -329,16 +330,21 @@ class CustomProfile extends React.Component {
         this.props.callback({ioDepth: event.target.value})
     }
     profileNameUpdater = (event) => {
+        console.debug("CustomProfile:profileNameUpdater: applying change to profile name")
         let newState = {};
         newState.profileName = event.target.value;
-
-        if (this.props.checkProfileCallback(event.target.value)) {
-            console.error("profile exists!")
-            newState.profileStyle = {borderColor: "red"};
+        if (event.target.value == '') {
             newState.saveDisabled = true;
+            newState.profileNameMsg = '';
         } else {
-            if (Object.keys(this.state.profileStyle).length > 0) {
+            if (this.props.checkProfileCallback(event.target.value)) {
+                console.error("profile exists!")
+                newState.profileStyle = {borderColor: "red"};
+                newState.saveDisabled = true;
+                newState.profileNameMsg = 'name already exists!';
+            } else {
                 newState.profileStyle = {}
+                newState.profileNameMsg = '';
                 newState.saveDisabled = false;
             }
         }
@@ -439,6 +445,7 @@ class CustomProfile extends React.Component {
                             onBlur={this.profileNameHandler}
                             title="alphanumeric chars only">
                         </input>
+                        <div className="profile-name-msg">{this.state.profileNameMsg}</div>
                     </div>
                     <RadioSet config={this.ioType} default={this.state.ioType} callback={this.radioButtonHandler} />
                     <RatioSlider title="IO Pattern:" prefix="Read" suffix="Write" value={this.state.ioPattern} callback={this.sliderHandler}/>
