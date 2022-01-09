@@ -17,9 +17,12 @@ import time
 import tempfile
 import logging
 
+from fiotools.utils.data_types import ExportType
+
 from ..utils import get_pid_file, rfile, generate_fio_profile
 from ..reports import latency_summary
 from . import db
+from .exporters import JobData
 from fiotools import configuration
 
 from typing import Optional, Dict, Any
@@ -477,9 +480,36 @@ class Job(object):
             fields = list(['id', 'status', 'title'])
         else:
             fields = qs['fields'].split(',')
-
+        cherrypy.log(f'query string parms: {qs.keys()}')
         if uuid is None:
-            return {"data": db.fetch_all('jobs', fields)}
+            job_ids_str = qs.get('job_ids', None)
+            jobs_format: ExportType = qs.get('format', 'csv')
+            if job_ids_str:
+
+                cherrypy.log(f'received request for an export of jobs: {job_ids_str}')
+                job_id_lookup = db.fetch_primary_keys('jobs')
+                cherrypy.log(f'job uuids are: {job_id_lookup}')
+                job_ids = job_ids_str.split(',')
+                valid_job_ids = []
+                for job_id in job_ids:
+                    if job_id in job_id_lookup:
+                        valid_job_ids.append(job_id)
+                if not valid_job_ids:
+                    raise cherrypy.HTTPError(400, 'job ids given are invalid/not found')
+                rc = 200
+                if len(valid_job_ids) != len(job_ids):
+                    rc = 206  # Partial result returned
+                # fetch the row,and format based on the
+                raw_data = []
+                for job_id in valid_job_ids:
+                    cherrypy.log(f'exporting job id: {job_id}')
+                    raw_data.append(db.fetch_row('jobs', 'id', job_id))
+
+                cherrypy.response.status = rc
+                data = JobData(raw_data).export_as(jobs_format)
+                return {'data': data}
+            else:
+                return {"data": db.fetch_all('jobs', fields)}
         else:
             data = db.fetch_row('jobs', 'id', uuid)
             if data:
@@ -525,13 +555,19 @@ class Job(object):
         # if we have a jobspec passed to us, use that, otherwise read the spec from the profile in the db
         profile_spec = parms.get('spec', None)
         if profile_spec:
+            cherrypy.log('Job:POST: uing supplied spec')
             if profile == 'custom':
                 assert isinstance(profile_spec, dict)
                 cherrypy.log(f"DEBUG: custom profile requested: {json.dumps(profile_spec)}")
                 profile_spec = generate_fio_profile(profile_spec)
         else:
-            cherrypy.log("DEBUG: using spec from the database")
-            profile_spec = db.fetch_row('profiles', 'name', profile)['spec']
+            if profile == 'custom':
+                cherrypy.log('Job:POST: using spec from old job')
+                # TODO wrap this in try except, the jobid may not exist
+                profile_spec = db.fetch_row('jobs', 'id', parms['rerun'])['profile_spec']
+            else:
+                cherrypy.log("DEBUG: using spec from the database")
+                profile_spec = db.fetch_row('profiles', 'name', profile)['spec']
 
         job = AsyncJob()
         job.type = 'startfio'
@@ -931,9 +967,9 @@ class FIOWebService(object):
         except Exception:
             cherrypy.engine.exit()
             sys.exit(1)
-        else:
-            self.worker.run()
-            cherrypy.engine.block()
+
+        self.worker.run()
+        cherrypy.engine.block()
 
 
 if __name__ == '__main__':
