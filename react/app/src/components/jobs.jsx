@@ -6,20 +6,22 @@ import {GenericModal} from '../common/modal.jsx';
 import 'chartjs-plugin-datalabels';
 import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
+import { DropDownOptions } from '../common/dropdown';
+import toast from 'react-hot-toast';
 
 /* Masthead will contain a couple of items from the webservice status api
    to show mode, task active, job queue size
 */
 var api_url = setAPIURL();
 
-const options = {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric'
-  }
+// const options = {
+//     year: 'numeric',
+//     month: 'numeric',
+//     day: 'numeric',
+//     hour: 'numeric',
+//     minute: 'numeric',
+//     second: 'numeric'
+//   }
 
 export class Jobs extends React.Component {
     constructor(props) {
@@ -33,9 +35,15 @@ export class Jobs extends React.Component {
             refreshData: false,
             jobTableVisible: true,
             activeJobId: undefined,
+            exportToDisabled: true
         };
         this.jobDetails = (<div />);
         this.modalTitle = '';
+        this.mimeLookup = {
+            csv: 'text/csv',
+            json: 'application/json'
+        };
+        this.jobIDActive = '';
     };
     // shouldComponentUpdate(nextProps, PrevProps) {
     //     if (nextProps.visibility == "active"){
@@ -109,18 +117,35 @@ export class Jobs extends React.Component {
         });
     }
 
-    fetchJobSummaryData() {
-        console.log("DEBUG refresh the job data");
-        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers,storageclass")
+    fetchJobSummaryData = () => {
+        console.debug("jobs:fetchJobSummaryData: refreshing the job data from API");
+        fetch(api_url + "/api/job?fields=id,title,profile,status,started,type,provider,platform,workers,storageclass,profile_spec")
           .then(handleAPIErrors)
           .then((json) => {
               /* Happy path */
               let srtd = json.data.sort(sortByKey('-started'));
+              srtd.forEach(function(job) {
+                console.debug("jobs:fetchJobSummaryData - active id " + this.jobIDActive);
+                if (job.status == 'started') {
+                    toast.success("job " + job.id + " started");
+                    this.jobIDActive = job.id;
+                }
+                if ((job.status == 'failed') && (job.id == this.jobIDActive)) {
+                    this.jobIDActive = '';
+                    toast.error("job " + job.id + " failed");
+                }
+                if ((job.status == 'complete') && (job.id == this.jobIDActive)) {
+                    this.jobIDActive = '';
+                    toast.success("job " + job.id + " finished");
+                }
+              }, this);
               this.setState({
                   jobs: srtd
               });
           })
           .catch((error) => {
+              this.jobIDActive = '';
+              toast.error("Unable to fetch job summary data");
               console.error("Error:", error);
           });
     }
@@ -135,9 +160,12 @@ export class Jobs extends React.Component {
             let tJobInfo = Object.assign({}, this.state.jobInfo);
             delete tJobInfo[job_id];
             // this.jobInfo = tJobInfo;
-            this.setState({
-                jobInfo: tJobInfo
-            });
+            let stateUpdate = {};
+            stateUpdate.jobInfo = tJobInfo;
+            if (Object.keys(tJobInfo).length == 0) {
+                stateUpdate.exportToDisabled = true;
+            }
+            this.setState(stateUpdate);
             // this.jobInfo = Object.assign({}, tJobInfo);
             // console.log("job map holds " + Object.keys(this.jobInfo).length + 'members');
             // console.debug(JSON.stringify(this.jobInfo));
@@ -159,10 +187,12 @@ export class Jobs extends React.Component {
                 // this.jobInfo = tJobInfo;
                 this.setState({
                     currentJob: JSON.parse(json.data),
-                    jobInfo: tJobInfo
+                    jobInfo: tJobInfo,
+                    exportToDisabled: false
                 });
             })
             .catch((error) => {
+                toast.error("Unable to fetch data for " + job_id);
                 console.error("fetchJobData failed with: ", error);
             });
     }
@@ -200,6 +230,7 @@ export class Jobs extends React.Component {
                 this.fetchJobSummaryData();
             })
             .catch((err) => {
+                toast.error("delete for job " + job_id + " failed");
                 console.error("DELETE to /api/job failed : ", err);
             });
     }
@@ -217,6 +248,7 @@ export class Jobs extends React.Component {
             this.openModal()
         })
         .catch((error) => {
+            toast.error("Failed to retrieve the job spec");
             console.error("Show job spec failed: ", error);
         });
     }
@@ -235,6 +267,7 @@ export class Jobs extends React.Component {
                 this.openModal()
             })
             .catch((error) => {
+                toast.error("failed to get job details for " + jobID);
                 console.error("Show job failed: ", error);
             });
     }
@@ -257,9 +290,17 @@ export class Jobs extends React.Component {
                 title: jobObject.title,
                 provider: jobObject.provider,
                 platform: jobObject.platform,
+                storageclass: jobObject.storageclass
             };
             console.log(JSON.stringify(parms));
-            fetch(api_url + "/api/job/" + jobObject.profile, {
+            let jobSelector;
+            if (jobObject.profile == 'custom') {
+                jobSelector = 'custom?rerun=' + jobObject.id;
+            } else {
+                jobSelector = jobObject.profile;
+            }
+
+            fetch(api_url + "/api/job/" + jobSelector, {
                 method: 'post',
                 headers: {
                     "Accept": "application/json",
@@ -273,14 +314,16 @@ export class Jobs extends React.Component {
                     this.fetchJobSummaryData();
                 })
                 .catch((err) => {
+                    toast.error("Job rerun request failed");
                     console.error("Job rerun failed - " + err);
                 })
         } else {
+            toast.error("Job id requested not found in the jobs database");
             console.error("requested job with id " + jobID + " not found in jobs array?");
         }
     }
     exportJob = (jobID) => {
-        console.log("export job " + jobID);
+        console.log("jobs:exportJob: export job " + jobID);
         fetch(api_url + "/api/db/jobs?id=" + jobID)
             .then((response) => {
                 /* Happy path */
@@ -300,10 +343,51 @@ export class Jobs extends React.Component {
                 a.href = '';
             })
             .catch((error) => {
+                toast.error("Export failed. Unable to retrieve the job record");
                 console.error("export job failed: ", JSON.stringify(error));
             });
     }
 
+    exportTo = (opt) => {
+        console.debug("jobs:exportTo: received " + opt);
+        let jobIDs = Object.keys(this.state.jobInfo);
+        if (jobIDs.length > 0) {
+            let jobIDsQueryString = jobIDs.join(",");
+            console.debug('jobs:exportTo: grab csv for ' + jobIDs.length + ' jobs: ' + jobIDsQueryString);
+            fetch(api_url + "/api/job?format=" + opt + "&job_ids=" + jobIDsQueryString)
+                .then((response) => {
+                    /* Happy path */
+                    if (!response.ok) {
+                        toast.error("Export API call failed: " + response.status);
+                        throw Error("Unable to retrieve jobs as CSV");
+                    }
+                    console.debug("jobs:exportTo: csv request successful");
+                    return response.json();
+                })
+                .then((obj) => {
+                    console.debug("jobs:exportTo: processing response");
+                    console.debug("jobs:exportTo: " + JSON.stringify(obj));
+                    console.debug('jobs:exportTo: ' + obj.data);
+                    let blob = new Blob([obj.data], {type: this.mimeLookup[opt]});
+                    const href = window.URL.createObjectURL(blob);
+                    const a = this.downloadLink.current;
+                    a.download = 'fioloadgen_export.' + opt;
+                    a.href = href;
+                    a.click();
+                    a.href = '';
+                    toast.success(jobIDs.length + " jobs exported to " + opt + " format", {duration: 4000});
+                })
+                .catch((error) => {
+                    /* not so happy path */
+                    toast.error("Export failed. Unable to retrieve the job data");
+                    console.error("jobs:exportTo: csv API call failed: ", JSON.stringify(error));
+                });
+
+        } else {
+            console.debug('jobs:exportTo: no entries selected for export to CSV...skipping');
+        }
+    }
+    
     openModal = () => {
         this.setState({
             modalOpen: true
@@ -374,6 +458,11 @@ export class Jobs extends React.Component {
                     closeHandler={this.closeModal} />
                 <br />
                 <div id="jobTableArea" className={jobTableClasses} style={{marginLeft: "50px"}}>
+                    <DropDownOptions 
+                        disabled={this.state.exportToDisabled} 
+                        label="Export As" 
+                        optionMap={[{name: 'csv', text: 'CSV'}, {name: 'json', text: 'JSON'}]}
+                        callback={this.exportTo}/>
                     <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
                     <table className="job_table">
                         <thead>
