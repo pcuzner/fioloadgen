@@ -9,9 +9,11 @@ import time
 
 from fiotools import __version__
 from fiotools import configuration
-from fiotools.utils import rfile
+from fiotools.utils import rfile, valid_job_id
 
 import logging
+
+from fiotools.utils.data_types import ExportType
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 logger.addHandler(handler)
@@ -20,6 +22,7 @@ logger.setLevel(logging.INFO)
 REQUEST_TIMEOUT = 2
 MAX_PROFILE_NAME = 24
 MAX_JOB_TITLE = 60
+JOB_EXPORT_FORMATS = ['csv']
 
 
 def cmd_parser():
@@ -189,6 +192,30 @@ def cmd_parser():
         default=False,
         help="show job specification information",
     )
+    parser_job_export = subparsers.add_parser(
+        'job-export',
+        help='export job data as CSV'
+    )
+    parser_job_export.set_defaults(func=command_job_export)
+    parser_job_export.add_argument(
+        '--job-ids',
+        type=str,
+        metavar='job_id_1,job_id2,...',
+        help="list of comma separated job ids to export"
+    )
+    parser_job_export.add_argument(
+        '--format',
+        type=ExportType,
+        default=ExportType.csv,
+        metavar=f'<{",".join(ExportType.__members__.keys())}>',
+        help='export format'
+    )
+    parser_job_export.add_argument(
+        '--output',
+        type=str,
+        metavar='filename',
+        help='export filename (blank uses stdout)'
+    )
 
     parser_db_dump = subparsers.add_parser(
         'db-dump',
@@ -285,6 +312,36 @@ def _build_qry_string(qs):
 def _extract_API_error(response):
     js = json.loads(response._content.decode())
     return "Error: {}".format(js['message'])
+
+
+def command_job_export():
+
+    if not args.job_ids:
+        print('to export jobs, you must provide the job_ids data')
+        sys.exit(1)
+    if args.output and os.path.exists(args.output):
+        print(f'Output file "{args.output}" already exists. Choose a different name.')
+        sys.exit(1)
+    print(args.format.value)
+    jobs = args.job_ids.split(',')
+    jobs_valid = True
+    for job in jobs:
+        if not valid_job_id(job):
+            print(f'{job} is not in a valid UUID format')
+            jobs_valid = False
+    if not jobs_valid:
+        sys.exit(1)
+    print(f'- using "{str(args.format.value)}" output format')
+    r = requests.get(f'{url}/job?format={args.format.value}&job_ids={args.job_ids}')
+    if r.status_code in [200, 206]:
+        if args.output:
+            with open(args.output, 'w') as f:
+                f.write(r.json()['data'])
+        else:
+            # use stdout
+            print(r.json()['data'])
+    else:
+        print(f'export request failed ({r.status_code}): {r.json().get("message", "unknown error")}')
 
 
 def command_db_delete():
