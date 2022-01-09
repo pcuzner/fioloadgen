@@ -137,7 +137,7 @@ release_lock() {
 }
 
 get_environment() {
-    console "\nFIOLoadgen will use a create a new namespace to support the test environment"
+    console "\nFIOLoadgen will create a new namespace to support the test environment"
     # read -p $(echo -e ${INFO})"What namespace should be used [${DEFAULT_NAMESPACE}]? "$(echo -e ${NC}) NAMESPACE
     read -p "What namespace should be used [${DEFAULT_NAMESPACE}]? " NAMESPACE
     if [ -z "$NAMESPACE" ]; then
