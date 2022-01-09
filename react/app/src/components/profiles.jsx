@@ -6,6 +6,7 @@ import { handleAPIErrors, setAPIURL } from '../utils/utils.js';
 import { RadioSet} from '../common/radioset.jsx';
 import { Tooltip } from '../common/tooltip.jsx';
 import { RatioSlider } from '../common/ratioslider.jsx';
+import toast from 'react-hot-toast';
 
 var api_url = setAPIURL();
 const ioDepthTip="Changing the IO depth, varies the number of OS queues the FIO tool uses to drive I/O"
@@ -79,6 +80,7 @@ export class Profiles extends React.Component {
                 console.log(profiles);
             })
             .catch((error) => {
+                toast.error("Failed to retrieve profile data");
                 console.error("Error:", error);
             });
     }
@@ -137,6 +139,7 @@ export class Profiles extends React.Component {
               });
           })
           .catch((error) => {
+            toast.error("Failed to retrieve the '" + profileName + "' profile");
               console.error("Profile fetch error:", error);
           });
     }
@@ -164,9 +167,11 @@ export class Profiles extends React.Component {
         })
             .then((e) => {
                 if (e.status == 202) {
+                    toast.success("Job submitted, using I/O profile '" + this.state.activeProfile + "'");
                     console.debug("request accepted (" + e.status + ")")
                     this.props.changeMenuCallback('jobs');
                 } else {
+                    toast.error("Job submit failed");
                     console.error("POST request to submit job failed with http status " + e.status);
                 }
             })
@@ -266,6 +271,7 @@ class CustomProfile extends React.Component {
             ioDepth: 4,
             profileName: '',
             profileStyle: {},
+            saveDisabled: false
         };
         this.defaults = Object.assign({}, this.state);
         this.ioType = {
@@ -329,9 +335,11 @@ class CustomProfile extends React.Component {
         if (this.props.checkProfileCallback(event.target.value)) {
             console.error("profile exists!")
             newState.profileStyle = {borderColor: "red"};
+            newState.saveDisabled = true;
         } else {
             if (Object.keys(this.state.profileStyle).length > 0) {
                 newState.profileStyle = {}
+                newState.saveDisabled = false;
             }
         }
         this.setState(newState);
@@ -387,13 +395,16 @@ class CustomProfile extends React.Component {
         })
             .then((e) => {
                 if (e.status == 200) {
+                    toast.success("Profile saved successfully");
                     console.debug("request accepted (" + e.status + ")")
                     this.props.refreshCallback()
                 } else {
+                    toast.error("Profile save failed");
                     console.error("PUT request to store profile failed with http status " + e.status);
                 }
             })
             .catch((e) => {
+                toast.error("/api/profile API call failed");
                 console.error("PUT to /api/profile failed :" + e.message);
             });
 
@@ -476,7 +487,7 @@ class CustomProfile extends React.Component {
                     </div>
                     <div>
                         <button className="btn btn-default" onClick={() => {this.resetButtonHandler();}}>Reset</button>
-                        <button className="btn btn-default" style={{marginLeft: "10px"}} onClick={() => {this.saveProfile();}}>Save</button>
+                        <button className="btn btn-default" disabled={this.state.saveDisabled} style={{marginLeft: "10px"}} onClick={() => {this.saveProfile();}}>Save</button>
                     </div>
                 </div>
             </div>
