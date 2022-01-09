@@ -4,7 +4,7 @@ import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
 import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed} from '../utils/utils.js';
+import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed, shortJobID} from '../utils/utils.js';
 import {Bar, HorizontalBar} from 'react-chartjs-2';
 import { DropDownOptions } from '../common/dropdown';
 import toast from 'react-hot-toast';
@@ -127,16 +127,16 @@ export class Jobs extends React.Component {
               srtd.forEach(function(job) {
                 console.debug("jobs:fetchJobSummaryData - active id " + this.jobIDActive);
                 if (job.status == 'started') {
-                    toast.success("job " + job.id + " started");
+                    toast.success("job " + shortJobID(job.id) + " started");
                     this.jobIDActive = job.id;
                 }
                 if ((job.status == 'failed') && (job.id == this.jobIDActive)) {
                     this.jobIDActive = '';
-                    toast.error("job " + job.id + " failed");
+                    toast.error("job " + shortJobID(job.id) + " failed");
                 }
                 if ((job.status == 'complete') && (job.id == this.jobIDActive)) {
                     this.jobIDActive = '';
-                    toast.success("job " + job.id + " finished");
+                    toast.success("job " + shortJobID(job.id) + " finished");
                 }
               }, this);
               this.setState({
@@ -981,7 +981,7 @@ class JobDataRow extends React.Component {
                 ];
                 break;
         }
-
+        let shortUUID = shortJobID(this.props.job.id);
         return (
             <tr className={rowClass}>
                 <td className="job_selector">
@@ -989,7 +989,7 @@ class JobDataRow extends React.Component {
                 </td>
 
                 <td className="job_title">{this.props.job.title}</td>
-                <td className="job_id">{this.props.job.id.split('-')[0]}</td>
+                <td className="job_id">{shortUUID}</td>
                 <td className="job_storageclass" title={this.props.job.storageclass}>{this.props.job.storageclass}</td>
                 <td className="job_clients">{this.props.job.workers}</td>
                 <td className="job_profile">{this.props.job.profile}</td>
