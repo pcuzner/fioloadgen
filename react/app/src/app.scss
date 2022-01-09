@@ -622,3 +622,55 @@ label {
  position: relative;
   top:80px;
 }
+
+/* Style The Dropdown Button */
+.dropbtn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 16px;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+  position: relative;
+  top: -5px;
+  display: inline-block;
+  min-width: 90x;
+  margin-right: 10px; }
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+  position: absolute;
+  background-color: #f9f9f9;
+  width: 100%;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 1; }
+
+  .dropdown-content-hidden {
+    display: none;
+  }
+
+/* Links inside the dropdown */
+.dropdown-content a {
+  color: black;
+  padding:5px 5px;
+  text-align: left;
+  text-decoration: none;
+  display: block; }
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+  background-color: #ebf8ff; }
+
+  .dropdown-content-visible {
+    display: block;
+  }
+/* Show the dropdown menu on hover */
+// .dropdown:hover .dropdown-content {
+//   display: block; }
+
+
+
