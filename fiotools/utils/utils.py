@@ -1,4 +1,5 @@
 import os
+import uuid
 import socket
 from typing import Dict, Any
 
@@ -70,3 +71,11 @@ numjobs=1
             workload_section += f"rwmixwrite={spec['ioPattern']}\n"
 
     return global_section + workload_section
+
+
+def valid_job_id(job_id: str) -> bool:
+    try:
+        uuid.UUID(job_id)
+    except ValueError:
+        return False
+    return True
