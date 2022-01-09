@@ -375,7 +375,8 @@ export class Jobs extends React.Component {
                     a.href = href;
                     a.click();
                     a.href = '';
-                    toast.success(jobIDs.length + " jobs exported to " + opt + " format", {duration: 4000});
+                    let jobText = (jobIDs.length > 1) ? "jobs" : "job";
+                    toast.success(jobIDs.length + " " + jobText + " exported to " + opt + " format", {duration: 4000});
                 })
                 .catch((error) => {
                     /* not so happy path */
