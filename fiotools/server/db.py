@@ -180,6 +180,30 @@ def fetch_all(table, keys):
     return data
 
 
+def fetch_primary_keys(table):
+    primary_keys = {
+        'jobs': 'id',
+        'profiles': 'name'
+    }
+    assert table in primary_keys
+
+    dbpath = configuration.settings.dbpath
+    data = list()
+    field = primary_keys.get(table, None)
+    if field:
+
+        with sqlite3.connect(dbpath) as c:
+            c.row_factory = sqlite3.Row
+            csr = c.cursor()
+            csr.execute(f""" SELECT {field} FROM {table};""")
+
+        rows = csr.fetchall()
+        data = [r[field] for r in rows]
+        logger.debug(f'Primary keys for {table} table requested. Returned: {data}')
+
+    return data
+
+
 def fetch_row(table, key=None, content=None):
     dbpath = configuration.settings.dbpath
     response = dict()
