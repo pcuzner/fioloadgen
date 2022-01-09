@@ -75,3 +75,7 @@ export function getElapsed(start, end) {
     let t = new Date(elapsedDate * 1000);
     return t.getMinutes().toString() + 'm ' + t.getSeconds().toString() + 's';
 }
+
+export function shortJobID(jobUUID) {
+    return jobUUID.split('-')[0];
+}
