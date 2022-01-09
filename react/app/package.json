@@ -50,6 +50,7 @@
     "react": "^16.14.0",
     "react-bootstrap": "^1.6.4",
     "react-chartjs-2": "^2.11.2",
-    "react-dom": "^16.14.0"
+    "react-dom": "^16.14.0",
+    "react-hot-toast": "^2.2.0"
   }
 }
