@@ -1,6 +1,7 @@
 import React from 'react';
 import '../app.scss';
 import {setAPIURL} from '../utils/utils.js';
+import toast, { Toaster } from 'react-hot-toast';
 
 /* Masthead will contain a couple of items from the webservice status api
    to show mode, task active, job queue size
@@ -52,6 +53,7 @@ export class MastHead extends React.Component {
             //   console.log(JSON.stringify(state));
           })
           .catch((error) => {
+              toast.error("API is unavailable");
               console.error("Error:", error);
               console.error("killing interval based status checking");
               this.setState({
@@ -79,6 +81,10 @@ export class MastHead extends React.Component {
                 <div>
                     <div className="page-heading">FIOLoadGen</div>
                     <ServiceState state={this.state}/>
+                    <Toaster
+                        position="top-center"
+                        reverseOrder={false}
+                    />
                 </div>
                 <div style={{clear: 'both'}}/>
             </div>
