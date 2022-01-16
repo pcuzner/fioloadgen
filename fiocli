@@ -9,6 +9,7 @@ import time
 
 from fiotools import __version__
 from fiotools import configuration
+from fiotools.reports.fio import FIOSummary
 from fiotools.utils import rfile, valid_job_id
 
 import logging
@@ -22,7 +23,6 @@ logger.setLevel(logging.INFO)
 REQUEST_TIMEOUT = 2
 MAX_PROFILE_NAME = 24
 MAX_JOB_TITLE = 60
-JOB_EXPORT_FORMATS = ['csv']
 
 
 def cmd_parser():
@@ -457,7 +457,7 @@ def command_status():
         print("Jobs queued : {}".format(js['tasks_queued']))
         print("Uptime      : {}\n".format(str(datetime.timedelta(seconds=int(js['run_time'])))))
     else:
-        print("Failed to retrieve web service status [{}]".format(r.status_code))
+        print(f'Failed to retrieve web service status [{r.status_code}]: {r.json().get("message", "unknown error")}')
 
 
 def command_profile():
@@ -568,17 +568,9 @@ def show_summary(api_response):
                 print("Run Date : pending")
         else:
             print("{:<9}: {}".format(k.title(), data[k]))
-    if data.get('summary', None):
-        print("Summary  :")
-        js = json.loads(data['summary'])
-        for k in js.keys():
-            if k == 'total_iops':
-                name = "Total IOPS"
-                v = f'{int(js[k]):,}'
-            else:
-                name = k.title()
-                v = js[k]
-            print(f'  {name}: {v}')
+    if data:
+        print()
+        print(FIOSummary(json.loads(data.get('raw_json'))))
     else:
         print("Summary  : Unavailable (missing)")
 
