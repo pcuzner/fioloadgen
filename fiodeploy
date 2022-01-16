@@ -109,7 +109,7 @@ check_ready() {
     if [ "$CLUSTER_CMD" == "oc" ]; then
         login_state=$($CLUSTER_CMD whoami 2>&1)
         if [ $? -eq 0 ]; then
-            if [ "$login_state" = "kube:admin" ]; then
+            if [ "$login_state" = "kube:admin" ] || [ "$login_state" == "system:masters" ]; then
                 console ${OK} "${TICK} ${PLATFORM} access OK ${NC}"
             else
                 console ${ERROR} "${CROSS} you're logged in, but not with kubeadmin?${NC}"
