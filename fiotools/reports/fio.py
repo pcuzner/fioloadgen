@@ -4,6 +4,8 @@ from typing import Dict, Any, Tuple, List
 
 
 class FIOSummary:
+    # When you make changes to the as_json content, remeber to bump the
+    # _rev_, so the existing database entries can be automagically updated
     _rev_ = 1
 
     def __init__(self, fio_json: Dict[str, Any]):
