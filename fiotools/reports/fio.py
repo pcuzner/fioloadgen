@@ -12,11 +12,13 @@ class FIOSummary:
         self._fio_json = fio_json
         self._client_stats = fio_json.get('client_stats', [])
         self._clients = None
-
-        if self.clients == 1:
-            self._client_summary = self._client_stats[0]
+        if self._client_stats:
+            if self.clients == 1:
+                self._client_summary = self._client_stats[0]
+            else:
+                self._client_summary = self._client_stats[-1]
         else:
-            self._client_summary = self._client_stats[-1]
+            self._client_summary = {}
 
         self._latency_distribution, self._latency_labels = self._create_latency_breakdown()
 
@@ -25,7 +27,7 @@ class FIOSummary:
         values = []
         latency_keys = ['latency_us', 'latency_ms']
         for latency_type in latency_keys:
-            latency_group = self._client_summary[latency_type]
+            latency_group = self._client_summary.get(latency_type, [])
             for key in latency_group:
                 values.append(f'{latency_group[key]:.2f}')
                 labels.append(f'{key} {latency_type[-2:]}')
@@ -60,7 +62,10 @@ class FIOSummary:
 
     @property
     def read_iops(self) -> int:
-        return int(self._client_summary['read']['iops'])
+        try:
+            return int(self._client_summary['read']['iops'])
+        except KeyError:
+            return 0
 
     @property
     def total_iops(self) -> int:
@@ -68,15 +73,24 @@ class FIOSummary:
 
     @property
     def write_iops(self) -> int:
-        return int(self._client_summary['write']['iops'])
+        try:
+            return int(self._client_summary['write']['iops'])
+        except KeyError:
+            return 0
 
     @property
     def read_bytes_per_sec(self) -> int:
-        return self._client_summary['read']['bw_bytes']
+        try:
+            return self._client_summary['read']['bw_bytes']
+        except KeyError:
+            return 0
 
     @property
     def write_bytes_per_sec(self) -> int:
-        return self._client_summary['write']['bw_bytes']
+        try: 
+            return self._client_summary['write']['bw_bytes']
+        except KeyError:
+            return 0
 
     @property
     def read_ms_min_avg_max(self) -> str:
