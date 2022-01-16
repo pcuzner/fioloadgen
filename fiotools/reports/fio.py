@@ -87,7 +87,7 @@ class FIOSummary:
 
     @property
     def write_bytes_per_sec(self) -> int:
-        try: 
+        try:
             return self._client_summary['write']['bw_bytes']
         except KeyError:
             return 0

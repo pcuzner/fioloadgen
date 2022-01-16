@@ -20,7 +20,7 @@ import logging
 from fiotools.utils.data_types import ExportType
 
 from ..utils import get_pid_file, rfile, generate_fio_profile
-from ..reports import latency_summary
+from ..reports import FIOSummary
 from . import db
 from .exporters import JobData
 from fiotools import configuration
@@ -400,15 +400,11 @@ def run_job(dbpath, handler, service_state):
                     except json.decoder.JSONDecodeError:
                         cherrypy.log("job {} output file contained invalid JSON, unable to load".format(job.uuid))
                         job_status = 'incomplete'
-                        summary = {
-                            "clients": 0,
-                            "total_iops": 0,
-                            "read ms min/avg/max": "0.0/0.0/0.0",
-                            "write ms min/avg/max": "0.0/0.0/0.0",
-                        }
                     else:
+                        job_json = {}
                         job_status = 'complete'
-                        summary = latency_summary(job_json)  # use default percentile
+
+                    summary = FIOSummary(job_json).as_json()  # use default percentile
 
                     with sqlite3.connect(dbpath) as c:
                         csr = c.cursor()
