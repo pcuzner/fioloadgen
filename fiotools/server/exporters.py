@@ -2,10 +2,11 @@ import json
 from configparser import ConfigParser
 from typing import List, Dict, Any
 from ..utils.data_types import ExportType
+from ..reports.fio import FIOSummary
 
 
 class JobData:
-    exported_fields = 'id,title,profile,type,provider,platform,status,storageclass,clients,total_iops,read_ms_min,read_ms_avg,read_ms_max,write_ms_min,write_ms_avg,write_ms_max,blocksize,qdepth'
+    exported_fields = 'id,title,profile,type,provider,platform,status,storageclass,clients,total_iops,read_ms_min,read_ms_avg,read_ms_max,read_ms_stddev,write_ms_min,write_ms_avg,write_ms_max,write_ms_stddev,blocksize,qdepth'
 
     def __init__(self, raw_data: List[Dict[Any, Any]]) -> None:
         self.raw_data = raw_data
@@ -18,11 +19,11 @@ class JobData:
     def _process_data(self):
         data = self.raw_data.copy()
         for row in data:
-            summary = json.loads(row.get("summary"))
-            row['clients'] = summary.get('clients')
-            row['total_iops'] = summary.get('total_iops')
-            row['read_ms_min'], row['read_ms_avg'], row['read_ms_max'] = summary.get("read ms min/avg/max").split('/')
-            row['write_ms_min'], row['write_ms_avg'], row['write_ms_max'] = summary.get("write ms min/avg/max").split('/')
+            summary = FIOSummary(json.loads(row.get('raw_json')))
+            row['clients'] = summary.clients
+            row['total_iops'] = summary.total_iops
+            row['read_ms_min'], row['read_ms_avg'], row['read_ms_max'], row['read_ms_stddev'] = summary.read_ms_min_avg_max.split('/')
+            row['write_ms_min'], row['write_ms_avg'], row['write_ms_max'], row['write_ms_stddev'] = summary.write_ms_min_avg_max.split('/')
             spec = row.get('profile_spec', None)
             row['blocksize'] = ''
             row['qdepth'] = ''
