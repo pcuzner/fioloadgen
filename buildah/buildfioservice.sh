@@ -29,6 +29,7 @@ buildah run $container apk add --update py3-pip
 buildah run $container pip3 install kubernetes
 buildah run $container apk add py3-cherrypy  --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/
 buildah run $container apk add py3-more-itertools
+buildah run $container apk add py3-humanize
 
 # buildah run $container apk add py3-wheel --repository http://dl-cdn.alpinelinux.org/alpine/edge/main/
 
