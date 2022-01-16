@@ -1,4 +1,4 @@
-
+import humanize
 from statistics import StatisticsError, mode
 from typing import Dict, Any, Tuple, List
 
@@ -137,3 +137,17 @@ class FIOSummary:
 
     def as_json(self) -> Dict[str, Any]:
         return {a: getattr(self, a) for a in FIOSummary.props()}
+
+    def __str__(self):
+        s = ''
+        s += 'Summary\n'
+        s += f'        Total IOPS: {self.total_iops:,}\n'
+        s += f'         Read IOPS: {self.read_iops:,}\n'
+        s += f'        Write IOPS: {self.write_iops:,}\n'
+        s += f'    Read Bandwidth: {humanize.naturalsize(self.read_bytes_per_sec)}/s\n'
+        s += f'   Write Bandwidth: {humanize.naturalsize(self.write_bytes_per_sec)}/s\n'
+        s += f'  Read @95ile (ms): {self.read_95ile_ms}\n'
+        s += f' Write @95ile (ms): {self.write_95ile_ms}\n'
+        s += f' Read Latency (ms): {self.read_ms_min_avg_max} (min/avg/max/stddev)\n'
+        s += f'Write Latency (ms): {self.write_ms_min_avg_max} (min/avg/max/stddev)\n'
+        return s
