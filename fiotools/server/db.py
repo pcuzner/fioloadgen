@@ -1,10 +1,14 @@
 import os
 import glob
+import json
 import sqlite3
 import datetime
 
+from typing import Tuple
+
 from ..utils import rfile
 from fiotools import configuration
+from ..reports.fio import FIOSummary
 
 import logging
 logger = logging.getLogger("cherrypy.error")
@@ -58,6 +62,8 @@ def check_migration(dbpath):
             print("- updating the database: Adding profile_spec to jobs table")
             add_column = "ALTER TABLE jobs ADD COLUMN profile_spec text"
             cursor.execute(add_column)
+        else:
+            logger.info('db: job table layout check for profile_spec: OK')
 
     def storageclass(con):
         cursor = con.cursor()
@@ -67,11 +73,38 @@ def check_migration(dbpath):
             print("- updating the database: Adding storageclass to jobs table")
             add_column = "ALTER TABLE jobs ADD COLUMN storageclass text"
             cursor.execute(add_column)
-        pass
+        else:
+            logger.info('db: job table layout check for storageclass: OK')
+
+    def job_summary_content(con):
+        cursor = con.cursor()
+        changes = []
+        jobs: Tuple[str, ...] = cursor.execute('select id,summary from jobs')
+        for job in jobs:
+            summary = json.loads(job[1])
+            if '_rev_' not in summary or summary['_rev_'] != FIOSummary._rev_:
+                changes.append(job[0])
+        if changes:
+            logger.info(f'{len(changes)} job records will have their summary data rebuilt')
+            for id in changes:
+                cursor.execute(f'select raw_json from jobs where id="{id}"')
+                result = cursor.fetchall()[0]
+                summary = FIOSummary(json.loads(result[0])).as_json()
+                summary_str = json.dumps(summary)
+                sql = ''' UPDATE jobs
+                          SET summary = ?
+                          WHERE id = ?
+                '''
+                cursor.execute(sql, (summary_str, id))
+                con.commit()
+                logger.info(f'db: rebuilt summary data for job {id}')
+        else:
+            logger.info('db: all jobs have current summary format')
 
     with sqlite3.connect(dbpath) as con:
         profile_spec(con)
         storageclass(con)
+        job_summary_content(con)
 
 
 def valid_fio_profile(profile_spec):
