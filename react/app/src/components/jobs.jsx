@@ -569,61 +569,84 @@ class FIOJobAnalysis extends React.Component {
         if (!this.state.jobData) {
             return (<div></div>);
         } else {
-            let summary;
             let rawJSON;
             let lastItem;
             let clientSummary;
-            let latencyData = [];
-            let percentileData = [];
+            let summary = {
+                total_iops: 0,
+                "read ms min/avg/max": [0,0,0,0],
+                "write ms min/avg/max": [0,0,0,0],
+            };
+            let latencyData = Array(22).fill(0);
+            let latencyLabels =  ['2us','4us','10us','20us','50us','100us','250us','500us','750us','1000us',
+            '2ms','4ms','10ms','20ms','50ms','100ms','250ms','500ms','750ms','1000ms','2000ms','>2000ms'];
+            let percentileData = Array(2).fill(0);
             let bandwidthData = [];
             let readMedian95 = 0;
             let writeMedian95 = 0;
+            let read_iops = 0;
+            let write_iops = 0;
 
             if (this.state.jobData.summary) {
-                rawJSON = JSON.parse(this.state.jobData.raw_json);
-                let numClients = Object.keys(rawJSON.client_stats).length;
-                // To account for a test run with a single client, we need to adjust the
-                // slice offsets into the client_stats array
-                if (numClients > 1) {
-                    lastItem = numClients - 1;
-                    clientSummary = rawJSON.client_stats[lastItem];
+                let jobSummary = JSON.parse(this.state.jobData.summary)
+                
+                if (jobSummary._rev_ == 1) {
+                    console.debug("FIOJobAnalysis: render: job record is new format");
+                    bandwidthData = [
+                        decPlaces(jobSummary.read_bytes_per_sec / Math.pow(1024,2)), 
+                        decPlaces(jobSummary.write_bytes_per_sec / Math.pow(1024,2))
+                    ];
+                    percentileData = [jobSummary.read_95ile_ms, jobSummary.write_95ile_ms];
+                    summary.total_iops = jobSummary.total_iops.toLocaleString();
+                    latencyData = jobSummary.latency_distribution;
+                    latencyLabels = jobSummary.latency_labels;
+                    read_iops = jobSummary.read_iops.toLocaleString();
+                    write_iops = jobSummary.write_iops.toLocaleString();
+                    summary["read ms min/avg/max"] = jobSummary.read_ms_min_avg_max.split('/');
+                    summary["write ms min/avg/max"] = jobSummary.write_ms_min_avg_max.split('/');
                 } else {
-                    lastItem = numClients;
-                    clientSummary = rawJSON.client_stats[0];
+                    // deprecated code - this else clause should never be executed
+                    // TODO remove in v1.7
+                    console.warning("FIOJobAnalysis:render: rendering charts using old format summary record!");
+                    rawJSON = JSON.parse(this.state.jobData.raw_json);
+                    let numClients = Object.keys(rawJSON.client_stats).length;
+                    // To account for a test run with a single client, we need to adjust the
+                    // slice offsets into the client_stats array
+                    if (numClients > 1) {
+                        lastItem = numClients - 1;
+                        clientSummary = rawJSON.client_stats[lastItem];
+                    } else {
+                        lastItem = numClients;
+                        clientSummary = rawJSON.client_stats[0];
+                    }
+
+                    readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
+                    writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
+                    bandwidthData.push(decPlaces(clientSummary.read.bw_bytes / Math.pow(1024,2)));
+                    bandwidthData.push(decPlaces(clientSummary.write.bw_bytes / Math.pow(1024,2)));
+                    percentileData.push(readMedian95, writeMedian95);
+
+                    let iops = Math.round(parseFloat(clientSummary.read.iops + clientSummary.write.iops));
+
+                    summary = JSON.parse(this.state.jobData.summary);
+                    summary.total_iops = iops.toLocaleString();
+                    summary["read ms min/avg/max"] = summarizeLatency(clientSummary.read.lat_ns);
+                    summary["write ms min/avg/max"] = summarizeLatency(clientSummary.write.lat_ns);
+                    read_iops = Math.round(parseFloat(clientSummary.read.iops)).toLocaleString();
+                    write_iops = Math.round(parseFloat(clientSummary.write.iops)).toLocaleString();
+                    Object.keys(clientSummary['latency_us']).forEach((key) => {
+                        let num = clientSummary['latency_us'][key];
+                        let val = decPlaces(num);
+                        latencyData.push(val);
+                    });
+                    Object.keys(clientSummary['latency_ms']).forEach((key) => {
+                        let num = clientSummary['latency_ms'][key];
+                        let val = decPlaces(num);
+                        latencyData.push(val);
+                    });
                 }
-
-                readMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem))/ 1000000);
-                writeMedian95 = decPlaces(this.calcMedian(rawJSON.client_stats.slice(0, lastItem), "write")/ 1000000);
-                bandwidthData.push(decPlaces(clientSummary.read.bw_bytes / Math.pow(1024,2)));
-                bandwidthData.push(decPlaces(clientSummary.write.bw_bytes / Math.pow(1024,2)));
-                percentileData.push(readMedian95, writeMedian95);
-
-                let iops = Math.round(parseFloat(clientSummary.read.iops + clientSummary.write.iops));
-
-                summary = JSON.parse(this.state.jobData.summary);
-                summary.total_iops = iops.toLocaleString();
-                summary["read ms min/avg/max"] = summarizeLatency(clientSummary.read.lat_ns);
-                summary["write ms min/avg/max"] = summarizeLatency(clientSummary.write.lat_ns);
-
-                Object.keys(clientSummary['latency_us']).forEach((key) => {
-                    let num = clientSummary['latency_us'][key];
-                    let val = decPlaces(num);
-                    latencyData.push(val);
-                });
-                Object.keys(clientSummary['latency_ms']).forEach((key) => {
-                    let num = clientSummary['latency_ms'][key];
-                    let val = decPlaces(num);
-                    latencyData.push(val);
-                });
-            } else {
-                summary = {
-                    total_iops: 0,
-                    "read ms min/avg/max": [0,0,0,0],
-                    "write ms min/avg/max": [0,0,0,0],
-                };
-                latencyData = Array(22).fill(0);
-                percentileData = Array(2).fill(0);
             }
+                
             let bandwidth = {
                 labels: ['read', 'write'],
                 datasets: [
@@ -646,8 +669,7 @@ class FIOJobAnalysis extends React.Component {
             };
 
             let data = {
-                labels: ['2us','4us','10us','20us','50us','100us','250us','500us','750us','1000us',
-                            '2ms','4ms','10ms','20ms','50ms','100ms','250ms','500ms','750ms','1000ms','2000ms','>2000ms'],
+                labels: latencyLabels,
                 datasets: [
                     {
                         label:"IOPS %",
@@ -677,7 +699,7 @@ class FIOJobAnalysis extends React.Component {
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Job</span>: {this.state.jobData.type} / {this.state.jobData.profile}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Storageclass</span>: {this.state.jobData.storageclass}</div>
                         <div><span style={{display: "inline-block", minWidth: "80px"}}>Clients</span>: {this.state.jobData.workers}</div>
-                        <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops.toLocaleString()}</div>
+                        <div><span style={{display: "inline-block", minWidth: "80px"}}>IOPS</span>: {summary.total_iops}</div>
                         <table className="lat-table">
                             <caption>Overall I/O Breakdown (ms)</caption>
                             <thead>
@@ -698,7 +720,7 @@ class FIOJobAnalysis extends React.Component {
                             <tbody>
                                 <tr>
                                     <td className="lat-table-op">read</td>
-                                    <td>{Math.round(parseFloat(clientSummary.read.iops)).toLocaleString()}</td>
+                                    <td>{read_iops}</td>
                                     <td>{summary["read ms min/avg/max"][0]}</td>
                                     <td>{summary["read ms min/avg/max"][1]}</td>
                                     <td>{summary["read ms min/avg/max"][2]}</td>
@@ -706,7 +728,7 @@ class FIOJobAnalysis extends React.Component {
                                 </tr>
                                 <tr>
                                     <td className="lat-table-op">write</td>
-                                    <td>{Math.round(parseFloat(clientSummary.write.iops)).toLocaleString()}</td>
+                                    <td>{write_iops}</td>
                                     <td>{summary["write ms min/avg/max"][0]}</td>
                                     <td>{summary["write ms min/avg/max"][1]}</td>
                                     <td>{summary["write ms min/avg/max"][2]}</td>
@@ -814,7 +836,7 @@ class FIOJobAnalysis extends React.Component {
                             height={250}
                             options={{
                                 tooltips:{
-                                    enabled: false
+                                    enabled: true
                                 },
                                 plugins: {
                                     datalabels: {
