@@ -356,6 +356,11 @@ Runtime files and a the database are placed in the users home directory
 | ```fiodeploy.lock``` | deploy script | used as a lock file to prevent multiple deploys running
 
 
+## Known Issues
+
+- In Firefox settings, if "always show scrollbars" is unchecked the resize handle on the Job Summary page can be overlaid when the gnome-shell-integration extension is enabled. This makes it impossible to resize the job area. This behaviour is not present when
+the extension is disabled, or when the application is viewed in other browsers like Chrome.
+
 ## TODO List
 - [x] implement a wait parameter in the CLI when running an fio job
 - [x] UI - define the UI structure and components

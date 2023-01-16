@@ -1,26 +1,48 @@
 
 ## DEV Notes
 
-Getting your environment ready...TODO
+### Getting your environment ready
+This example focuses on Fedora 36, but serves as an example of the overall process
 
+ersion Goals
+nodejs : 18.1.0
+react: 17.0.2
+webpack: 5.73
+
+
+Fedora 36 / 37
+Fedora Modules configuration
+ref: https://developer.fedoraproject.org/tech/languages/nodejs/nodejs.html
+dnf module list
+dnf module install nodejs:18/development
+
+(this will install items 1 and 3)
+npm uninstall react@18
+npm uninstall react-dom@18
+
+npm install react@17.0.2 --save
+npm install react-dom@17.0.2 --save
+
+run "npm install" to process the package.json file to pull in dependencies for the project
 
 ### Testing the UI
-To test the front end, first ensure your webservice is running (this will sit on port 8080), then run the code under the dev server (normally on 8081)
+To test the front end, first ensure your webservice is running (this will listen on port 8080). 
 
 ```
 ./fioservice.py --mode=debug start
 ```
 This will run the service in the foreground running on port 8080, so you can follow any debug messages emitted.
 
+Now, start the npm dev server to compile and present the UI on port 3000.
+
 ```
 cd react/app
 npm start
 ```
 
-**Note**: your `dist` directory will need the main `index.html` file, and the `dist/css` directory must contain the css files referenced by `index.html`.
+**Note**: The public directory requires the `index.html` and css files to render correctly.
 
-This will start the npm dev server (by default on 8080, but since we already have our api on 8080 the dev server is on 8081).
-Point your browser at http://localhost:8081
+Point your browser at http://localhost:3000
 
 
 ### Building the components for cherrypy
@@ -29,19 +51,12 @@ Once your changes have been tested, you need to rebuild the artifacts that cherr
 cd react/app
 npm run-script build
 ```
-this places the updated and compiled content into the react/app/dist directory
+This places the updated and compiled content into the react/app/build directory
 
-Promote the build to the live location where cherrypy picks it up from
+To promote the build, you can either use the `deploy` script or copy the files manually from the `build` directory to `www` 
 ```
-cd ../..
-cp react/app/dist/bundle.js www/
-cp react/app/dist/css/style.css www/css/
+cd react/app
+npm run-script deploy
 ```
 
-Stop the fioservice, and restart.
-
-
-## Niggles
-When using npm start, if you see "X-Content-Type-Options: nosniff" errors against the patternfly file, check that
-it is in the dist folder. If not, copy it there and refresh your browser.
-
+Once the UI assets are in place, refresh your browser or restart the fioservice.
