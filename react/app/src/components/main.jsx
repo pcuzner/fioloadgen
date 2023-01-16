@@ -19,7 +19,7 @@ export class App extends React.Component {
     };
 
     menuSelect = (item) => {
-        if (item != this.state.current) {
+        if (item !== this.state.current) {
             let newState = {
                 current: item,
                 profiles: 'inactive',

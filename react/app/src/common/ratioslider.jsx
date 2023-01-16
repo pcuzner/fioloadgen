@@ -23,7 +23,7 @@ export class RatioSlider extends React.Component {
     // }
 
     componentDidUpdate(prevProps, prevState) {
-        if (prevProps.value != this.props.value) {
+        if (prevProps.value !== this.props.value) {
             console.log("value changed! :" + this.props.value);
             this.setState({
                 value: this.props.value,
@@ -62,7 +62,7 @@ export class RatioSlider extends React.Component {
                         min="0"
                         max="100"
                         value={this.props.value}
-                        onChange={() => {this.updateHandler(event);}}>
+                        onChange={this.updateHandler}>
                     </input>
                 </div>
                 <div className="inline-block">

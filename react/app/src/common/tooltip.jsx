@@ -21,7 +21,7 @@ export class Tooltip extends React.Component {
                 let [prefix, therest] = text.split('!Link:');
                 let [protocol, urlPath, linkName, remainingText] = therest.split(':');
                 let url = protocol + ":" + urlPath;
-                out = (<span>{prefix}<a href={url} target="_blank">{linkName}</a>{remainingText}</span>);
+                out = (<span>{prefix}<a href={url} target="_blank" rel="noreferrer">{linkName}</a>{remainingText}</span>);
             } else {
                 out = text;
             }

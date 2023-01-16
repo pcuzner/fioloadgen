@@ -17,7 +17,7 @@ export class RadioSet extends React.Component {
 
     componentDidUpdate(prevProps, prevState) {
         console.log("props changed in radioset");
-        if (prevProps.default != this.props.default) {
+        if (prevProps.default !== this.props.default) {
             console.log("sendng change of default :" + this.props.default);
             this.updateDefault(this.props.default);
         }
