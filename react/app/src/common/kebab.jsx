@@ -36,15 +36,17 @@ export class Kebab extends React.Component {
         // must use mousedown on the li components to prevent the button onclick sequence clash
         if (this.props.actions) {
             actions = this.props.actions.map((item, idx) => {
-                return <li key={idx}><a onMouseDown={ e => { this.clickHandler(this.props.value, item.callback) }} >{ item.action }</a></li>;
+                return <li key={idx}><button className="button-link" onMouseDown={ e => {this.clickHandler(this.props.value, item.callback);}}>{ item.action } </button></li>;
+                // return <li key={idx}><a onMouseDown={ e => { this.clickHandler(this.props.value, item.callback) }} >{ item.action }</a></li>;
             });
         } else {
             actions = (<div />);
         }
         console.log("rendering kebab");
         return (
-            <div className="dropdown  dropdown-kebab-pf" >
-                <button className="btn btn-link dropdown-toggle"
+            // <div className="align-middle">
+            <div className="kebab dropdown-kebab-pf">
+                <button className="btn btn-link dropdown-toggle "
                         type="button"
                         onBlur={() => { this.setState({menu:"dropdown-menu hidden dropdown-menu-tbl-right"}) }}
                         onClick={this.toggle} >

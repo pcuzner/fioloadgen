@@ -12,7 +12,15 @@ export class DropDownOptions extends React.Component {
         };
     }
 
+    optionsOff = () => {
+        this.setState({
+            contentVisible: false
+        });
+
+    }
+
     toggleOptions = () => {
+        console.debug("show/hide dropdown options");
         this.setState({
             contentVisible: !this.state.contentVisible
         });
@@ -53,7 +61,8 @@ export class DropDownOptions extends React.Component {
         if (this.state.contentVisible){
             dropDownOptions = this.props.optionMap.map((option, i) => {
                 return (
-                    <a href="#" key={i} onClick={() => {this.optionSelected(option.name)}}>{option.text}</a>
+                    <button key={i} className="button-link" onMouseDown={() => {this.optionSelected(option.name)}}>{option.text}</button> 
+                    // <a href="#" key={i} onClick={() => {this.optionSelected(option.name)}}>{option.text}</a>
                 );
             });
 
@@ -61,7 +70,9 @@ export class DropDownOptions extends React.Component {
             dropDownOptions = (<div />);
         }
         return (
-            <div className="dropdown">
+            // }>
+            //onMouseOut={() => {this.toggleOptions()}}
+            <div className="dropdown" onBlur={() => {this.optionsOff()}}> 
                 <button disabled={this.props.disabled} onClick={() => {this.toggleOptions()}} className="btn btn-secondary">{this.props.label}<span className="caret"/></button>
                 <div className={options}>
                     {dropDownOptions}
