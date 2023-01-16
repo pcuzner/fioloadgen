@@ -2,6 +2,21 @@ body {
   font-family: sans-serif;
 }
 
+.button-link {
+  background-color:white;
+  border: none;
+  width: 100%;
+  text-align: left;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: black;
+  // padding: 0!important;
+}
+
+button.button-link:hover {
+  background-color: #ebf8ff;
+}
+
 h1 {
   font-weight: bold;
   font-size: 18px;
@@ -50,10 +65,14 @@ margin: 0 0 0 0;}
 .job_table td,th{
   padding: 5px;
 }
+.align-middle {
+  vertical-align: middle;
+  text-align: center;
+}
 .job_table tbody {
   width:100%;
   display: block;
-  height:300px;
+  height: auto;
   overflow:auto;
 }
 .job_table thead tr {
@@ -67,6 +86,7 @@ margin: 0 0 0 0;}
   font-style: italic;
   border-bottom: none;
 }
+
 /* masthead menu items */
 li.menu {
   display: block;
@@ -349,6 +369,24 @@ input[type=checkbox] {
 //  height: 45%;
   overflow-y:auto;
 }
+#JobTableContainer {
+  resize: vertical;
+  overflow-y: hidden;
+  border-bottom: 3px solid lightgray;
+  // width: 99%;
+  min-height: 50px;
+  padding-bottom: 5px;
+  position: relative;
+  overflow-x: hidden;
+
+}
+.resize-handle {
+  position: absolute;
+  bottom: 0px;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
 #jobTableArea {
   background-color: white;
   min-width: 1500px;
@@ -429,49 +467,49 @@ input[type=checkbox] {
     cursor: ns-resize;
   }
 
-.zoom-in {
-  // display: inline-block;
-  float: right;
-  margin-top:3px;
-  height: 25px;
-  width: 25px;
-  background-color: lightgray;
-  color: black;
-  font-size:24px;
-}
-.zoom-in::before {
-  font-family: FontAwesome;
-  /* using fontawesome 4 */
-  content: "\f106";
-  position:relative; top:-40%; left:15%;
-}
-.zoom-in:hover {
-  cursor: pointer;
-  color:white;
-}
+// .zoom-in {
+//   // display: inline-block;
+//   float: right;
+//   margin-top:3px;
+//   height: 25px;
+//   width: 25px;
+//   background-color: lightgray;
+//   color: black;
+//   font-size:24px;
+// }
+// .zoom-in::before {
+//   font-family: FontAwesome;
+//   /* using fontawesome 4 */
+//   content: "\f106";
+//   position:relative; top:-40%; left:15%;
+// }
+// .zoom-in:hover {
+//   cursor: pointer;
+//   color:white;
+// }
 
-.zoom-out {
-  // display: inline-block;
-  float: right;
-  margin-top:3px;
-  height: 25px;
-  width: 25px;
-  background-color: lightgray;
-  color:black;
-  font-size: 24px;
-}
-.zoom-out::before {
-  font-family: FontAwesome;
-  /* using fontawesome 4 */
-  content: "\f107";
-  position:relative; top:-40%; left:15%;
-}
-.zoom-out:hover {
-  cursor: pointer; color: white;
-}
+// .zoom-out {
+//   // display: inline-block;
+//   float: right;
+//   margin-top:3px;
+//   height: 25px;
+//   width: 25px;
+//   background-color: lightgray;
+//   color:black;
+//   font-size: 24px;
+// }
+// .zoom-out::before {
+//   font-family: FontAwesome;
+//   /* using fontawesome 4 */
+//   content: "\f107";
+//   position:relative; top:-40%; left:15%;
+// }
+// .zoom-out:hover {
+//   cursor: pointer; color: white;
+// }
 .dropdown-menu-tbl-right {
-  margin-left: -80px;
-  top: 16px;
+  margin-left: -85px;
+  top: -8px;
   min-width: 70px; }
 ul.dropdown-menu-tbl-right::before {
     content:none !important;
@@ -638,7 +676,13 @@ label {
   border: none;
   cursor: pointer;
 }
-
+.kebab {
+  position: relative;
+  top: 50%;
+  display: inline-block;
+  min-width: 90x;
+  margin-right: 10px; 
+}
 /* The container <div> - needed to position the dropdown content */
 .dropdown {
   position: relative;
@@ -653,7 +697,7 @@ label {
   background-color: #f9f9f9;
   width: 100%;
   box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  z-index: 1; }
+  z-index: 1 }
 
   .dropdown-content-hidden {
     display: none;
@@ -669,9 +713,10 @@ label {
 
 /* Change color of dropdown links on hover */
 .dropdown-content a:hover {
-  background-color: #ebf8ff; }
+  background-color: #ebf8ff; 
+}
 
-  .dropdown-content-visible {
+ .dropdown-content-visible {
     display: block;
   }
 /* Show the dropdown menu on hover */
