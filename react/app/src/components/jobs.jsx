@@ -3,12 +3,40 @@ import '../app.scss';
 import {Kebab} from '../common/kebab.jsx';
 import {GenericModal} from '../common/modal.jsx';
 /* ref https://chartjs-plugin-datalabels.netlify.com/guide/ */
-import 'chartjs-plugin-datalabels';
-import {setAPIURL, summarizeLatency, sortByKey, decPlaces, handleAPIErrors, copyToClipboard, formatTimestamp, getElapsed, shortJobID} from '../utils/utils.js';
-import {Bar, HorizontalBar} from 'react-chartjs-2';
+import { default as ChartDataLabels } from 'chartjs-plugin-datalabels';
+import { 
+    setAPIURL, 
+    summarizeLatency, 
+    sortByKey, 
+    decPlaces, 
+    handleAPIErrors, 
+    copyToClipboard, 
+    formatTimestamp, 
+    getElapsed, 
+    shortJobID,
+    capitalise} from '../utils/utils.js';
+import { Bar } from 'react-chartjs-2';
 import { DropDownOptions } from '../common/dropdown';
 import toast from 'react-hot-toast';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+  } from 'chart.js';
 
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend
+  );
 /* Masthead will contain a couple of items from the webservice status api
    to show mode, task active, job queue size
 */
@@ -33,7 +61,7 @@ export class Jobs extends React.Component {
             modalOpen: false,
             visibility: props.visibility,
             refreshData: false,
-            jobTableVisible: true,
+            // jobTableVisible: true,
             activeJobId: undefined,
             exportToDisabled: true
         };
@@ -46,7 +74,7 @@ export class Jobs extends React.Component {
         this.jobIDActive = '';
     };
     // shouldComponentUpdate(nextProps, PrevProps) {
-    //     if (nextProps.visibility == "active"){
+    //     if (nextProps.visibility === "active"){
     //         console.debug("jobs should render");
     //         return true;
     //     } else {
@@ -55,7 +83,7 @@ export class Jobs extends React.Component {
     // }
     // static getDerivedStateFromProps(nextProps, stateProps) {
     //     console.log(nextProps.visibility);
-    //     if (nextProps.visibility != stateProps.visibility) {
+    //     if (nextProps.visibility !=== stateProps.visibility) {
     //         console.log("jobs visibility changed");
     //         return {
     //             visibility: nextProps.visibility,
@@ -69,8 +97,8 @@ export class Jobs extends React.Component {
     static getDerivedStateFromProps(props, state) {
         console.log("DEBUG from props: ", props.activeJobId)
         console.log("DEBUG from state: ", state.activeJobId)
-        if (props.visibility != state.visibility) {
-            let data = (props.visibility == 'active') ? true : false;
+        if (props.visibility !== state.visibility) {
+            let data = (props.visibility === 'active') ? true : false;
             return {
                 visibility: props.visibility,
                 refreshData: data,
@@ -78,7 +106,7 @@ export class Jobs extends React.Component {
         } else {
             // we're already looking at the jobs table so check for a change in
             // actiejobid
-            if (props.activeJobId != state.activeJobId) {
+            if (props.activeJobId !== state.activeJobId) {
                 return {
                     activeJobId: props.activeJobId,
                     refreshData: true
@@ -104,18 +132,18 @@ export class Jobs extends React.Component {
 
     }
 
-    showHideJobTable() {
-        console.debug("clicked divider")
-        let newState;
-        if (this.state.jobTableVisible) {
-            newState = false;
-        } else {
-            newState = true;
-        }
-        this.setState({
-            jobTableVisible: newState
-        });
-    }
+    // showHideJobTable() {
+    //     console.debug("clicked divider")
+    //     let newState;
+    //     if (this.state.jobTableVisible) {
+    //         newState = false;
+    //     } else {
+    //         newState = true;
+    //     }
+    //     this.setState({
+    //         jobTableVisible: newState
+    //     });
+    // }
 
     fetchJobSummaryData = () => {
         console.debug("jobs:fetchJobSummaryData: refreshing the job data from API");
@@ -126,15 +154,15 @@ export class Jobs extends React.Component {
               let srtd = json.data.sort(sortByKey('-started'));
               srtd.forEach(function(job) {
                 console.debug("jobs:fetchJobSummaryData - active id " + this.jobIDActive);
-                if (job.status == 'started') {
+                if (job.status === 'started') {
                     toast.success("job " + shortJobID(job.id) + " started");
                     this.jobIDActive = job.id;
                 }
-                if ((job.status == 'failed') && (job.id == this.jobIDActive)) {
+                if ((job.status === 'failed') && (job.id === this.jobIDActive)) {
                     this.jobIDActive = '';
                     toast.error("job " + shortJobID(job.id) + " failed");
                 }
-                if ((job.status == 'complete') && (job.id == this.jobIDActive)) {
+                if ((job.status === 'complete') && (job.id === this.jobIDActive)) {
                     this.jobIDActive = '';
                     toast.success("job " + shortJobID(job.id) + " finished");
                 }
@@ -162,7 +190,7 @@ export class Jobs extends React.Component {
             // this.jobInfo = tJobInfo;
             let stateUpdate = {};
             stateUpdate.jobInfo = tJobInfo;
-            if (Object.keys(tJobInfo).length == 0) {
+            if (Object.keys(tJobInfo).length === 0) {
                 stateUpdate.exportToDisabled = true;
             }
             this.setState(stateUpdate);
@@ -230,7 +258,7 @@ export class Jobs extends React.Component {
                 this.fetchJobSummaryData();
             })
             .catch((err) => {
-                toast.error("delete for job " + job_id + " failed");
+                toast.error("delete for job " + jobID + " failed");
                 console.error("DELETE to /api/job failed : ", err);
             });
     }
@@ -277,7 +305,7 @@ export class Jobs extends React.Component {
         // loop through the jobs array to find the relevant job
         let jobObject = null;
         for (let job of this.state.jobs) {
-            if (job.id == jobID) {
+            if (job.id === jobID) {
                 jobObject = Object.assign({}, job);
                 break;
             }
@@ -294,7 +322,7 @@ export class Jobs extends React.Component {
             };
             console.log(JSON.stringify(parms));
             let jobSelector;
-            if (jobObject.profile == 'custom') {
+            if (jobObject.profile === 'custom') {
                 jobSelector = 'custom?rerun=' + jobObject.id;
             } else {
                 jobSelector = jobObject.profile;
@@ -361,7 +389,7 @@ export class Jobs extends React.Component {
                         toast.error("Export API call failed: " + response.status);
                         throw Error("Unable to retrieve jobs as CSV");
                     }
-                    console.debug("jobs:exportTo: csv request successful");
+                    console.debug("jobs:exportTo: " + opt + " request successful");
                     return response.json();
                 })
                 .then((obj) => {
@@ -402,7 +430,7 @@ export class Jobs extends React.Component {
     }
 
     render() {
-        if (this.props.visibility != 'active') {
+        if (this.props.visibility !== 'active') {
             console.log("jobs component inactive, rendering null div");
             return (
                 <div />
@@ -440,60 +468,68 @@ export class Jobs extends React.Component {
         } else {
             jobDetails = (<div />);
         }
-        let jobTableClasses;
-        let zoomBtn;
-        if (this.state.jobTableVisible) {
-            jobTableClasses = "inline-block align-right";
-            zoomBtn = "zoom-in"
-        } else {
-            jobTableClasses = "hidden"
-            zoomBtn = "zoom-out"
-        }
+        let jobTableClasses = "inline-block align-right";
+        // let zoomBtn;
+        // if (this.state.jobTableVisible) {
+        //     jobTableClasses = "inline-block align-right";
+        //     zoomBtn = "zoom-in"
+        // } else {
+        //     jobTableClasses = "hidden"
+        //     zoomBtn = "zoom-out"
+        // }
         return (
             <div id="jobs" className={this.props.visibility}>
-                <a className="hidden" ref={this.downloadLink} />
-                <GenericModal
-                    show={this.state.modalOpen}
-                    title={this.modalTitle}
-                    content={jobDetails}
-                    closeHandler={this.closeModal} />
-                <br />
-                <div id="jobTableArea" className={jobTableClasses} style={{marginLeft: "50px"}}>
-                    <DropDownOptions 
-                        disabled={this.state.exportToDisabled} 
-                        label="Export As" 
-                        optionMap={[{name: 'csv', text: 'CSV'}, {name: 'json', text: 'JSON'}]}
-                        callback={this.exportTo}/>
-                    <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
-                    <table className="job_table">
-                        <thead>
-                            <tr>
-                                <th className="job_selector">View</th>
+                <div id="JobTableContainer">
+                    
+                    {/* FIXME: Maybe replace this anchor with a styled button to confirm with usability guidelines? */}
+                    {/* eslint-disable-next-line jsx-a11y/anchor-has-content, jsx-a11y/anchor-is-valid */}
+                    <a className="hidden" ref={this.downloadLink} />
+                    <GenericModal
+                        show={this.state.modalOpen}
+                        title={this.modalTitle}
+                        content={jobDetails}
+                        closeHandler={this.closeModal} />
+                    <br />
 
-                                <th className="job_title">Job Title</th>
-                                <th className="job_id">Job ID</th>
-                                <th className="job_storageclass">Storageclass</th>
-                                <th className="job_clients"># Clients</th>
-                                <th className="job_profile">Profile</th>
-                                <th className="job_provider">Provider</th>
-                                <th className="job_platform">Platform</th>
-                                <th className="job_start">Start Time</th>
-                                <th className="job_status">Status</th>
-                                <th className="job-actions" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>{this.state.jobs.length} rows, {Object.keys(this.state.jobInfo).length} selected</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-                <div className="divider" >
-                    <div className={zoomBtn} onClick={()=>{ this.showHideJobTable()}} />
+                    <div id="jobTableArea" className={jobTableClasses} style={{marginLeft: "50px"}}>
+                        <DropDownOptions 
+                            disabled={this.state.exportToDisabled} 
+                            label="Export As" 
+                            optionMap={[{name: 'csv', text: 'CSV'}, {name: 'json', text: 'JSON'}]}
+                            callback={this.exportTo}/>
+                        <button className="btn btn-primary offset-right" onClick={()=>{ this.fetchJobSummaryData()}}>Refresh</button>
+                        <table className="job_table">
+                            <thead>
+                                <tr>
+                                    <th className="job_selector">View</th>
+
+                                    <th className="job_title">Job Title</th>
+                                    <th className="job_id">Job ID</th>
+                                    <th className="job_storageclass">Storageclass</th>
+                                    <th className="job_clients"># Clients</th>
+                                    <th className="job_profile">Profile</th>
+                                    <th className="job_provider">Provider</th>
+                                    <th className="job_platform">Platform</th>
+                                    <th className="job_start">Start Time</th>
+                                    <th className="job_status">Status</th>
+                                    <th className="job-actions" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>{this.state.jobs.length} rows, {Object.keys(this.state.jobInfo).length} selected</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        
+                    </div>
+                    <img className="resize-handle" src='images/resize-bkgnd.png' alt=''/>
+                    {/* <div className="divider" >
+                        <div className={zoomBtn} onClick={()=>{ this.showHideJobTable()}} />
+                    </div> */}
                 </div>
                 <div id="jobsContainer">
                     <JobAnalysis data={this.state.jobInfo} />
@@ -532,7 +568,7 @@ class FIOJobAnalysis extends React.Component {
     }
 
     static getDerivedStateFromProps(props, state) {
-        if (JSON.stringify(props.jobData) != JSON.stringify(state.jobData)) {
+        if (JSON.stringify(props.jobData) !== JSON.stringify(state.jobData)) {
             console.debug("setting job data");
             return {
                 jobData: props.jobData
@@ -543,7 +579,7 @@ class FIOJobAnalysis extends React.Component {
     }
     shouldComponentUpdate(nextProps, nextState) {
         // Only update if bricks change
-        return !(JSON.stringify(nextProps.jobData) == JSON.stringify(this.state.jobData))
+        return !(JSON.stringify(nextProps.jobData) === JSON.stringify(this.state.jobData))
     }
     calcMedian(dataset, opType = "read", percentile="95.000000") {
         let values = [];
@@ -590,7 +626,7 @@ class FIOJobAnalysis extends React.Component {
             if (this.state.jobData.summary) {
                 let jobSummary = JSON.parse(this.state.jobData.summary)
                 
-                if (jobSummary._rev_ == 1) {
+                if (jobSummary._rev_ === 1) {
                     console.debug("FIOJobAnalysis: render: job record is new format");
                     bandwidthData = [
                         decPlaces(jobSummary.read_bytes_per_sec / Math.pow(1024,2)), 
@@ -752,48 +788,44 @@ class FIOJobAnalysis extends React.Component {
                                 plugins: {
                                     datalabels: {
                                        display: false
-                                    }
-                                },
-                                scaleBeginAtZero: false,
-                                title: {
-                                    display: true,
-                                    text: ["I/O Latency Distribution", "\u25C0 is better"]
-                                },
-                                maintainAspectRatio: false,
-                                legend: {
-                                    display: false,
-                                    position: 'top'
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: ["I/O Latency Distribution", "\u25C0 is better"]
+                                    },
+                                    legend: {
+                                        display: false,
+                                        position: 'top'
+                                    },
                                 },
                                 scales: {
-                                    yAxes: [{
-                                      scaleLabel: {
-                                        display: true,
-                                        labelString: '% of IOPS'
-                                      },
-                                      ticks: {
-                                        beginAtZero: true}
-                                      }],
-                                    xAxes: [{
-                                      scaleLabel: {
-                                        display: true,
-                                        labelString: 'I/O Latency Group'
-                                      },
-                                    //   ticks: {
-                                    //       fontSize: 9,
-                                    //       maxRotation: 90,
-                                    //       minRotation: 90
-                                    //   }
-                                    }],
-                                  }
+                                    yAxes: {
+                                        title: {
+                                            display: true,
+                                            text: "% of IOPS"
+                                        }
+                                    },
+                                    xAxes: {
+                                        title: {
+                                            text: "I/O Latency Group",
+                                            display: true
+                                        },
+                                        ticks: {
+                                            autoSkip: false
+                                        }
+                                    }
+                                },
                             }}
                         />
                     </div>
                     <div className="inline-block chart-item">
-                        <HorizontalBar
+                        <Bar
                             data={percentiles}
                             width={300}
                             height={250}
+                            plugins={[ChartDataLabels]}
                             options={{
+                                indexAxis: 'y',
                                 tooltips:{
                                     enabled: true
                                 },
@@ -805,36 +837,35 @@ class FIOJobAnalysis extends React.Component {
                                        offset: 4,
                                        color: "white",
                                        clip: true
-                                    }
-                                },
-                                title: {
-                                    display: true,
-                                    text:["I/O Latency @ 95%ile", "\u25C0 is better"]
-                                },
-                                legend: {
-                                    display: false
+                                    },
+                                    title: {
+                                        display: true,
+                                        text:["I/O Latency @ 95%ile", "\u25C0 is better"]
+                                    },
+                                    legend: {
+                                        display: false
+                                    },
                                 },
                                 scales: {
-                                    xAxes: [{
-                                        scaleLabel: {
-                                            display: true,
-                                            labelString: "Latency (ms)"
-                                        },
-                                        ticks: {
-                                            beginAtZero: true,
-                                            // max: 50
+                                    xAxes: {
+                                        title: {
+                                            text: "Latency (ms)",
+                                            display: true
                                         }
-                                    }]
+                                    }
                                 }
                             }}
                         />
                     </div>
+
                     <div className="inline-block chart-item">
-                        <HorizontalBar
+                        <Bar
                             data={bandwidth}
                             width={300}
                             height={250}
+                            plugins={[ChartDataLabels]}
                             options={{
+                                indexAxis: 'y',
                                 tooltips:{
                                     enabled: true
                                 },
@@ -845,25 +876,25 @@ class FIOJobAnalysis extends React.Component {
                                        align: "left",
                                        offset: 4,
                                        color: "white"
+                                    },
+                                    title: {
+                                        display: true,
+                                        text:["Bandwidth / Throughput", "\u25B6 is better"]
+                                    },
+                                    legend: {
+                                        display: false
                                     }
                                 },
-                                title: {
-                                    display: true,
-                                    text:["Bandwidth / Throughput", "\u25B6 is better"]
-                                },
-                                legend: {
-                                    display: false
-                                },
                                 scales: {
-                                    xAxes: [{
-                                        scaleLabel: {
-                                            display: true,
-                                            labelString: "Bandwidth MB/s"
+                                    xAxes: {
+                                        title: {
+                                            text: "Bandwidth MB/s",
+                                            display: true
                                         },
                                         ticks: {
                                             beginAtZero: true
                                         }
-                                    }]
+                                    }
                                 }
                             }}
                         />
@@ -884,7 +915,7 @@ class JobDataRow extends React.Component {
         };
     }
 
-    toggleSelected(event) {
+    toggleSelected = (event) => {
         console.debug("clicked a row - " + this.props.job.id);
         this.setState({
             selected: event.target.checked
@@ -896,7 +927,7 @@ class JobDataRow extends React.Component {
         console.log("render job data row " + this.props.job.id + " selected state " + this.props.selected);
         let checkboxEnabled;
         let t_str;
-        if (this.props.job.status != 'queued') {
+        if (this.props.job.status !== 'queued') {
             t_str = formatTimestamp(this.props.job.started);
             // let t = new Date(this.props.job.started * 1000);
             // let t_str = t.toLocaleString()
@@ -916,7 +947,7 @@ class JobDataRow extends React.Component {
         } else {
             rowClass = "notSelectedRow";
         }
-        if (this.props.job.status == 'complete') {
+        if (this.props.job.status === 'complete') {
             checkboxEnabled=true
         } else {
             checkboxEnabled=false
@@ -1008,7 +1039,7 @@ class JobDataRow extends React.Component {
         return (
             <tr className={rowClass}>
                 <td className="job_selector">
-                    <input type="checkbox" disabled={!checkboxEnabled} checked={this.props.selected} onChange={() => {this.toggleSelected(event);}} />
+                    <input type="checkbox" disabled={!checkboxEnabled} checked={this.props.selected} onChange={this.toggleSelected} />
                 </td>
 
                 <td className="job_title">{this.props.job.title}</td>
@@ -1019,7 +1050,7 @@ class JobDataRow extends React.Component {
                 <td className="job_provider" >{this.props.job.provider}</td>
                 <td className="job_platform">{this.props.job.platform}</td>
                 <td className="job_start">{t_str}</td>
-                <td className="job_status">{this.props.job.status}</td>
+                <td className="job_status">{capitalise(this.props.job.status)}</td>
                 <td className="job_actions">
                     <Kebab value={this.props.job.id} actions={actions} />
                 </td>
@@ -1036,7 +1067,7 @@ class JobJSON extends React.Component {
         };
     }
     copyContent= () => {
-        if (this.state.copyBtnText == 'Copy') {
+        if (this.state.copyBtnText === 'Copy') {
             this.setState({
                 copyBtnText: 'Copied',
             });

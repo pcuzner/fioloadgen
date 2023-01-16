@@ -2,7 +2,7 @@ import React from 'react';
 
 import {GenericModal} from '../common/modal.jsx';
 import '../app.scss';
-import { handleAPIErrors, setAPIURL } from '../utils/utils.js';
+import { setAPIURL } from '../utils/utils.js';
 import { RadioSet} from '../common/radioset.jsx';
 import { Tooltip } from '../common/tooltip.jsx';
 import { RatioSlider } from '../common/ratioslider.jsx';
@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 var api_url = setAPIURL();
 const ioDepthTip="Changing the IO depth, varies the number of OS queues the FIO tool uses to drive I/O"
-const ioTypeTip="Databases typical exhibit random I/O, whereas logging is sequential"
+const ioTypeTip="Databases typically exhibit more random I/O, whereas logging is a sequential pattern"
 const runTimeTip="Required run time for the test (in minutes)"
 
 export class Profiles extends React.Component {
@@ -34,7 +34,7 @@ export class Profiles extends React.Component {
     };
 
     // shouldComponentUpdate(nextProps, PrevProps) {
-    //     if (nextProps.visibility == "active"){
+    //     if (nextProps.visibility === "active"){
     //         console.debug("profiles should render");
     //         return true;
     //     } else {
@@ -58,11 +58,11 @@ export class Profiles extends React.Component {
     }
 
     fetchAllProfiles() {  //refresh = false) {
-        // let endpoint = (refresh == true) ? '/api/profile?refresh=true' : '/api/profile';
+        // let endpoint = (refresh === true) ? '/api/profile?refresh=true' : '/api/profile';
         fetch(api_url + '/api/profile')
             .then((response) => {
                 console.debug("Profile fetch : ", response.status);
-                if (response.status == 200) {
+                if (response.status === 200) {
                     return response.json();
                 } else {}
                     throw Error(`Profile fetch failed with HTTP status: ${response.status}`);
@@ -109,15 +109,15 @@ export class Profiles extends React.Component {
           })
     }
 
-    selectProfile(event) {
+    selectProfile = (e) => {
         this.setState({
-            activeProfile: event.target.value
+            activeProfile: e.target.value
         });
 
-        if (event.target.value == "custom") {
+        if (e.target.value === "custom") {
             console.log("selected the custom profile type")
         } else {
-            this.fetchProfile(event.target.value);
+            this.fetchProfile(e.target.value);
         }
 
     }
@@ -127,7 +127,7 @@ export class Profiles extends React.Component {
         fetch(api_url + "/api/profile/" + profileName)
           .then((response) => {
               console.debug("Profile fetch : ", response.status);
-              if (response.status == 200) {
+              if (response.status === 200) {
                   return response.json();
               } else {}
                   throw Error(`Fetch failed with HTTP status: ${response.status}`);
@@ -148,7 +148,7 @@ export class Profiles extends React.Component {
         // remove specific attributes from parms object
         delete parms.titleBorder;
         console.debug(JSON.stringify(this.spec))
-        if (this.state.activeProfile == 'custom') {
+        if (this.state.activeProfile === 'custom') {
             parms['spec'] = this.spec
         } else {
             parms['spec'] = this.state.profileContent;
@@ -166,7 +166,7 @@ export class Profiles extends React.Component {
             body: JSON.stringify(parms)
         })
             .then((e) => {
-                if (e.status == 202) {
+                if (e.status === 202) {
                     toast.success("Job submitted, using I/O profile '" + this.state.activeProfile + "'");
                     console.debug("request accepted (" + e.status + ")")
                     this.props.changeMenuCallback('jobs');
@@ -208,7 +208,7 @@ export class Profiles extends React.Component {
 
     render() {
         console.debug("render profiles called with visibility: ", this.props.visibility);
-        if (this.props.visibility != 'active') {
+        if (this.props.visibility !== 'active') {
             return (
                 <div />
             );
@@ -223,10 +223,10 @@ export class Profiles extends React.Component {
             profileSelector = (
                 <div className="profile-select">
                     {/* <label htmlFor="profiles">FIO Job profiles : </label> */}
-                    <select id="profiles" autoFocus value={this.state.activeProfile} size="10" onChange={()=>{this.selectProfile(event);}}>
+                    <select id="profiles" autoFocus value={this.state.activeProfile} size="10" onChange={this.selectProfile}>
                         {profileList}
                     </select>
-                    <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Reload</button><br />
+                    <button className="btn btn-default profile-reload" onClick={() => {this.refreshProfiles();}}>Refresh</button><br />
                 </div>
             );
         }
@@ -249,8 +249,8 @@ export class Profiles extends React.Component {
                     <div style={{ display: "flex"}}>
                         {profileSelector}
                         <div id="profile-content-container">
-                            <CustomProfile visible={this.state.activeProfile == "custom"} callback={this.updateSpec} checkProfileCallback={this.checkProfile} refreshCallback={this.refreshProfiles}/>
-                            <ProfileContent visible={this.state.activeProfile != "custom"} profileContent={this.state.profileContent} />
+                            <CustomProfile visible={this.state.activeProfile === "custom"} callback={this.updateSpec} checkProfileCallback={this.checkProfile} refreshCallback={this.refreshProfiles}/>
+                            <ProfileContent visible={this.state.activeProfile !== "custom"} profileContent={this.state.profileContent} />
                         </div>
                     </div>
                     <button className="btn btn-primary profile-run" onClick={() => {this.getJobDetails();}}>Run</button><br />
@@ -286,9 +286,7 @@ class CustomProfile extends React.Component {
 
     }
 
-    resetButtonHandler = () => {
-        // event.preventDefault();
-        console.log("defaults are " + JSON.stringify(this.defaults));
+    resetState = () => {
         this.setState({
             profileName: '',
             ioPattern: this.defaults.ioPattern,
@@ -298,8 +296,14 @@ class CustomProfile extends React.Component {
             runTime: this.defaults.runTime,
             profileStyle:{},
         });
-
     }
+
+    resetButtonHandler = () => {
+        // event.preventDefault();
+        console.log("defaults are " + JSON.stringify(this.defaults));
+        this.resetState();
+    }
+
     radioButtonHandler = (event) => {
         // if name is not set this is a select widget
         console.log("in option handler " + event.target.name + " / " + event.target.value);
@@ -307,16 +311,19 @@ class CustomProfile extends React.Component {
         this.props.callback({ioType: event.target.value});
 
     }
+
     sliderHandler = (event) => {
         console.log("in slider handler " + event.target.value);
         this.setState({ioPattern: event.target.value});
         this.props.callback({ioPattern: event.target.value});
     }
+
     selectHandler = (event) => {
         console.log("in select handler with " + event.target.value);
         this.setState({ioBlockSize: event.target.value});
         this.props.callback({ioBlockSize: event.target.value})
     }
+
     runtimeHandler = (event) => {
         console.log("in runtime handler " + event.target.name + " / " + event.target.value);
         this.setState({runTime: event.target.value})
@@ -324,16 +331,18 @@ class CustomProfile extends React.Component {
         console.log("runtime handler sending runtime of ", mins, "to parent");
         this.props.callback({runTime: mins})
     }
+
     ioDepthHandler = (event) => {
         console.log("in iodepth handler " + event.target.name + " / " + event.target.value);
         this.setState({ioDepth: event.target.value})
         this.props.callback({ioDepth: event.target.value})
     }
+
     profileNameUpdater = (event) => {
         console.debug("CustomProfile:profileNameUpdater: applying change to profile name")
         let newState = {};
         newState.profileName = event.target.value;
-        if (event.target.value == '') {
+        if (event.target.value === '') {
             newState.saveDisabled = true;
             newState.profileNameMsg = '';
         } else {
@@ -350,10 +359,11 @@ class CustomProfile extends React.Component {
         }
         this.setState(newState);
     }
+
     profileNameHandler = (event) => {
 
         if (event.target.value) {
-            if (event.target.value != this.state.profileName) {
+            if (event.target.value !== this.state.profileName) {
                 console.debug("Profile name updated to " + event.target.value);
                 //
                 // TODO check that the name doesn't conflict with an existing name
@@ -372,9 +382,10 @@ class CustomProfile extends React.Component {
 
         }
     }
+
     saveProfile() {
         let localState = JSON.parse(JSON.stringify(this.state))
-        if (this.state.profileName == '') {
+        if (this.state.profileName === '') {
             console.debug("profile save requested but no name given")
             this.setState({profileStyle: {
                 borderColor: "red"}
@@ -400,9 +411,10 @@ class CustomProfile extends React.Component {
             body: JSON.stringify({spec: localState})
         })
             .then((e) => {
-                if (e.status == 200) {
+                if (e.status === 200) {
+                    console.debug("request accepted (" + e.status + ")");
                     toast.success("Profile saved successfully");
-                    console.debug("request accepted (" + e.status + ")")
+                    this.resetState();
                     this.props.refreshCallback()
                 } else {
                     toast.error("Profile save failed");
@@ -472,7 +484,7 @@ class CustomProfile extends React.Component {
                             name="io-depth"
                             min="1"
                             max="128"
-                            size="3"
+                            size="4"
                             value={this.state.ioDepth}
                             onChange={this.ioDepthHandler}/>
                     </div>
@@ -486,7 +498,7 @@ class CustomProfile extends React.Component {
                             id="run-time"
                             name="run-time"
                             min="1"
-                            max="10"
+                            max="60"
                             size="4"
                             value={this.state.runTime}
                             onChange={this.runtimeHandler}/>
@@ -518,7 +530,7 @@ class ProfileContent extends React.Component {
         }
 
         let content;
-        if (this.props.profileContent == '') {
+        if (this.props.profileContent === '') {
             content = (<div className="profile-msg">&nbsp;Choose a profile to view the FIO specification</div>);
         } else {
             content = (<pre>{this.props.profileContent}</pre>);
@@ -552,13 +564,13 @@ class JobParameters extends React.Component {
 
     static getDerivedStateFromProps(props, state) {
         let newState = {};
-        if (state.storageclass == '' && props.workerInfo) {
+        if (state.storageclass === '' && props.workerInfo) {
             // console.debug("Job Parameters: storageclass is empty but we have something to default to")
             newState.storageclass = Object.keys(props.workerInfo)[0];
 
         }
 
-        if (JSON.stringify(props.workerInfo) != JSON.stringify(state.workerInfo)) {
+        if (JSON.stringify(props.workerInfo) !== JSON.stringify(state.workerInfo)) {
             // console.debug("job parameters: setting workerinfo to new props value")
             newState.workerInfo = props.workerInfo;
         }
@@ -584,7 +596,7 @@ class JobParameters extends React.Component {
     
     updateState = (event) => {
         console.debug("JobParameters:updateState: event target is " + event.target.id + " value is " + event.target.value);
-        if (event.target.id == "workers") {
+        if (event.target.id === "workers") {
             this.setState({
                 workers: parseInt(event.target.value)
             });
@@ -594,13 +606,13 @@ class JobParameters extends React.Component {
             });
         }
 
-        if (event.target.id == "storageclass") {
+        if (event.target.id === "storageclass") {
             console.log("JobParameters:updateState: adjust the max workers for storageclass '" + event.target.value +"' to " + this.props.workerInfo[event.target.value]);
             this.maxWorkers = this.props.workerInfo[event.target.value];
         }
 
-        if (event.target.id == 'title') {
-            if (event.target.value == "") {
+        if (event.target.id === 'title') {
+            if (event.target.value === "") {
                 this.setState({
                     titleBorder: { borderColor: "red", borderRadius: "5px"}
                 });
@@ -646,7 +658,7 @@ class JobParameters extends React.Component {
             <div>
                 <div>
                     <label className="storageclass" forhtml="storageclass">Storageclass&nbsp; </label>
-                    <select id="storageclass" onChange={() => {this.updateState(event);}}>
+                    <select id="storageclass" onChange={() => {this.updateState();}}>
                         { sc_options }
                     </select>
                     <p />
@@ -681,17 +693,17 @@ class JobParameters extends React.Component {
                         maxLength={60}
                         autoFocus
                         placeholder="Enter a title that uniquely describes the test run"
-                        onChange={() => {this.updateState(event);}}/>
+                        onChange={() => {this.updateState();}}/>
                     <p />
 
                     <label forhtml="platform">Platform&nbsp; </label>
-                    <select id="platform" onChange={() => {this.updateState(event);}}>
+                    <select id="platform" onChange={() => {this.updateState();}}>
                         <option value="openshift">Openshift</option>
                         <option value="kubernetes">Kubernetes</option>
                     </select>
                     <p />
                     <label forhtml="provider" >Provider&nbsp; </label>
-                    <select id="provider" onChange={() => {this.updateState(event);}}>
+                    <select id="provider" onChange={() => {this.updateState();}}>
                         <option value="aws">AWS</option>
                         <option value="vmware">VMware</option>
                         <option value="baremetal">Bare metal</option>

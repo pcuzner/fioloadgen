@@ -29,7 +29,7 @@ export class MastHead extends React.Component {
         fetch(api_url + "/api/status")
           .then((response) => {
               console.debug("status fetch : ", response.status);
-              if (response.status == 200) {
+              if (response.status === 200) {
                   return response.json();
               } else {}
                   throw Error(`status API call failed with HTTP status: ${response.status}`);
@@ -39,11 +39,11 @@ export class MastHead extends React.Component {
               let state = status.data;
               state['apiAvailable'] = true;
             //   console.debug("state returned " + JSON.stringify(state));
-              if (state.workers != this.state.workers) {
+              if (state.workers !== this.state.workers) {
                 console.debug('worker count changed telling parent :', state.workers, this.state.workers);
                 this.props.workersCallback(state.workers);
               }
-              if (state.active_job_id != this.state.active_job_id) {
+              if (state.active_job_id !== this.state.active_job_id) {
                   console.debug("job change");
                   this.props.jobChangeCallback(state.active_job_id);
               }
@@ -82,7 +82,7 @@ export class MastHead extends React.Component {
                     <div className="page-heading">FIOLoadGen</div>
                     <ServiceState state={this.state}/>
                     <Toaster
-                        position="top-center"
+                        position="top-right"
                         reverseOrder={false}
                     />
                 </div>
@@ -95,7 +95,7 @@ export class MastHead extends React.Component {
 class ServiceState extends React.Component {
     constructor(props) {
         super(props);
-        self.state = {
+        this.state = {
             dummy: false
         };
     }
