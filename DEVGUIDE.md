@@ -17,6 +17,7 @@ dnf module list
 dnf module install nodejs:18/development
 
 (this will install items 1 and 3)
+cd react/app
 npm uninstall react@18
 npm uninstall react-dom@18
 
