@@ -3,6 +3,7 @@ const extract = require("extract-text-webpack-plugin"); */
 
 const webpack = require('webpack'); 
 const dotenv = require('dotenv');
+const path = require('path');
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 /* const isDevelopment = process.env.NODE_ENV === 'development' */
@@ -50,10 +51,15 @@ module.exports = () => {
       publicPath: '/',
       filename: 'bundle.js'
     },
-    // 3
     devServer: {
-      contentBase: './dist'
+	    static: {
+		    directory: path.join(__dirname, 'dist'),
+	    }
     },
+    // 3
+    //devServer: {
+    //  contentBase: './dist'
+    //},
     plugins: [ 
       new MiniCssExtractPlugin({
         filename: "css/style.css"
