@@ -14,7 +14,7 @@ export function sortByKey(property) {
     return function (a, b) {
         a[property] = a[property] || 9999999999;
         b[property] = b[property] || 9999999999;
-        if (sortOrder == -1) {
+        if (sortOrder === -1) {
             return b[property].toString().localeCompare(a[property].toString());
         } else {
             return a[property].toString().localeCompare(b[property].toString());
@@ -23,13 +23,15 @@ export function sortByKey(property) {
 }
 
 export function setAPIURL() {
-    if (process.env.NODE_ENV == 'development') {
-        let port = (process.env.API_PORT || 8080);
-        return 'http://localhost:' + port;
-    } else {
-        return '';
+    let u = new URL(window.location.href);
+    console.log("Attached to url : ", u.host);
+    var api_url = u.protocol + '//' + u.hostname;
+    if ( u.port !== null ) {
+        api_url += ':8080';
     }
-};
+    console.log('Setting API URL to ', api_url);
+    return api_url;
+}
 
 export function summarizeLatency(latency) {
     // reformat latency object into list
@@ -78,4 +80,8 @@ export function getElapsed(start, end) {
 
 export function shortJobID(jobUUID) {
     return jobUUID.split('-')[0];
+}
+
+export function capitalise(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
 }
