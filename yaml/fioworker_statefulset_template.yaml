@@ -16,6 +16,10 @@ spec:
         app: fioloadgen # has to match .spec.selector.matchLabels
         storageclass: !STORAGECLASS!
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

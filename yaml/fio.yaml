@@ -19,9 +19,13 @@ metadata:
   labels:
     app: fioloadgen
 spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
   containers:
    - name: fioclient
-     image: pcuzner/fiotester
+     image: docker.io/pcuzner/fiotester
      env:
        - name: FIOMODE
          value: server

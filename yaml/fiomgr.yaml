@@ -4,6 +4,10 @@ kind: Pod
 metadata:
   name: fiomgr
 spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
   containers:
    - name: fiomgr
      image: pcuzner/fiotester:1.5
