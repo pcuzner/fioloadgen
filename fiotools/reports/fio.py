@@ -21,7 +21,7 @@ class FIOSummary:
                 cherrypy.log(f"fio output contains data for {self.clients} client(s)")
                 self._client_summary = self._client_stats[-1]
         else:
-            cherrypy.log("Unable to extract client stats from json")
+            cherrypy.log("Error: Unable to extract client stats from json")
             self._client_summary = {}
 
         self._latency_distribution, self._latency_labels = self._create_latency_breakdown()

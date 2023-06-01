@@ -399,9 +399,9 @@ def run_job(dbpath, handler, service_state):
                         job_json = json.loads(job_data)
                     except json.decoder.JSONDecodeError:
                         cherrypy.log("job {} output file contained invalid JSON, unable to load".format(job.uuid))
+                        job_json = {}
                         job_status = 'incomplete'
                     else:
-                        job_json = {}
                         job_status = 'complete'
 
                     summary = FIOSummary(job_json).as_json()  # use default percentile
