@@ -1,6 +1,8 @@
 import humanize
 from statistics import StatisticsError, mode
 from typing import Dict, Any, Tuple, List
+import logging
+logger = logging.getLogger('cherrypy.error')
 
 
 class FIOSummary:
@@ -14,10 +16,13 @@ class FIOSummary:
         self._clients = None
         if self._client_stats:
             if self.clients == 1:
+                logger.info("fio output contains data for 1 client")
                 self._client_summary = self._client_stats[0]
             else:
+                logger.info(f"fio output contains data for {self.clients} client(s)")
                 self._client_summary = self._client_stats[-1]
         else:
+            logger.warning("Unable to extract client stats from json")
             self._client_summary = {}
 
         self._latency_distribution, self._latency_labels = self._create_latency_breakdown()
