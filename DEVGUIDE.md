@@ -4,7 +4,7 @@
 ### Getting your environment ready
 This example focuses on Fedora 36, but serves as an example of the overall process
 
-ersion Goals
+Version Goals
 nodejs : 18.1.0
 react: 17.0.2
 webpack: 5.73
