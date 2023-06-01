@@ -658,7 +658,7 @@ class JobParameters extends React.Component {
             <div>
                 <div>
                     <label className="storageclass" forhtml="storageclass">Storageclass&nbsp; </label>
-                    <select id="storageclass" onChange={() => {this.updateState();}}>
+                    <select id="storageclass" onChange={this.updateState}>
                         { sc_options }
                     </select>
                     <p />
@@ -693,17 +693,17 @@ class JobParameters extends React.Component {
                         maxLength={60}
                         autoFocus
                         placeholder="Enter a title that uniquely describes the test run"
-                        onChange={() => {this.updateState();}}/>
+                        onChange={this.updateState}/>
                     <p />
 
                     <label forhtml="platform">Platform&nbsp; </label>
-                    <select id="platform" onChange={() => {this.updateState();}}>
+                    <select id="platform" onChange={this.updateState}>
                         <option value="openshift">Openshift</option>
                         <option value="kubernetes">Kubernetes</option>
                     </select>
                     <p />
                     <label forhtml="provider" >Provider&nbsp; </label>
-                    <select id="provider" onChange={() => {this.updateState();}}>
+                    <select id="provider" onChange={this.updateState}>
                         <option value="aws">AWS</option>
                         <option value="vmware">VMware</option>
                         <option value="baremetal">Bare metal</option>
