@@ -41,7 +41,8 @@ class NativeFIOHandler(BaseHandler):
                 self.beta = None
             else:
                 self.k8s = client.CoreV1Api()
-                self.beta = client.ExtensionsV1beta1Api()
+                self.beta = None  # no longer used
+                # self.beta = client.ExtensionsV1beta1Api()
                 logger.debug("CoreAPI and Extensions API configured and ready")
             # self.init()
         else:
