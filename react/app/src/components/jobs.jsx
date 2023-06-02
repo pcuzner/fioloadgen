@@ -312,10 +312,19 @@ export class Jobs extends React.Component {
         };
         if (jobObject) {
             console.debug("found ", JSON.stringify(jobObject));
-            console.debug(jobObject.title);
+            let sfx;
+            let matches = jobObject.title.match(/-\d+/);
+            if (!matches) {
+                sfx = 1
+            } else {
+                let num = matches[0]
+                sfx = (num * -1) + 1
+            }
+            let newTitle = jobObject.title + "-" + sfx;
+            console.debug("rerun will use new job title of ", newTitle);
             let parms = {
                 workers: jobObject.workers,
-                title: jobObject.title,
+                title: newTitle,
                 provider: jobObject.provider,
                 platform: jobObject.platform,
                 storageclass: jobObject.storageclass
