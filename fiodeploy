@@ -9,6 +9,7 @@ DEFAULT_NAMESPACE='fio'
 DEFAULT_SC='ocs-storagecluster-ceph-rbd'
 DEFAULT_SEED_METHOD='parallel'
 DEFAULT_FIOSERVICE_MODE='remote'
+IMAGE_TAG="${TAG:=1.5}"
 CLUSTER_CMD=''
 SEED_METHOD=''
 FIOSERVICE_MODE=''
@@ -194,7 +195,7 @@ get_environment() {
 
     case ${#STORAGECLASS[@]} in
     0)
-        console ${ERROR} "${CROSS} No storagaeclass provided. Unable to continue"
+        console ${ERROR} "${CROSS} No storageclass provided. Unable to continue"
         exit
         ;;
     1)
@@ -232,11 +233,9 @@ get_environment() {
     #     WORKER_YAML='fioworker.yaml'
     # fi
 
-    console "\nTo manage the tests, FIOLoadgen can use either a local daemon on your machine (local), or"
-    console "deploy the management daemon to the target environment (remote)"
+    console "\nTo manage the tests, FIOLoadgen uses either a local or remote daemon (pod)."
     while [ -z "$FIOSERVICE_MODE" ]; do
-        # read -p $(echo -e ${INFO})"How do you want to manage the tests (local/remote) [local]? "$(echo -e ${NC}) FIOSERVICE_MODE
-        read -p "How do you want to manage the tests (local/remote) [remote]? " FIOSERVICE_MODE
+        read -p "How do you want to manage the tests (local or remote) [remote]? " FIOSERVICE_MODE
         if [ -z "$FIOSERVICE_MODE" ]; then
             FIOSERVICE_MODE=$DEFAULT_FIOSERVICE_MODE
         fi
@@ -483,11 +482,13 @@ setup() {
         console ${OK} "To stop the daemon, use the './fioservice stop' command\n"
     else
         # Use remote fioservice deployed to the target cluster
+
         console "\nSubmitting the deployment for the fioservice daemon"
         # TODO update the yaml to provide NAMESPACE and ENVIRONMENT
         deployment=$(cat yaml/fioservice_template.yaml | \
             sed "s/!NAMESPACE!/${NAMESPACE}/" | \
             sed "s/!ENVIRONMENT!/${PLATFORM}/g" | \
+            sed "s/!IMAGE_TAG!/${IMAGE_TAG}/g" | \
             $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
 
         # deployment=$($CLUSTER_CMD -n $NAMESPACE create -f yaml/fioservice.yaml)
@@ -628,15 +629,16 @@ destroy() {
 
 
 usage() {
-    echo -e "Usage: ${SCRIPT_NAME} [-hwsdr]"
+    echo -e "Usage: ${SCRIPT_NAME} [-hsdpr]"
     echo -e "\t-h             ... display usage information"
     echo -e "\t-s             ... setup an FIOLoadgen test environment"
     echo -e "\t-d <namespace> ... delete the FIOLoadgen namespace"
     echo -e "\t-p <namespace> ... check/configure port-forward to remote fioservice pod"
     echo -e "\t-r             ... reset (remove the lockfile)"
 
+    echo "You may also use a TAG environment variable to denote which image to use when creating the environment"
     echo "e.g."
-    echo -e "> ./${SCRIPT_NAME} -s\n"
+    echo -e "$ TAG=1.6-mydevbuild ./${SCRIPT_NAME} -s\n"
 }
 
 main() {

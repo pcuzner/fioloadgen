@@ -58,7 +58,7 @@ spec:
       serviceAccountName: fioservice-sa
       containers:
       - name: fioservice
-        image: pcuzner/fioservice:1.5
+        image: docker.io/pcuzner/fioservice:!IMAGE_TAG!
         ports:
         - containerPort: 8080
         env:
