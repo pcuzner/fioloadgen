@@ -362,6 +362,7 @@ setup() {
         statefulset=$(cat yaml/fioworker_statefulset_template.yaml | \
             sed "s/!WORKERS!/${WORKERS}/" | \
             sed "s/!STORAGECLASS!/${sc_name}/g" | \
+            sed "s/!IMAGE_TAG!/${IMAGE_TAG}/g" | \
             $CLUSTER_CMD -n ${NAMESPACE} create -f - 2>&1)
         # $CLUSTER_CMD -n ${NAMESPACE} create -f yaml/fioworker_statefulset.yaml
         if [ $? -ne 0 ]; then
