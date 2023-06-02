@@ -68,3 +68,9 @@ During testing you may encounter some fio related errors (you may see these in t
 | Error code | Meaning and Resolution |
 |------------|------------------------|
 | 95 | There is a mismatch between the fio version running in the mgr and fio worker pods. Check the releases match, and then redeploy |
+
+
+## Building the containers
+In the buildah folder there are build*.sh scripts. To build both fioservice and fiotester containers (recommended!), just run the ```buildall.sh``` script. This will push to the pcuzner org on docker.io - if you're not me just change the ```CONTAINER_ORG``` and ```CONTAINER_REPO``` variables in the script.
+
+
