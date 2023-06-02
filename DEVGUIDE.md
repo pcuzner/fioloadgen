@@ -61,3 +61,10 @@ npm run-script deploy
 ```
 
 Once the UI assets are in place, refresh your browser or restart the fioservice.
+
+## FIO error codes
+During testing you may encounter some fio related errors (you may see these in the fiomgr pod's log)
+
+| Error code | Meaning and Resolution |
+|------------|------------------------|
+| 95 | There is a mismatch between the fio version running in the mgr and fio worker pods. Check the releases match, and then redeploy |
