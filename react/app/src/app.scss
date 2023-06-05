@@ -1,7 +1,11 @@
 body {
   font-family: sans-serif;
 }
-
+.version {
+  position: absolute;
+  left: 210px;
+  top: 23px;
+}
 .button-link {
   background-color:white;
   border: none;

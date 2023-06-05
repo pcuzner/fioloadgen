@@ -111,6 +111,7 @@ class ServiceState extends React.Component {
 
         return (
             <div className="status-area">
+                <div className="version">v{process.env.REACT_APP_FIOLOADGEN_VERSION}</div>
                 <div className="float-right status-spacing">API:<span className="spacer-left" /><span className={apiSymbol}></span></div>
                 <div className="float-right status-spacing">Job Active:<span className="spacer-left">{taskText}</span></div>
                 <div className="float-right status-spacing">Queued:<span className="spacer-left">{this.props.state.tasks_queued}</span></div>
