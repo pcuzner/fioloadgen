@@ -122,7 +122,6 @@ def message(msg_string, output='console'):
         logger.info(msg_string)
 
 
-# def load_db_profiles(jobdir, dbpath, out='console'):
 def load_db_profiles(out='console'):
 
     changes = {

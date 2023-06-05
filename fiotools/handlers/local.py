@@ -50,9 +50,6 @@ class NativeFIOHandler(BaseHandler):
             self.beta = None
 
         super().__init__()
-    # def init(self):
-    #     # determine the replicaset name for the workers
-    #     pass
 
     @property
     def _can_run(self):
@@ -95,11 +92,6 @@ class NativeFIOHandler(BaseHandler):
                         lookup[sc] = 1
         return lookup
 
-    # def num_workers(self):
-    #     """determine the number of workers"""
-    #     # get pods that have an app=fioworker set
-    #     return len(self._list_namespaced_pod().items)
-
     def fetch_pods(self, storageclass):
         try:
             pod_list = self._list_namespaced_pod(
@@ -109,13 +101,6 @@ class NativeFIOHandler(BaseHandler):
             return []
 
         return pod_list
-
-    # def whoknows(self):
-    #     pods = self.fetch_pods()
-    #     for pod in pods:
-    #         name = pod.metadata.name
-    #         host_ip = pod.status.host_ip
-    #         pod_ip = pod.status.pod_ip
 
     def startfio(self, profile, storageclass, workers, output):
         """start an fio run"""
@@ -159,11 +144,3 @@ class NativeFIOHandler(BaseHandler):
 
     def scale_workers(self, new_worker_count):
         raise NotImplementedError()
-        # # beta=client.ExtensionsV1beta1Api()
-        # # d=beta.list_namespaced_deployment('fio', label_selector='app=fioworker')
-        # patch = {
-        #     "spec": {
-        #         "replicas": new_worker_count,
-        #     },
-        # }
-        # self.beta.patch_namespaced_deployment('fioworker', self.namespace, body=patch)
