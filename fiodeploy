@@ -170,41 +170,46 @@ get_environment() {
         console "- ${sc_name}"
     done
 
-    sfx=""
-    console "You may select multiple storageclasses. Press <ENTER> to end your selection."
-    while :; do
-        # read -p $(echo -e ${INFO})"What storageclass should the fio worker pods use [$DEFAULT_SC]? "$(echo -e ${NC}) STORAGECLASS
-        read -p "Storageclass name: " sc
-        if [ -z $sc ]; then
-            break
-        fi
-
-        if [[ " ${STORAGECLASS[@]} " =~ " ${sc} " ]]; then
-            console ${WARNING} "- storageclass '${sc}' already selected"
-            continue
-        fi
-
-        if [[ ! " ${sc_array[@]} " =~ " ${sc} " ]]; then
-            console ${ERROR} "${CROSS} storageclass '${sc}' does not exist."
-            continue
-        fi
-
-        STORAGECLASS+=( "${sc}" )
-        # repeat=$(prompt "Do you want to use another storageclass (y/n)" "y n")
-    done
-
-    case ${#STORAGECLASS[@]} in
-    0)
-        console ${ERROR} "${CROSS} No storageclass provided. Unable to continue"
-        exit
-        ;;
-    1)
+    if [ ${#sc_array[@]} > 1 ]; then 
         sfx=""
-        ;;
-    *)
-        sfx="es"
-        ;;
-    esac
+        console "You may select multiple storageclasses. Press <ENTER> to end your selection."
+        while :; do
+            # read -p $(echo -e ${INFO})"What storageclass should the fio worker pods use [$DEFAULT_SC]? "$(echo -e ${NC}) STORAGECLASS
+            read -p "Storageclass name: " sc
+            if [ -z $sc ]; then
+                break
+            fi
+
+            if [[ " ${STORAGECLASS[@]} " =~ " ${sc} " ]]; then
+                console ${WARNING} "- storageclass '${sc}' already selected"
+                continue
+            fi
+
+            if [[ ! " ${sc_array[@]} " =~ " ${sc} " ]]; then
+                console ${ERROR} "${CROSS} storageclass '${sc}' does not exist."
+                continue
+            fi
+
+            STORAGECLASS+=( "${sc}" )
+            # repeat=$(prompt "Do you want to use another storageclass (y/n)" "y n")
+        done
+
+        case ${#STORAGECLASS[@]} in
+        0)
+            console ${ERROR} "${CROSS} No storageclass provided. Unable to continue"
+            exit
+            ;;
+        1)
+            sfx=""
+            ;;
+        *)
+            sfx="es"
+            ;;
+        esac
+    else
+        console ${OK} "${TICK} ${sc_array[0]} auto-selected${NC}\n"
+        STORAGECLASS+=( "${sc_array[0]}" )
+    fi
 
     console ${OK} "${TICK} workers will be deployed to ${#STORAGECLASS[@]} storageclass${sfx}${NC}\n"
     # read -p $(echo -e ${INFO})"How many fio workers (1-${WORKER_LIMIT}) [${DEFAULT_WORKERS}]? "$(echo -e ${NC}) WORKERS
