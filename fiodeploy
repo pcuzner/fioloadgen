@@ -170,7 +170,7 @@ get_environment() {
         console "- ${sc_name}"
     done
 
-    if [ ${#sc_array[@]} > 1 ]; then 
+    if [ ${#sc_array[@]} -gt 1 ]; then 
         sfx=""
         console "You may select multiple storageclasses. Press <ENTER> to end your selection."
         while :; do
