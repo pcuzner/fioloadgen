@@ -207,7 +207,7 @@ get_environment() {
             ;;
         esac
     else
-        console ${OK} "${TICK} ${sc_array[0]} auto-selected${NC}\n"
+        console ${OK} "${TICK} ${sc_array[0]} auto-selected${NC}"
         STORAGECLASS+=( "${sc_array[0]}" )
     fi
 
@@ -348,7 +348,7 @@ setup() {
 
     acquire_lock
 
-    console ${INFO} "\nStarting deployment\n"
+    console "\nDeployment starting\n"
 
     # create namespace
     console "Creating namespace (${NAMESPACE})"
